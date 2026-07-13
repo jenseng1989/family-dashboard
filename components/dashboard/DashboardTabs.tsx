@@ -19,13 +19,13 @@ type TabButton = {
 };
 
 const tabs: TabButton[] = [
-    {
+  {
     id: "home",
     label: "Hem",
     shortLabel: "Hem",
     icon: <Home size={20} />,
   },
-    {
+  {
     id: "weather",
     label: "Väder & bad",
     shortLabel: "Väder",
@@ -44,7 +44,7 @@ export default function DashboardTabs({
   electricityContent,
   familyContent,
 }: DashboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("weather");
+  const [activeTab, setActiveTab] = useState<TabId>("home");
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
@@ -86,21 +86,13 @@ export default function DashboardTabs({
                     : "text-slate-300 hover:bg-white/10 hover:text-white",
                 ].join(" ")}
               >
-                <span
-                  className={
-                    isActive ? "text-white" : "text-slate-400"
-                  }
-                >
+                <span className={isActive ? "text-white" : "text-slate-400"}>
                   {tab.icon}
                 </span>
 
-                <span className="hidden sm:inline">
-                  {tab.label}
-                </span>
+                <span className="hidden sm:inline">{tab.label}</span>
 
-                <span className="sm:hidden">
-                  {tab.shortLabel}
-                </span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
               </button>
             );
           })}
