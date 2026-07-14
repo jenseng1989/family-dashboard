@@ -2,8 +2,10 @@ import BathingWidget from "@/components/dashboard/BathingWidget";
 import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
+import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
+import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
 export default function Dashboard() {
@@ -20,12 +22,21 @@ export default function Dashboard() {
     </div>
   );
 
-  const familyContent = (
+  const sharedFamilyContent = (
     <div className="grid gap-5">
-      <FamilyTimelineWidget />
       <Countdown />
       <ShoppingList />
+      <FamilyTimelineWidget />
     </div>
+  );
+
+  const signeContent = <SigneGrowth />;
+
+  const familyContent = (
+    <FamilyTabs
+      sharedContent={sharedFamilyContent}
+      signeContent={signeContent}
+    />
   );
 
   return (
