@@ -1,4 +1,5 @@
 import BathingWidget from "@/components/dashboard/BathingWidget";
+import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
@@ -8,7 +9,6 @@ export default function Dashboard() {
   const weatherContent = (
     <div className="grid gap-5 xl:grid-cols-3">
       <WeatherWidget />
-
       <BathingWidget />
     </div>
   );
@@ -21,6 +21,7 @@ export default function Dashboard() {
 
   const familyContent = (
     <div className="grid gap-5">
+      <Countdown />
       <FamilyTimelineWidget />
     </div>
   );

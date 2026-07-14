@@ -38,7 +38,7 @@ export default async function WeatherWidget() {
     },
     {
       label: "Vind",
-      value: `${Math.round(weather.windSpeed)} km/h`,
+      value: `${Math.round(weather.windSpeed)} m/s`,
       icon: "🌬",
     },
   ];
