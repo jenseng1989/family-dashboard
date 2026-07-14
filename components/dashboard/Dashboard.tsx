@@ -3,6 +3,7 @@ import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
+import ShoppingList from "@/components/dashboard/ShoppingList";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
 export default function Dashboard() {
@@ -21,8 +22,9 @@ export default function Dashboard() {
 
   const familyContent = (
     <div className="grid gap-5">
-      <Countdown />
       <FamilyTimelineWidget />
+      <Countdown />
+      <ShoppingList />
     </div>
   );
 
