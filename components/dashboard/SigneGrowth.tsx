@@ -3,8 +3,6 @@
 import {
   Baby,
   CalendarDays,
-  ChevronDown,
-  ChevronUp,
   LoaderCircle,
   Plus,
   RefreshCw,
@@ -15,7 +13,6 @@ import {
 } from "lucide-react";
 import {
   FormEvent,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -47,70 +44,6 @@ type ChartRow = {
   weight: number;
   height: number;
 };
-
-type CollapseButtonProps = {
-  isCollapsed: boolean;
-  onClick: () => void;
-};
-
-function CollapseButton({
-  isCollapsed,
-  onClick,
-}: CollapseButtonProps) {
-  return (
-    <div className="mb-4 flex justify-end">
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={!isCollapsed}
-        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-      >
-        {isCollapsed ? (
-          <>
-            <ChevronDown size={17} />
-            Visa
-          </>
-        ) : (
-          <>
-            <ChevronUp size={17} />
-            Minimera
-          </>
-        )}
-      </button>
-    </div>
-  );
-}
-
-type CollapsibleCardProps = {
-  title: string;
-  icon: ReactNode;
-  isCollapsed: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-};
-
-function CollapsibleCard({
-  title,
-  icon,
-  isCollapsed,
-  onToggle,
-  children,
-}: CollapsibleCardProps) {
-  return (
-    <Card title={title} icon={icon}>
-      <CollapseButton
-        isCollapsed={isCollapsed}
-        onClick={onToggle}
-      />
-
-      {!isCollapsed && (
-        <div className="animate-[fadeIn_250ms_ease-out]">
-          {children}
-        </div>
-      )}
-    </Card>
-  );
-}
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -166,15 +99,6 @@ export default function SigneGrowth() {
   const [errorMessage, setErrorMessage] = useState<string | null>(
     null
   );
-
-  const [isGrowthFormCollapsed, setIsGrowthFormCollapsed] =
-    useState(false);
-  const [isWeightChartCollapsed, setIsWeightChartCollapsed] =
-    useState(false);
-  const [isHeightChartCollapsed, setIsHeightChartCollapsed] =
-    useState(false);
-  const [isHistoryCollapsed, setIsHistoryCollapsed] =
-    useState(true);
 
   const loadMeasurements = useCallback(async () => {
     setIsLoading(true);
@@ -356,13 +280,9 @@ export default function SigneGrowth() {
 
   return (
     <div className="grid gap-5">
-      <CollapsibleCard
+      <Card
         title="Signes tillväxt"
         icon={<Baby size={28} />}
-        isCollapsed={isGrowthFormCollapsed}
-        onToggle={() =>
-          setIsGrowthFormCollapsed((current) => !current)
-        }
       >
         <form
           onSubmit={handleSubmit}
@@ -533,7 +453,7 @@ export default function SigneGrowth() {
             </div>
           </div>
         )}
-      </CollapsibleCard>
+      </Card>
 
       {isLoading ? (
         <Card
@@ -574,13 +494,9 @@ export default function SigneGrowth() {
         </Card>
       ) : (
         <>
-          <CollapsibleCard
+          <Card
             title="Viktutveckling"
             icon={<Scale size={28} />}
-            isCollapsed={isWeightChartCollapsed}
-            onToggle={() =>
-              setIsWeightChartCollapsed((current) => !current)
-            }
           >
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -625,8 +541,7 @@ export default function SigneGrowth() {
                     ]}
                     contentStyle={{
                       background: "#0f172a",
-                      border:
-                        "1px solid rgba(255,255,255,0.12)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "12px",
                     }}
                   />
@@ -647,15 +562,11 @@ export default function SigneGrowth() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CollapsibleCard>
+          </Card>
 
-          <CollapsibleCard
+          <Card
             title="Längdutveckling"
             icon={<Ruler size={28} />}
-            isCollapsed={isHeightChartCollapsed}
-            onToggle={() =>
-              setIsHeightChartCollapsed((current) => !current)
-            }
           >
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -700,8 +611,7 @@ export default function SigneGrowth() {
                     ]}
                     contentStyle={{
                       background: "#0f172a",
-                      border:
-                        "1px solid rgba(255,255,255,0.12)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "12px",
                     }}
                   />
@@ -722,18 +632,14 @@ export default function SigneGrowth() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CollapsibleCard>
+          </Card>
         </>
       )}
 
       {measurements.length > 0 && (
-        <CollapsibleCard
+        <Card
           title="Mäthistorik"
           icon={<CalendarDays size={28} />}
-          isCollapsed={isHistoryCollapsed}
-          onToggle={() =>
-            setIsHistoryCollapsed((current) => !current)
-          }
         >
           <div className="grid gap-3 sm:grid-cols-2">
             {[...measurements]
@@ -785,7 +691,7 @@ export default function SigneGrowth() {
                 );
               })}
           </div>
-        </CollapsibleCard>
+        </Card>
       )}
 
       <p className="text-xs leading-5 text-slate-500">

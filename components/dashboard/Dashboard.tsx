@@ -18,6 +18,7 @@ export default function Dashboard() {
 
   const electricityContent = (
     <div className="grid gap-5 xl:grid-cols-2">
+      <ShoppingList />
       <ElectricityWidget />
     </div>
   );
@@ -25,7 +26,6 @@ export default function Dashboard() {
   const sharedFamilyContent = (
     <div className="grid gap-5">
       <Countdown />
-      <ShoppingList />
       <FamilyTimelineWidget />
     </div>
   );
