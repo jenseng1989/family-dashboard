@@ -7,6 +7,7 @@ import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
+import VacationPlan from "@/components/dashboard/VacationPlan";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
 export default function Dashboard() {
@@ -26,7 +27,8 @@ export default function Dashboard() {
   );
 
   const sharedFamilyContent = (
-    <div className="grid gap-5">      
+    <div className="grid gap-5">
+      <VacationPlan />
       <FamilyTimelineWidget />
     </div>
   );
