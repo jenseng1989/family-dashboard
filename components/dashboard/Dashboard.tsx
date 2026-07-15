@@ -6,6 +6,7 @@ import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
+import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
 export default function Dashboard() {
@@ -27,10 +28,16 @@ export default function Dashboard() {
     <div className="grid gap-5">
       <Countdown />
       <FamilyTimelineWidget />
+
     </div>
   );
 
-  const signeContent = <SigneGrowth />;
+  const signeContent = (
+    <div className="grid gap-5">
+      <SigneGrowth />
+      <SigneVaccinations />
+    </div>
+  );
 
   const familyContent = (
     <FamilyTabs
