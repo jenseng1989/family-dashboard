@@ -249,7 +249,7 @@ export default function Countdown() {
         onSubmit={handleSubmit}
         className="rounded-2xl border border-white/10 bg-white/5 p-4"
       >
-        <div className="grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end">
+        <div className="grid gap-4">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-300">
               Händelse
@@ -267,42 +267,44 @@ export default function Countdown() {
             />
           </label>
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-300">
-              Datum
-            </span>
+          <div className="grid gap-4 sm:grid-cols-[220px_1fr] sm:items-end">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-slate-300">
+                Datum
+              </span>
 
-            <input
-              type="date"
-              value={date}
-              min={getTodayDateString()}
-              onChange={(event) =>
-                setDate(event.target.value)
-              }
-              className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={
-              !title.trim() ||
-              !date ||
-              isSaving
-            }
-            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isSaving ? (
-              <LoaderCircle
-                size={19}
-                className="animate-spin"
+              <input
+                type="date"
+                value={date}
+                min={getTodayDateString()}
+                onChange={(event) =>
+                  setDate(event.target.value)
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
               />
-            ) : (
-              <CalendarPlus size={19} />
-            )}
+            </label>
 
-            {isSaving ? "Sparar…" : "Lägg till"}
-          </button>
+            <button
+              type="submit"
+              disabled={
+                !title.trim() ||
+                !date ||
+                isSaving
+              }
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSaving ? (
+                <LoaderCircle
+                  size={19}
+                  className="animate-spin"
+                />
+              ) : (
+                <CalendarPlus size={19} />
+              )}
+
+              {isSaving ? "Sparar…" : "Lägg till"}
+            </button>
+          </div>
         </div>
       </form>
 
