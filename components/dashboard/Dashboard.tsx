@@ -4,6 +4,7 @@ import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
+import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
@@ -33,6 +34,20 @@ export default function Dashboard() {
     </div>
   );
 
+  const jensContent = (
+    <PersonalCenter
+      owner="jens"
+      displayName="Jens"
+    />
+  );
+
+  const lenitaContent = (
+    <PersonalCenter
+      owner="lenita"
+      displayName="Lenita"
+    />
+  );
+
   const signeContent = (
     <div className="grid gap-5">
       <SigneGrowth />
@@ -43,6 +58,8 @@ export default function Dashboard() {
   const familyContent = (
     <FamilyTabs
       sharedContent={sharedFamilyContent}
+      jensContent={jensContent}
+      lenitaContent={lenitaContent}
       signeContent={signeContent}
     />
   );

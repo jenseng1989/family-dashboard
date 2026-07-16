@@ -16,6 +16,8 @@ type FamilyTabId =
 
 type FamilyTabsProps = {
   sharedContent: ReactNode;
+  jensContent: ReactNode;
+  lenitaContent: ReactNode;
   signeContent: ReactNode;
 };
 
@@ -48,38 +50,10 @@ const tabs: FamilyTab[] = [
   },
 ];
 
-type EmptyPersonalPageProps = {
-  name: string;
-  description: string;
-  icon: ReactNode;
-};
-
-function EmptyPersonalPage({
-  name,
-  description,
-  icon,
-}: EmptyPersonalPageProps) {
-  return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-xl shadow-black/10 backdrop-blur-xl sm:p-8">
-      <div className="flex min-h-64 flex-col items-center justify-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-blue-300">
-          {icon}
-        </div>
-
-        <h2 className="mt-5 text-2xl font-bold text-white">
-          {name}
-        </h2>
-
-        <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-          {description}
-        </p>
-      </div>
-    </section>
-  );
-}
-
 export default function FamilyTabs({
   sharedContent,
+  jensContent,
+  lenitaContent,
   signeContent,
 }: FamilyTabsProps) {
   const [activeTab, setActiveTab] =
@@ -88,22 +62,10 @@ export default function FamilyTabs({
   function getActiveContent(): ReactNode {
     switch (activeTab) {
       case "jens":
-        return (
-          <EmptyPersonalPage
-            name="Jens"
-            description="Här kan vi senare lägga till personliga uppgifter, viktiga datum, mål och anteckningar för Jens."
-            icon={<User size={30} />}
-          />
-        );
+        return jensContent;
 
       case "lenita":
-        return (
-          <EmptyPersonalPage
-            name="Lenita"
-            description="Här kan vi senare lägga till personliga uppgifter, viktiga datum, mål och anteckningar för Lenita."
-            icon={<Heart size={30} />}
-          />
-        );
+        return lenitaContent;
 
       case "signe":
         return signeContent;

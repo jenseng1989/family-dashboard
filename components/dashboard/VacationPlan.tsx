@@ -9,6 +9,7 @@ import {
   LoaderCircle,
   MapPin,
   Pencil,
+  Plus,
   RefreshCw,
   Route,
   Sparkles,
@@ -36,7 +37,8 @@ type VacationDay = {
   information: string | null;
 };
 
-type VacationEditForm = {
+type VacationForm = {
+  planDate: string;
   location: string;
   travel: string;
   accommodation: string;
@@ -44,8 +46,20 @@ type VacationEditForm = {
   information: string;
 };
 
+type VacationEditForm = Omit<VacationForm, "planDate">;
+
+const EMPTY_ADD_FORM: VacationForm = {
+  planDate: "",
+  location: "",
+  travel: "",
+  accommodation: "",
+  activity: "",
+  information: "",
+};
+
 function getTodayString(): string {
   const now = new Date();
+
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
@@ -54,24 +68,41 @@ function getTodayString(): string {
 }
 
 function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number);
+  const [year, month, day] = dateString
+    .split("-")
+    .map(Number);
 
   return new Date(year, month - 1, day);
 }
 
 function formatDate(dateString: string): string {
-  return parseLocalDate(dateString).toLocaleDateString("sv-SE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  return parseLocalDate(dateString).toLocaleDateString(
+    "sv-SE",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }
+  );
 }
 
 function formatShortDate(dateString: string): string {
-  return parseLocalDate(dateString).toLocaleDateString("sv-SE", {
-    day: "numeric",
-    month: "short",
-  });
+  return parseLocalDate(dateString).toLocaleDateString(
+    "sv-SE",
+    {
+      day: "numeric",
+      month: "short",
+    }
+  );
+}
+
+function getSwedishDayName(dateString: string): string {
+  return parseLocalDate(dateString).toLocaleDateString(
+    "sv-SE",
+    {
+      weekday: "long",
+    }
+  );
 }
 
 function createMapsUrl(
@@ -97,7 +128,17 @@ function hasVisibleInformation(day: VacationDay): boolean {
   );
 }
 
-function createEditForm(day: VacationDay): VacationEditForm {
+function normalizeOptionalText(
+  value: string
+): string | null {
+  const trimmedValue = value.trim();
+
+  return trimmedValue || null;
+}
+
+function createEditForm(
+  day: VacationDay
+): VacationEditForm {
   return {
     location: day.location ?? "",
     travel: day.travel ?? "",
@@ -107,10 +148,126 @@ function createEditForm(day: VacationDay): VacationEditForm {
   };
 }
 
-function normalizeOptionalText(value: string): string | null {
-  const trimmedValue = value.trim();
+function formHasInformation(
+  form: VacationForm | VacationEditForm
+): boolean {
+  return Boolean(
+    form.location.trim() ||
+      form.travel.trim() ||
+      form.accommodation.trim() ||
+      form.activity.trim() ||
+      form.information.trim()
+  );
+}
 
-  return trimmedValue || null;
+type VacationFieldsProps = {
+  form: VacationForm | VacationEditForm;
+  onChange: (
+    field:
+      | keyof VacationForm
+      | keyof VacationEditForm,
+    value: string
+  ) => void;
+};
+
+function VacationFields({
+  form,
+  onChange,
+}: VacationFieldsProps) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label className="block">
+        <span className="mb-2 block text-sm font-medium text-slate-300">
+          Plats
+        </span>
+
+        <input
+          type="text"
+          value={form.location}
+          onChange={(event) =>
+            onChange("location", event.target.value)
+          }
+          placeholder="Till exempel Ystad"
+          maxLength={150}
+          className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-medium text-slate-300">
+          Boende
+        </span>
+
+        <input
+          type="text"
+          value={form.accommodation}
+          onChange={(event) =>
+            onChange(
+              "accommodation",
+              event.target.value
+            )
+          }
+          placeholder="Hotell eller boende"
+          maxLength={200}
+          className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        />
+      </label>
+
+      <label className="block md:col-span-2">
+        <span className="mb-2 block text-sm font-medium text-slate-300">
+          Aktivitet
+        </span>
+
+        <textarea
+          value={form.activity}
+          onChange={(event) =>
+            onChange("activity", event.target.value)
+          }
+          placeholder="Dagens aktivitet"
+          rows={3}
+          maxLength={1000}
+          className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        />
+      </label>
+
+      <label className="block md:col-span-2">
+        <span className="mb-2 block text-sm font-medium text-slate-300">
+          Resa
+        </span>
+
+        <textarea
+          value={form.travel}
+          onChange={(event) =>
+            onChange("travel", event.target.value)
+          }
+          placeholder="Tåg, bilresa eller annan transport"
+          rows={3}
+          maxLength={1500}
+          className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        />
+      </label>
+
+      <label className="block md:col-span-2">
+        <span className="mb-2 block text-sm font-medium text-slate-300">
+          Information
+        </span>
+
+        <textarea
+          value={form.information}
+          onChange={(event) =>
+            onChange(
+              "information",
+              event.target.value
+            )
+          }
+          placeholder="Bokningstider eller annan information"
+          rows={3}
+          maxLength={1500}
+          className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        />
+      </label>
+    </div>
+  );
 }
 
 type EditVacationDayProps = {
@@ -122,7 +279,9 @@ type EditVacationDayProps = {
     value: string
   ) => void;
   onCancel: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (
+    event: FormEvent<HTMLFormElement>
+  ) => void;
 };
 
 function EditVacationDay({
@@ -160,92 +319,17 @@ function EditVacationDay({
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-300">
-            Plats
-          </span>
-
-          <input
-            type="text"
-            value={form.location}
-            onChange={(event) =>
-              onChange("location", event.target.value)
-            }
-            placeholder="Till exempel Ystad"
-            className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-300">
-            Boende
-          </span>
-
-          <input
-            type="text"
-            value={form.accommodation}
-            onChange={(event) =>
-              onChange("accommodation", event.target.value)
-            }
-            placeholder="Hotell eller boende"
-            className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-          />
-        </label>
-
-        <label className="block md:col-span-2">
-          <span className="mb-2 block text-sm font-medium text-slate-300">
-            Aktivitet
-          </span>
-
-          <textarea
-            value={form.activity}
-            onChange={(event) =>
-              onChange("activity", event.target.value)
-            }
-            placeholder="Dagens aktivitet"
-            rows={3}
-            className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-          />
-        </label>
-
-        <label className="block md:col-span-2">
-          <span className="mb-2 block text-sm font-medium text-slate-300">
-            Resa
-          </span>
-
-          <textarea
-            value={form.travel}
-            onChange={(event) =>
-              onChange("travel", event.target.value)
-            }
-            placeholder="Tåg, bilresa eller annan transport"
-            rows={3}
-            className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-          />
-        </label>
-
-        <label className="block md:col-span-2">
-          <span className="mb-2 block text-sm font-medium text-slate-300">
-            Information
-          </span>
-
-          <textarea
-            value={form.information}
-            onChange={(event) =>
-              onChange("information", event.target.value)
-            }
-            placeholder="Bokningstider eller annan information"
-            rows={3}
-            className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-          />
-        </label>
-      </div>
+      <VacationFields
+        form={form}
+        onChange={onChange}
+      />
 
       <button
         type="submit"
-        disabled={isSaving}
-        className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-50 sm:w-auto"
+        disabled={
+          isSaving || !formHasInformation(form)
+        }
+        className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
         {isSaving ? (
           <LoaderCircle
@@ -256,25 +340,36 @@ function EditVacationDay({
           <Check size={19} />
         )}
 
-        {isSaving ? "Sparar…" : "Spara ändringar"}
+        {isSaving
+          ? "Sparar…"
+          : "Spara ändringar"}
       </button>
     </form>
   );
 }
 
 export default function VacationPlan() {
-  const [days, setDays] = useState<VacationDay[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<
-    string | null
-  >(null);
+  const [days, setDays] = useState<VacationDay[]>(
+    []
+  );
+  const [isLoading, setIsLoading] =
+    useState(true);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
-  const [editingId, setEditingId] = useState<
-    string | null
-  >(null);
+  const [isAdding, setIsAdding] =
+    useState(false);
+  const [addForm, setAddForm] =
+    useState<VacationForm>(EMPTY_ADD_FORM);
+  const [isAddingDay, setIsAddingDay] =
+    useState(false);
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
   const [editForm, setEditForm] =
     useState<VacationEditForm | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] =
+    useState(false);
 
   const loadPlan = useCallback(async () => {
     setIsLoading(true);
@@ -285,7 +380,9 @@ export default function VacationPlan() {
       .select(
         "id, plan_date, day_name, location, travel, accommodation, activity, information"
       )
-      .order("plan_date", { ascending: true });
+      .order("plan_date", {
+        ascending: true,
+      });
 
     if (error) {
       console.error(
@@ -300,7 +397,9 @@ export default function VacationPlan() {
       return;
     }
 
-    setDays((data ?? []).filter(hasVisibleInformation));
+    setDays(
+      (data ?? []).filter(hasVisibleInformation)
+    );
     setIsLoading(false);
   }, []);
 
@@ -340,7 +439,8 @@ export default function VacationPlan() {
           (day) =>
             day.plan_date > nextDay.plan_date
         ),
-        featuredLabel: "Nästa planerade dag",
+        featuredLabel:
+          "Nästa planerade dag",
       };
     }
 
@@ -351,7 +451,112 @@ export default function VacationPlan() {
     };
   }, [days, today]);
 
+  function updateAddField(
+    field: keyof VacationForm,
+    value: string
+  ) {
+    setAddForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  }
+
+  function closeAddForm() {
+    if (isAddingDay) {
+      return;
+    }
+
+    setIsAdding(false);
+    setAddForm(EMPTY_ADD_FORM);
+    setErrorMessage(null);
+  }
+
+  async function addVacationDay(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (
+      !addForm.planDate ||
+      !formHasInformation(addForm) ||
+      isAddingDay
+    ) {
+      setErrorMessage(
+        "Välj ett datum och fyll i minst ett informationsfält."
+      );
+      return;
+    }
+
+    setIsAddingDay(true);
+    setErrorMessage(null);
+
+    const { data, error } = await supabase
+      .from("vacation_plan")
+      .insert({
+        plan_date: addForm.planDate,
+        day_name: getSwedishDayName(
+          addForm.planDate
+        ),
+        location: normalizeOptionalText(
+          addForm.location
+        ),
+        travel: normalizeOptionalText(
+          addForm.travel
+        ),
+        accommodation: normalizeOptionalText(
+          addForm.accommodation
+        ),
+        activity: normalizeOptionalText(
+          addForm.activity
+        ),
+        information: normalizeOptionalText(
+          addForm.information
+        ),
+      })
+      .select(
+        "id, plan_date, day_name, location, travel, accommodation, activity, information"
+      )
+      .single();
+
+    if (error) {
+      console.error(
+        "Kunde inte lägga till semesterdagen:",
+        error
+      );
+
+      if (error.code === "23505") {
+        setErrorMessage(
+          "Det finns redan en planerad dag med det valda datumet. Redigera den befintliga dagen i stället."
+        );
+      } else {
+        setErrorMessage(
+          "Den nya semesterdagen kunde inte sparas."
+        );
+      }
+
+      setIsAddingDay(false);
+      return;
+    }
+
+    setDays((currentDays) =>
+      [...currentDays, data].sort(
+        (firstDay, secondDay) =>
+          parseLocalDate(
+            firstDay.plan_date
+          ).getTime() -
+          parseLocalDate(
+            secondDay.plan_date
+          ).getTime()
+      )
+    );
+
+    setAddForm(EMPTY_ADD_FORM);
+    setIsAdding(false);
+    setIsAddingDay(false);
+  }
+
   function startEditing(day: VacationDay) {
+    setIsAdding(false);
     setEditingId(day.id);
     setEditForm(createEditForm(day));
     setErrorMessage(null);
@@ -387,7 +592,18 @@ export default function VacationPlan() {
   ) {
     event.preventDefault();
 
-    if (!editingId || !editForm || isSaving) {
+    if (
+      !editingId ||
+      !editForm ||
+      isSaving
+    ) {
+      return;
+    }
+
+    if (!formHasInformation(editForm)) {
+      setErrorMessage(
+        "Fyll i minst ett informationsfält."
+      );
       return;
     }
 
@@ -400,7 +616,9 @@ export default function VacationPlan() {
         location: normalizeOptionalText(
           editForm.location
         ),
-        travel: normalizeOptionalText(editForm.travel),
+        travel: normalizeOptionalText(
+          editForm.travel
+        ),
         accommodation: normalizeOptionalText(
           editForm.accommodation
         ),
@@ -468,6 +686,107 @@ export default function VacationPlan() {
       title="Semesterplanering"
       icon={<Umbrella size={28} />}
     >
+      <div className="mb-5 flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setEditingId(null);
+            setEditForm(null);
+            setIsAdding((current) => !current);
+            setErrorMessage(null);
+          }}
+          disabled={isAddingDay || isSaving}
+          className="flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-50"
+        >
+          {isAdding ? (
+            <X size={18} />
+          ) : (
+            <Plus size={18} />
+          )}
+
+          {isAdding
+            ? "Stäng formulär"
+            : "Lägg till dag"}
+        </button>
+      </div>
+
+      {isAdding && (
+        <form
+          onSubmit={addVacationDay}
+          className="mb-5 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 sm:p-5"
+        >
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                Ny semesterdag
+              </p>
+
+              <h3 className="mt-1 text-xl font-bold text-white">
+                Lägg till en dag i planeringen
+              </h3>
+            </div>
+
+            <label className="block w-full sm:w-56">
+              <span className="mb-2 block text-sm font-medium text-slate-300">
+                Datum
+              </span>
+
+              <input
+                type="date"
+                value={addForm.planDate}
+                onChange={(event) =>
+                  updateAddField(
+                    "planDate",
+                    event.target.value
+                  )
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+              />
+            </label>
+          </div>
+
+          <VacationFields
+            form={addForm}
+            onChange={updateAddField}
+          />
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="submit"
+              disabled={
+                !addForm.planDate ||
+                !formHasInformation(addForm) ||
+                isAddingDay
+              }
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isAddingDay ? (
+                <LoaderCircle
+                  size={19}
+                  className="animate-spin"
+                />
+              ) : (
+                <Plus size={19} />
+              )}
+
+              {isAddingDay
+                ? "Lägger till…"
+                : "Lägg till dagen"}
+            </button>
+
+            <button
+              type="button"
+              onClick={closeAddForm}
+              disabled={isAddingDay}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              <X size={19} />
+              Avbryt
+            </button>
+          </div>
+        </form>
+      )}
+
       {errorMessage && (
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-200">
@@ -505,7 +824,9 @@ export default function VacationPlan() {
                 </p>
 
                 <h3 className="mt-1 text-2xl font-bold capitalize text-white">
-                  {formatDate(featuredDay.plan_date)}
+                  {formatDate(
+                    featuredDay.plan_date
+                  )}
                 </h3>
               </div>
 
@@ -570,7 +891,7 @@ export default function VacationPlan() {
                     Aktivitet
                   </p>
 
-                  <p className="mt-2 font-semibold text-white">
+                  <p className="mt-2 whitespace-pre-line font-semibold text-white">
                     {featuredDay.activity}
                   </p>
                 </div>
@@ -592,8 +913,11 @@ export default function VacationPlan() {
 
             {featuredDay.information && (
               <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-4">
-                <p className="flex items-center gap-2 text-sm font-medium text-amber-200">
-                  <Info size={16} />
+                <p className="flex items-start gap-2 whitespace-pre-line text-sm font-medium text-amber-200">
+                  <Info
+                    size={16}
+                    className="mt-0.5 shrink-0"
+                  />
                   {featuredDay.information}
                 </p>
               </div>
@@ -608,11 +932,12 @@ export default function VacationPlan() {
           />
 
           <p className="mt-3 font-semibold text-white">
-            Semesterplaneringen är avslutad
+            Inga kommande planerade dagar
           </p>
 
           <p className="mt-1 text-sm text-slate-400">
-            Det finns inga kommande planerade dagar.
+            Tryck på Lägg till dag för att fortsätta
+            semesterplaneringen.
           </p>
         </div>
       )}
@@ -630,27 +955,21 @@ export default function VacationPlan() {
                   <th className="px-4 py-3 font-semibold">
                     Datum
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Plats
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Boende
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Aktivitet
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Resa
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Information
                   </th>
-
                   <th className="px-4 py-3 font-semibold">
                     Ändra
                   </th>
@@ -708,7 +1027,9 @@ export default function VacationPlan() {
                               className="inline-flex items-center gap-1.5 font-medium text-blue-300 transition hover:text-blue-200"
                             >
                               {day.accommodation}
-                              <ExternalLink size={14} />
+                              <ExternalLink
+                                size={14}
+                              />
                             </a>
                           ) : (
                             <span className="text-slate-500">
@@ -717,7 +1038,7 @@ export default function VacationPlan() {
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-slate-300">
+                        <td className="max-w-xs whitespace-pre-line px-4 py-3 text-slate-300">
                           {day.activity || "–"}
                         </td>
 
@@ -725,7 +1046,7 @@ export default function VacationPlan() {
                           {day.travel || "–"}
                         </td>
 
-                        <td className="max-w-xs px-4 py-3 text-slate-300">
+                        <td className="max-w-xs whitespace-pre-line px-4 py-3 text-slate-300">
                           {day.information || "–"}
                         </td>
 
