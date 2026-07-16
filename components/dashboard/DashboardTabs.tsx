@@ -82,31 +82,33 @@ export default function DashboardTabs({
   }
 
   return (
-    <div>
+    <div className="w-full min-w-0">
       <nav
         aria-label="Dashboardflikar"
-        className="mb-6 rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
+        className="mb-6 w-full rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
       >
         <div
-          className="grid grid-cols-4 gap-2"
+          className="grid w-full grid-cols-4 gap-2"
           role="tablist"
         >
           {tabs.map((tab) => {
             const isActive =
               activeTab === tab.id;
-            const isFunTab = tab.id === "fun";
+
+            const isFunTab =
+              tab.id === "fun";
 
             return (
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() =>
                   setActiveTab(tab.id)
                 }
-                aria-selected={isActive}
-                role="tab"
                 className={[
-                  "flex min-h-14 items-center justify-center gap-2 rounded-2xl px-2 py-3",
+                  "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
                   "text-xs font-semibold transition duration-300 sm:text-sm",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
                   isActive && isFunTab
@@ -119,18 +121,18 @@ export default function DashboardTabs({
                 <span
                   className={
                     isActive
-                      ? "text-white"
-                      : "text-slate-400"
+                      ? "shrink-0 text-white"
+                      : "shrink-0 text-slate-400"
                   }
                 >
                   {tab.icon}
                 </span>
 
-                <span className="hidden md:inline">
+                <span className="hidden min-w-0 truncate md:inline">
                   {tab.label}
                 </span>
 
-                <span className="md:hidden">
+                <span className="min-w-0 truncate md:hidden">
                   {tab.shortLabel}
                 </span>
               </button>
@@ -142,7 +144,7 @@ export default function DashboardTabs({
       <div
         key={activeTab}
         role="tabpanel"
-        className="animate-[fadeIn_300ms_ease-out]"
+        className="w-full min-w-0 animate-[fadeIn_300ms_ease-out]"
       >
         {getActiveContent()}
       </div>

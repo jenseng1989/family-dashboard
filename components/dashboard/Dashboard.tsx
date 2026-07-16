@@ -16,70 +16,109 @@ import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
 export default function Dashboard() {
   const weatherContent = (
-    <div className="grid gap-5 xl:grid-cols-3">
-      <WeatherWidget />
-      <BathingWidget />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <WeatherWidget />
+      </div>
+
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <BathingWidget />
+      </div>
     </div>
   );
 
   const electricityContent = (
-    <div className="grid gap-5 xl:grid-cols-2">
-      <ShoppingList />
-      <Countdown />
-      <ElectricityWidget />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <ShoppingList />
+      </div>
+
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <Countdown />
+      </div>
+
+      <div className="col-span-12 min-w-0">
+        <ElectricityWidget />
+      </div>
     </div>
   );
 
   const sharedFamilyContent = (
-    <div className="grid gap-5">
-      <VacationPlan />
-      <FamilyTimelineWidget />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0">
+        <VacationPlan />
+      </div>
+
+      <div className="col-span-12 min-w-0">
+        <FamilyTimelineWidget />
+      </div>
     </div>
   );
 
   const jensContent = (
-    <PersonalCenter
-      owner="jens"
-      displayName="Jens"
-    />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0">
+        <PersonalCenter
+          owner="jens"
+          displayName="Jens"
+        />
+      </div>
+    </div>
   );
 
   const lenitaContent = (
-    <PersonalCenter
-      owner="lenita"
-      displayName="Lenita"
-    />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0">
+        <PersonalCenter
+          owner="lenita"
+          displayName="Lenita"
+        />
+      </div>
+    </div>
   );
 
   const signeContent = (
-    <div className="grid gap-5">
-      <SigneGrowth />
-      <SigneVaccinations />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <SigneGrowth />
+      </div>
+
+      <div className="col-span-12 min-w-0 xl:col-span-6">
+        <SigneVaccinations />
+      </div>
     </div>
   );
 
   const familyContent = (
-    <FamilyTabs
-      sharedContent={sharedFamilyContent}
-      jensContent={jensContent}
-      lenitaContent={lenitaContent}
-      signeContent={signeContent}
-    />
+    <div className="w-full min-w-0">
+      <FamilyTabs
+        sharedContent={sharedFamilyContent}
+        jensContent={jensContent}
+        lenitaContent={lenitaContent}
+        signeContent={signeContent}
+      />
+    </div>
   );
 
   const funContent = (
-    <FunTabs
-      spaceContent={<FunDashboard />}
-      otherContent={<FunOtherDashboard />}
-    />
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0">
+        <FunTabs
+          spaceContent={<FunDashboard />}
+          otherContent={<FunOtherDashboard />}
+        />
+      </div>
+    </div>
   );
 
   return (
-    <DashboardTabs
-      weatherContent={weatherContent}
-      electricityContent={electricityContent}
-      familyContent={familyContent}
-      funContent={funContent}
-    />
+    <div className="w-full min-w-0">
+      <DashboardTabs
+        weatherContent={weatherContent}
+        electricityContent={electricityContent}
+        familyContent={familyContent}
+        funContent={funContent}
+      />
+    </div>
   );
 }
