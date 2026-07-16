@@ -1,14 +1,24 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { CloudSun, Home, Users } from "lucide-react";
+import {
+  CloudSun,
+  Home,
+  Sparkles,
+  Users,
+} from "lucide-react";
 
-type TabId = "weather" | "home" | "family";
+type TabId =
+  | "weather"
+  | "home"
+  | "family"
+  | "fun";
 
 type DashboardTabsProps = {
   weatherContent: ReactNode;
   electricityContent: ReactNode;
   familyContent: ReactNode;
+  funContent: ReactNode;
 };
 
 type TabButton = {
@@ -37,14 +47,22 @@ const tabs: TabButton[] = [
     shortLabel: "Familj",
     icon: <Users size={20} />,
   },
+  {
+    id: "fun",
+    label: "Roligt",
+    shortLabel: "Roligt",
+    icon: <Sparkles size={20} />,
+  },
 ];
 
 export default function DashboardTabs({
   weatherContent,
   electricityContent,
   familyContent,
+  funContent,
 }: DashboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [activeTab, setActiveTab] =
+    useState<TabId>("home");
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
@@ -53,6 +71,9 @@ export default function DashboardTabs({
 
       case "family":
         return familyContent;
+
+      case "fun":
+        return funContent;
 
       case "weather":
       default:
@@ -66,33 +87,52 @@ export default function DashboardTabs({
         aria-label="Dashboardflikar"
         className="mb-6 rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
       >
-        <div className="grid grid-cols-3 gap-2">
+        <div
+          className="grid grid-cols-4 gap-2"
+          role="tablist"
+        >
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
+            const isActive =
+              activeTab === tab.id;
+            const isFunTab = tab.id === "fun";
 
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() =>
+                  setActiveTab(tab.id)
+                }
                 aria-selected={isActive}
                 role="tab"
                 className={[
-                  "flex min-h-14 items-center justify-center gap-2 rounded-2xl px-3 py-3",
-                  "text-sm font-semibold transition duration-300",
+                  "flex min-h-14 items-center justify-center gap-2 rounded-2xl px-2 py-3",
+                  "text-xs font-semibold transition duration-300 sm:text-sm",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                  isActive
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white",
+                  isActive && isFunTab
+                    ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
+                    : isActive
+                      ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white",
                 ].join(" ")}
               >
-                <span className={isActive ? "text-white" : "text-slate-400"}>
+                <span
+                  className={
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400"
+                  }
+                >
                   {tab.icon}
                 </span>
 
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden md:inline">
+                  {tab.label}
+                </span>
 
-                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span className="md:hidden">
+                  {tab.shortLabel}
+                </span>
               </button>
             );
           })}
