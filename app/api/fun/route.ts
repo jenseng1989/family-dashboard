@@ -23,72 +23,246 @@ const ANIMALS = [
     emoji: "🦦",
     habitat: "Nordamerikas och Asiens kuster",
     fact: "Havsuttrar håller ibland varandra i tassarna när de sover så att de inte driver isär.",
+    category: "Havsdjur",
+    rarity: "Ovanlig",
   },
   {
     name: "Axolotl",
     emoji: "🦎",
     habitat: "Sötvatten nära Mexico City",
     fact: "Axolotlen kan återbilda delar av hjärta, ryggmärg och lemmar.",
+    category: "Groddjur",
+    rarity: "Sällsynt",
   },
   {
     name: "Pilgrimsfalk",
     emoji: "🦅",
     habitat: "Nästan hela världen",
     fact: "I en jaktstöt kan pilgrimsfalken nå hastigheter över 300 km/h.",
+    category: "Fågel",
+    rarity: "Ovanlig",
   },
   {
     name: "Bläckfisk",
     emoji: "🐙",
     habitat: "Hav över hela världen",
     fact: "Bläckfiskar har tre hjärtan och blått blod.",
+    category: "Havsdjur",
+    rarity: "Vanlig",
   },
   {
     name: "Vombat",
     emoji: "🐾",
     habitat: "Australien",
     fact: "Vombatens spillning är kubformad, vilket hindrar den från att rulla iväg.",
+    category: "Däggdjur",
+    rarity: "Ovanlig",
   },
   {
     name: "Rödräv",
     emoji: "🦊",
     habitat: "Europa, Asien och Nordamerika",
     fact: "Rävar kan höra små gnagare röra sig under ett lager av snö.",
+    category: "Däggdjur",
+    rarity: "Vanlig",
   },
   {
     name: "Kapybara",
     emoji: "🐹",
     habitat: "Sydamerika",
     fact: "Kapybaran är världens största gnagare och är en mycket skicklig simmare.",
+    category: "Däggdjur",
+    rarity: "Ovanlig",
   },
   {
     name: "Pangolin",
     emoji: "🦔",
     habitat: "Afrika och Asien",
     fact: "Pangolinen är det enda däggdjuret som är täckt av stora keratinfjäll.",
+    category: "Däggdjur",
+    rarity: "Sällsynt",
   },
   {
     name: "Kolibri",
     emoji: "🐦",
     habitat: "Nord- och Sydamerika",
     fact: "Kolibrier är de enda fåglar som kan flyga baklänges.",
+    category: "Fågel",
+    rarity: "Ovanlig",
   },
   {
     name: "Näckdjur",
     emoji: "🦆",
     habitat: "Östra Australien och Tasmanien",
     fact: "Näckdjuret är ett däggdjur som lägger ägg och kan känna elektriska signaler från bytesdjur.",
+    category: "Däggdjur",
+    rarity: "Sällsynt",
   },
   {
     name: "Mantisräka",
     emoji: "🦐",
     habitat: "Varma kustvatten",
     fact: "Mantisräkan har ett extremt avancerat färgseende och ett av djurvärldens snabbaste slag.",
+    category: "Havsdjur",
+    rarity: "Sällsynt",
   },
   {
     name: "Narval",
     emoji: "🐋",
     habitat: "Arktiska hav",
-    fact: "Narvalens långa 'horn' är egentligen en spiralformad tand full av nervändar.",
+    fact: "Narvalens långa horn är egentligen en spiralformad tand full av nervändar.",
+    category: "Havsdjur",
+    rarity: "Sällsynt",
+  },
+];
+
+const HISTORY_EVENTS = [
+  {
+    year: 1969,
+    title: "Människan landar på månen",
+    description: "Apollo 11 landade på månen och Neil Armstrong blev den första människan att sätta sin fot där.",
+    emoji: "🌕",
+    category: "Rymdhistoria",
+  },
+  {
+    year: 1876,
+    title: "Telefonen patenteras",
+    description: "Alexander Graham Bell fick patent på en tidig version av telefonen.",
+    emoji: "☎️",
+    category: "Uppfinningar",
+  },
+  {
+    year: 1912,
+    title: "Titanic lämnar Southampton",
+    description: "RMS Titanic påbörjade sin första och enda resa över Atlanten.",
+    emoji: "🚢",
+    category: "Sjöfart",
+  },
+  {
+    year: 1989,
+    title: "Berlinmuren öppnas",
+    description: "Gränsövergångarna mellan Öst- och Västberlin öppnades efter årtionden av delning.",
+    emoji: "🧱",
+    category: "Världshistoria",
+  },
+  {
+    year: 1903,
+    title: "Första motordrivna flygningen",
+    description: "Bröderna Wright genomförde den första kontrollerade flygningen med ett motordrivet flygplan.",
+    emoji: "✈️",
+    category: "Flyghistoria",
+  },
+  {
+    year: 1958,
+    title: "LEGO-klossen patenteras",
+    description: "Den moderna LEGO-klossen med sitt kopplingssystem patenterades i Danmark.",
+    emoji: "🧱",
+    category: "Leksakshistoria",
+  },
+  {
+    year: 1991,
+    title: "World Wide Web blir offentligt",
+    description: "Tim Berners-Lee gjorde sin webbläsare och webbserver tillgängliga för omvärlden.",
+    emoji: "🌐",
+    category: "Teknikhistoria",
+  },
+  {
+    year: 1886,
+    title: "Den första bilen patenteras",
+    description: "Karl Benz fick patent på sitt trehjuliga motordrivna fordon.",
+    emoji: "🚗",
+    category: "Uppfinningar",
+  },
+  {
+    year: 1928,
+    title: "Penicillinet upptäcks",
+    description: "Alexander Fleming upptäckte att mögelsvampen Penicillium kunde döda bakterier.",
+    emoji: "🧫",
+    category: "Medicinhistoria",
+  },
+  {
+    year: 1977,
+    title: "Voyager 1 skjuts upp",
+    description: "Rymdsonden Voyager 1 skickades iväg för att studera de yttre planeterna.",
+    emoji: "🛰️",
+    category: "Rymdhistoria",
+  },
+  {
+    year: 1455,
+    title: "Gutenbergs bibel trycks",
+    description: "En av de första stora böckerna tryckta med rörliga typer färdigställdes.",
+    emoji: "📖",
+    category: "Bokhistoria",
+  },
+  {
+    year: 1971,
+    title: "Det första e-postmeddelandet skickas",
+    description: "Ray Tomlinson skickade ett av de första nätverksbaserade e-postmeddelandena.",
+    emoji: "📧",
+    category: "Teknikhistoria",
+  },
+];
+
+const DAD_JOKES = [
+  {
+    setup: "Vad kallas en ko som spelar instrument?",
+    punchline: "En muu-siker.",
+    emoji: "🐄",
+  },
+  {
+    setup: "Varför tog datorn med sig en filt?",
+    punchline: "Den hade Windows öppet.",
+    emoji: "💻",
+  },
+  {
+    setup: "Vad sa den ena väggen till den andra?",
+    punchline: "Vi möts i hörnet.",
+    emoji: "🧱",
+  },
+  {
+    setup: "Vad heter världens fattigaste kung?",
+    punchline: "Kron-lös.",
+    emoji: "👑",
+  },
+  {
+    setup: "Varför är det svårt att lita på trappor?",
+    punchline: "De är alltid ute efter något.",
+    emoji: "🪜",
+  },
+  {
+    setup: "Vad sa nollan till åttan?",
+    punchline: "Snyggt bälte!",
+    emoji: "8️⃣",
+  },
+  {
+    setup: "Vad kallas en sovande tjur?",
+    punchline: "En bulldozer.",
+    emoji: "🐂",
+  },
+  {
+    setup: "Varför blev cykeln trött?",
+    punchline: "Den var två-hjulig.",
+    emoji: "🚲",
+  },
+  {
+    setup: "Vad sa kaffet när det kom för sent?",
+    punchline: "Bättre latte än aldrig.",
+    emoji: "☕",
+  },
+  {
+    setup: "Hur vet man att en bil kommer från Norge?",
+    punchline: "Den har norsk broms.",
+    emoji: "🚙",
+  },
+  {
+    setup: "Vad kallas en fisk utan ögon?",
+    punchline: "Fsk.",
+    emoji: "🐟",
+  },
+  {
+    setup: "Varför gick bananen till doktorn?",
+    punchline: "Den kände sig skalad.",
+    emoji: "🍌",
   },
 ];
 
@@ -99,6 +273,15 @@ type IssApiResponse = {
   velocity: number;
   visibility: string;
   timestamp: number;
+};
+
+type OpenNotifyIssResponse = {
+  message: string;
+  timestamp: number;
+  iss_position: {
+    latitude: string;
+    longitude: string;
+  };
 };
 
 type NasaCloseApproach = {
@@ -172,9 +355,10 @@ function compassDirection(azimuth: number): string {
   return directions[Math.round(azimuth / 45) % 8];
 }
 
-function getDailyAnimal(now: Date) {
+function getDayIndex(now: Date): number {
   const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 0);
-  const dayOfYear = Math.floor(
+
+  return Math.floor(
     (Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
@@ -183,8 +367,24 @@ function getDailyAnimal(now: Date) {
       startOfYear) /
       86_400_000
   );
+}
 
-  return ANIMALS[dayOfYear % ANIMALS.length];
+function getDailyAnimal(now: Date) {
+  return ANIMALS[getDayIndex(now) % ANIMALS.length];
+}
+
+function getDailyHistoryEvent(now: Date) {
+  return HISTORY_EVENTS[
+    (getDayIndex(now) * 5 + now.getUTCFullYear()) %
+      HISTORY_EVENTS.length
+  ];
+}
+
+function getDailyDadJoke(now: Date) {
+  return DAD_JOKES[
+    (getDayIndex(now) * 7 + now.getUTCMonth()) %
+      DAD_JOKES.length
+  ];
 }
 
 function getMoonData(now: Date) {
@@ -260,32 +460,105 @@ function getPlanetData(now: Date) {
 }
 
 async function getIssData() {
-  const response = await fetch(
-    "https://api.wheretheiss.at/v1/satellites/25544",
-    {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    }
-  );
+  try {
+    const response = await fetch(
+      "https://api.wheretheiss.at/v1/satellites/25544",
+      {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Family-Dashboard/1.0",
+        },
+        signal: AbortSignal.timeout(15_000),
+      }
+    );
 
-  if (!response.ok) {
-    throw new Error(
-      `ISS-tjänsten svarade med ${response.status}`
+    if (!response.ok) {
+      throw new Error(
+        `Where the ISS at svarade med ${response.status}`
+      );
+    }
+
+    const data = (await response.json()) as IssApiResponse;
+
+    return {
+      latitude: Number(data.latitude.toFixed(2)),
+      longitude: Number(data.longitude.toFixed(2)),
+      altitudeKm: Number(data.altitude.toFixed(1)),
+      velocityKmh: Math.round(data.velocity),
+      visibility: data.visibility,
+      timestamp: new Date(
+        data.timestamp * 1000
+      ).toISOString(),
+      mapsUrl: `https://www.google.com/maps?q=${data.latitude},${data.longitude}`,
+      source: "Where the ISS at",
+      isEstimated: false,
+    };
+  } catch (primaryError) {
+    console.warn(
+      "Primär ISS-tjänst misslyckades. Försöker med reservtjänsten:",
+      primaryError
     );
   }
 
-  const data = (await response.json()) as IssApiResponse;
+  const fallbackResponse = await fetch(
+    "http://api.open-notify.org/iss-now.json",
+    {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Family-Dashboard/1.0",
+      },
+      signal: AbortSignal.timeout(15_000),
+    }
+  );
+
+  if (!fallbackResponse.ok) {
+    throw new Error(
+      `Open Notify svarade med ${fallbackResponse.status}`
+    );
+  }
+
+  const fallbackData =
+    (await fallbackResponse.json()) as OpenNotifyIssResponse;
+
+  if (
+    fallbackData.message !== "success" ||
+    !fallbackData.iss_position
+  ) {
+    throw new Error(
+      "Open Notify returnerade ett oväntat svar."
+    );
+  }
+
+  const latitude = Number(
+    fallbackData.iss_position.latitude
+  );
+  const longitude = Number(
+    fallbackData.iss_position.longitude
+  );
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    throw new Error(
+      "Reservtjänsten returnerade en ogiltig ISS-position."
+    );
+  }
 
   return {
-    latitude: Number(data.latitude.toFixed(2)),
-    longitude: Number(data.longitude.toFixed(2)),
-    altitudeKm: Number(data.altitude.toFixed(1)),
-    velocityKmh: Math.round(data.velocity),
-    visibility: data.visibility,
+    latitude: Number(latitude.toFixed(2)),
+    longitude: Number(longitude.toFixed(2)),
+    altitudeKm: 420,
+    velocityKmh: 27_600,
+    visibility: "unknown",
     timestamp: new Date(
-      data.timestamp * 1000
+      fallbackData.timestamp * 1000
     ).toISOString(),
-    mapsUrl: `https://www.google.com/maps?q=${data.latitude},${data.longitude}`,
+    mapsUrl: `https://www.google.com/maps?q=${latitude},${longitude}`,
+    source: "Open Notify",
+    isEstimated: true,
   };
 }
 
@@ -400,6 +673,8 @@ export async function GET() {
       moon: getMoonData(now),
       planets: getPlanetData(now),
       animal: getDailyAnimal(now),
+      historyEvent: getDailyHistoryEvent(now),
+      dadJoke: getDailyDadJoke(now),
       errors: {
         iss:
           issResult.status === "rejected"

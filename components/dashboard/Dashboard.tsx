@@ -5,6 +5,8 @@ import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import FunDashboard from "@/components/dashboard/FunDashboard";
+import FunOtherDashboard from "@/components/dashboard/FunOtherDashboard";
+import FunTabs from "@/components/dashboard/FunTabs";
 import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
@@ -65,7 +67,12 @@ export default function Dashboard() {
     />
   );
 
-  const funContent = <FunDashboard />;
+  const funContent = (
+    <FunTabs
+      spaceContent={<FunDashboard />}
+      otherContent={<FunOtherDashboard />}
+    />
+  );
 
   return (
     <DashboardTabs

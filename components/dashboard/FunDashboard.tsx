@@ -6,7 +6,6 @@ import {
   Globe2,
   LoaderCircle,
   Orbit,
-  PawPrint,
   RefreshCw,
   Rocket,
   Sparkles,
@@ -29,6 +28,8 @@ type FunData = {
     visibility: string;
     timestamp: string;
     mapsUrl: string;
+    source?: string;
+    isEstimated?: boolean;
   } | null;
   asteroid: {
     totalThisWeek: number;
@@ -60,12 +61,6 @@ type FunData = {
     magnitude: number;
     visible: boolean;
   }>;
-  animal: {
-    name: string;
-    emoji: string;
-    habitat: string;
-    fact: string;
-  };
   errors: {
     iss: string | null;
     asteroid: string | null;
@@ -128,10 +123,265 @@ function SpaceError({
   );
 }
 
-export default function FunDashboard() {
-  const [data, setData] = useState<FunData | null>(
-    null
+function IssWorldMap({
+  latitude,
+  longitude,
+}: {
+  latitude: number;
+  longitude: number;
+}) {
+  const markerLeft =
+    ((longitude + 180) / 360) * 100;
+  const markerTop =
+    ((90 - latitude) / 180) * 100;
+
+  return (
+    <div className="relative mb-5 aspect-[2/1] overflow-hidden rounded-2xl border border-violet-300/15 bg-[#071426] shadow-inner shadow-black/30">
+      <svg
+        viewBox="0 0 1000 500"
+        className="absolute inset-0 h-full w-full"
+        role="img"
+        aria-label="Tydlig schematisk världskarta med ISS-position"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient
+            id="oceanGradient"
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="1"
+          >
+            <stop
+              offset="0%"
+              stopColor="#0b1f3a"
+            />
+            <stop
+              offset="100%"
+              stopColor="#102a4a"
+            />
+          </linearGradient>
+
+          <linearGradient
+            id="landGradient"
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="1"
+          >
+            <stop
+              offset="0%"
+              stopColor="#34d399"
+            />
+            <stop
+              offset="100%"
+              stopColor="#15803d"
+            />
+          </linearGradient>
+
+          <filter
+            id="landShadow"
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="140%"
+          >
+            <feDropShadow
+              dx="0"
+              dy="2"
+              stdDeviation="2"
+              floodColor="#000000"
+              floodOpacity="0.35"
+            />
+          </filter>
+        </defs>
+
+        <rect
+          width="1000"
+          height="500"
+          fill="url(#oceanGradient)"
+        />
+
+        {/* Longitudlinjer */}
+        {Array.from({ length: 11 }).map(
+          (_, index) => (
+            <line
+              key={`lon-${index}`}
+              x1={index * 100}
+              y1="0"
+              x2={index * 100}
+              y2="500"
+              stroke="#93c5fd"
+              strokeOpacity="0.12"
+              strokeWidth="1"
+            />
+          )
+        )}
+
+        {/* Latitudlinjer */}
+        {Array.from({ length: 6 }).map(
+          (_, index) => (
+            <line
+              key={`lat-${index}`}
+              x1="0"
+              y1={index * 100}
+              x2="1000"
+              y2={index * 100}
+              stroke="#93c5fd"
+              strokeOpacity="0.12"
+              strokeWidth="1"
+            />
+          )
+        )}
+
+        {/* Nordamerika */}
+        <path
+          d="M85 105 L135 78 L195 72 L242 92 L270 118 L254 151 L222 171 L211 206 L176 219 L143 199 L112 164 L78 142 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Centralamerika */}
+        <path
+          d="M207 205 L229 214 L245 232 L235 247 L214 239 L197 221 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="2"
+          filter="url(#landShadow)"
+        />
+
+        {/* Sydamerika */}
+        <path
+          d="M257 243 L303 252 L329 284 L323 326 L301 365 L286 414 L260 438 L245 400 L230 354 L216 313 L228 276 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Grönland */}
+        <path
+          d="M286 52 L332 38 L359 58 L345 96 L307 104 L282 79 Z"
+          fill="#bbf7d0"
+          stroke="#dcfce7"
+          strokeWidth="2"
+          filter="url(#landShadow)"
+        />
+
+        {/* Europa */}
+        <path
+          d="M442 118 L470 101 L507 108 L525 128 L510 146 L479 151 L456 141 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Afrika */}
+        <path
+          d="M462 157 L509 151 L548 181 L555 227 L533 280 L506 329 L475 312 L451 266 L438 212 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Asien */}
+        <path
+          d="M515 103 L580 77 L666 73 L749 91 L805 123 L793 157 L744 169 L714 196 L667 181 L635 155 L589 157 L552 138 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Indien */}
+        <path
+          d="M629 180 L661 188 L675 222 L653 260 L632 230 L615 201 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="2"
+          filter="url(#landShadow)"
+        />
+
+        {/* Sydostasien */}
+        <path
+          d="M704 190 L742 201 L768 224 L751 245 L721 229 L692 209 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="2"
+          filter="url(#landShadow)"
+        />
+
+        {/* Japan */}
+        <path
+          d="M812 142 L824 151 L817 177 L806 166 Z"
+          fill="#4ade80"
+          stroke="#86efac"
+          strokeWidth="2"
+        />
+
+        {/* Australien */}
+        <path
+          d="M744 305 L797 286 L850 303 L872 337 L851 375 L800 388 L754 367 L728 336 Z"
+          fill="url(#landGradient)"
+          stroke="#86efac"
+          strokeWidth="3"
+          filter="url(#landShadow)"
+        />
+
+        {/* Antarktis */}
+        <path
+          d="M110 462 L220 445 L342 451 L458 440 L573 450 L690 442 L815 454 L910 465 L878 486 L738 490 L590 485 L432 492 L284 485 L151 489 Z"
+          fill="#dbeafe"
+          stroke="#eff6ff"
+          strokeWidth="2"
+          opacity="0.9"
+        />
+
+        {/* Ekvator */}
+        <line
+          x1="0"
+          y1="250"
+          x2="1000"
+          y2="250"
+          stroke="#fbbf24"
+          strokeOpacity="0.35"
+          strokeWidth="2"
+          strokeDasharray="8 8"
+        />
+      </svg>
+
+      <div
+        className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+        style={{
+          left: `${markerLeft}%`,
+          top: `${markerTop}%`,
+        }}
+      >
+        <div className="absolute h-14 w-14 animate-ping rounded-full bg-violet-400/25" />
+
+        <div className="relative rounded-full border-2 border-white/70 bg-violet-500 p-2.5 text-white shadow-[0_0_24px_rgba(139,92,246,0.95)]">
+          <Rocket size={20} />
+        </div>
+      </div>
+
+      <div className="absolute bottom-3 left-3 z-10 rounded-lg border border-white/10 bg-slate-950/80 px-3 py-1.5 text-xs font-medium text-slate-200 backdrop-blur">
+        ISS-position i realtid
+      </div>
+
+      <div className="absolute bottom-3 right-3 z-10 hidden rounded-lg border border-white/10 bg-slate-950/80 px-3 py-1.5 text-xs text-slate-300 backdrop-blur sm:block">
+        Ekvator markerad i gult
+      </div>
+    </div>
   );
+}
+
+export default function FunDashboard() {
+  const [data, setData] =
+    useState<FunData | null>(null);
   const [isLoading, setIsLoading] =
     useState(true);
   const [errorMessage, setErrorMessage] =
@@ -184,7 +434,7 @@ export default function FunDashboard() {
           />
 
           <p className="text-slate-300">
-            Hämtar rymden och dagens djur…
+            Kontaktar yttre rymden…
           </p>
         </div>
       </section>
@@ -221,9 +471,10 @@ export default function FunDashboard() {
     );
   }
 
-  const visiblePlanets = data.planets.filter(
-    (planet) => planet.visible
-  );
+  const visiblePlanets =
+    data.planets.filter(
+      (planet) => planet.visible
+    );
 
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-violet-300/10 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 p-4 shadow-2xl shadow-violet-950/30 sm:p-6">
@@ -234,7 +485,9 @@ export default function FunDashboard() {
         <span className="absolute right-[35%] top-[38%] h-1 w-1 rounded-full bg-blue-200/70 shadow-[0_0_8px_#bfdbfe]" />
         <span className="absolute bottom-[16%] left-[14%] h-1 w-1 rounded-full bg-white/60 shadow-[0_0_8px_white]" />
         <span className="absolute bottom-[9%] right-[12%] h-1.5 w-1.5 rounded-full bg-fuchsia-200/60 shadow-[0_0_10px_#f5d0fe]" />
+
         <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+
         <div className="absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
       </div>
 
@@ -244,17 +497,17 @@ export default function FunDashboard() {
             <div>
               <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-violet-300">
                 <Sparkles size={17} />
-                Roligt
+                Rymden
               </p>
 
               <h2 className="mt-2 text-3xl font-bold text-white">
-                Utforska världen och rymden
+                Utforska rymden
               </h2>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Live-position för ISS, asteroider från NASA,
-                månfaser, planetpositioner över Göteborg och
-                ett nytt djur varje dag.
+                Live-position för ISS, asteroider från
+                NASA, månfaser och planetpositioner över
+                Göteborg.
               </p>
             </div>
 
@@ -277,44 +530,41 @@ export default function FunDashboard() {
           >
             {data.iss ? (
               <div>
-                <div className="relative mb-5 aspect-[2/1] overflow-hidden rounded-2xl border border-violet-300/10 bg-[radial-gradient(circle_at_30%_35%,rgba(59,130,246,0.32),transparent_18%),radial-gradient(circle_at_65%_60%,rgba(16,185,129,0.20),transparent_16%),linear-gradient(145deg,#071126,#111b3d)]">
-                  <div
-                    className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-                    style={{
-                      left: `${((data.iss.longitude + 180) / 360) * 100}%`,
-                      top: `${((90 - data.iss.latitude) / 180) * 100}%`,
-                    }}
-                  >
-                    <div className="absolute h-12 w-12 animate-ping rounded-full bg-violet-400/20" />
-                    <div className="relative rounded-full border border-violet-200/30 bg-violet-500 p-2 text-white shadow-[0_0_24px_rgba(139,92,246,0.8)]">
-                      <Rocket size={20} />
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-3 left-3 rounded-lg bg-slate-950/70 px-3 py-1.5 text-xs text-slate-300 backdrop-blur">
-                    Schematisk världskarta
-                  </div>
-                </div>
+                <IssWorldMap
+                  latitude={data.iss.latitude}
+                  longitude={data.iss.longitude}
+                />
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <StatBox
                     label="Position"
                     value={`${data.iss.latitude}°, ${data.iss.longitude}°`}
                   />
+
                   <StatBox
                     label="Höjd"
-                    value={`${formatNumber(data.iss.altitudeKm)} km`}
+                    value={`${formatNumber(
+                      data.iss.altitudeKm
+                    )} km`}
                   />
+
                   <StatBox
                     label="Hastighet"
-                    value={`${formatNumber(data.iss.velocityKmh)} km/h`}
+                    value={`${formatNumber(
+                      data.iss.velocityKmh
+                    )} km/h`}
                   />
+
                   <StatBox
                     label="Ljusförhållande"
                     value={
-                      data.iss.visibility === "daylight"
+                      data.iss.visibility ===
+                      "daylight"
                         ? "Dagsljus"
-                        : "Mörker"
+                        : data.iss.visibility ===
+                            "eclipsed"
+                          ? "Mörker"
+                          : "Okänt"
                     }
                   />
                 </div>
@@ -350,7 +600,8 @@ export default function FunDashboard() {
                 <div
                   className={[
                     "rounded-2xl border p-5",
-                    data.asteroid.nearest.hazardous
+                    data.asteroid.nearest
+                      .hazardous
                       ? "border-amber-300/25 bg-amber-400/10"
                       : "border-emerald-300/20 bg-emerald-400/10",
                   ].join(" ")}
@@ -366,12 +617,14 @@ export default function FunDashboard() {
                   <p
                     className={[
                       "mt-3 text-sm font-semibold",
-                      data.asteroid.nearest.hazardous
+                      data.asteroid.nearest
+                        .hazardous
                         ? "text-amber-200"
                         : "text-emerald-200",
                     ].join(" ")}
                   >
-                    {data.asteroid.nearest.hazardous
+                    {data.asteroid.nearest
+                      .hazardous
                       ? "NASA klassar objektet som potentiellt riskfyllt"
                       : "Ingen klassning som potentiellt riskfyllt objekt"}
                   </p>
@@ -385,16 +638,20 @@ export default function FunDashboard() {
                         .diameterMeters
                     )} m`}
                   />
+
                   <StatBox
                     label="Avstånd"
                     value={`${data.asteroid.nearest.lunarDistances} månavstånd`}
                   />
+
                   <StatBox
                     label="Hastighet"
                     value={`${formatNumber(
-                      data.asteroid.nearest.velocityKmh
+                      data.asteroid.nearest
+                        .velocityKmh
                     )} km/h`}
                   />
+
                   <StatBox
                     label="Passage"
                     value={
@@ -450,6 +707,7 @@ export default function FunDashboard() {
                   data.moon.nextFullMoon
                 )}
               />
+
               <StatBox
                 label="Nästa nymåne"
                 value={formatSwedishDate(
@@ -465,9 +723,9 @@ export default function FunDashboard() {
             className="border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
           >
             <p className="mb-4 text-sm text-slate-400">
-              Planeternas läge just nu sett från Göteborg.
-              Positiv höjd betyder att planeten är ovanför
-              horisonten.
+              Planeternas läge just nu sett från
+              Göteborg. Positiv höjd betyder att
+              planeten är ovanför horisonten.
             </p>
 
             <div className="grid gap-3">
@@ -522,51 +780,16 @@ export default function FunDashboard() {
               dagsljus kan ändå göra dem osynliga.
             </p>
           </Card>
-
-          <Card
-            title="Dagens djur"
-            icon={<PawPrint size={28} />}
-            className="xl:col-span-2 border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          >
-            <div className="grid gap-5 md:grid-cols-[180px_1fr] md:items-center">
-              <div className="flex aspect-square items-center justify-center rounded-3xl border border-fuchsia-300/15 bg-gradient-to-br from-fuchsia-400/15 via-violet-400/10 to-blue-400/10 text-8xl shadow-inner shadow-black/20">
-                {data.animal.emoji}
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-fuchsia-300">
-                  Dagens utvalda djur
-                </p>
-
-                <h3 className="mt-2 text-3xl font-bold text-white">
-                  {data.animal.name}
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-400">
-                  Lever i: {data.animal.habitat}
-                </p>
-
-                <blockquote className="mt-5 rounded-2xl border border-fuchsia-300/10 bg-fuchsia-400/10 p-5 text-lg leading-8 text-slate-100">
-                  “{data.animal.fact}”
-                </blockquote>
-
-                <p className="mt-3 text-xs text-slate-500">
-                  Ett nytt djur väljs automatiskt varje dag.
-                </p>
-              </div>
-            </div>
-          </Card>
         </div>
 
         <p className="mt-5 text-center text-xs text-slate-500">
           Senast uppdaterad{" "}
-          {new Date(data.generatedAt).toLocaleTimeString(
-            "sv-SE",
-            {
-              hour: "2-digit",
-              minute: "2-digit",
-            }
-          )}
+          {new Date(
+            data.generatedAt
+          ).toLocaleTimeString("sv-SE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </p>
       </div>
     </section>
