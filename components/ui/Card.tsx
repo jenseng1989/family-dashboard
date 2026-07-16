@@ -15,7 +15,17 @@ type CardProps = {
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
+
+  /**
+   * Nytt namn för att starta widgeten minimerad.
+   */
   defaultMinimized?: boolean;
+
+  /**
+   * Äldre namn som fortfarande används av vissa widgets.
+   * Behålls för bakåtkompatibilitet.
+   */
+  defaultCollapsed?: boolean;
 };
 
 export default function Card({
@@ -23,10 +33,15 @@ export default function Card({
   icon,
   children,
   className,
-  defaultMinimized = false,
+  defaultMinimized,
+  defaultCollapsed,
 }: CardProps) {
   const [isMinimized, setIsMinimized] =
-    useState(defaultMinimized);
+    useState(
+      defaultMinimized ??
+        defaultCollapsed ??
+        false
+    );
 
   return (
     <section
