@@ -3,20 +3,20 @@
 import { ReactNode, useState } from "react";
 import {
   CloudSun,
-  Home,
+  House,
   Sparkles,
   Users,
 } from "lucide-react";
 
 type TabId =
+  | "start"
   | "weather"
-  | "home"
   | "family"
   | "fun";
 
 type DashboardTabsProps = {
+  startContent: ReactNode;
   weatherContent: ReactNode;
-  electricityContent: ReactNode;
   familyContent: ReactNode;
   funContent: ReactNode;
 };
@@ -30,10 +30,10 @@ type TabButton = {
 
 const tabs: TabButton[] = [
   {
-    id: "home",
-    label: "Hem",
-    shortLabel: "Hem",
-    icon: <Home size={20} />,
+    id: "start",
+    label: "Start",
+    shortLabel: "Start",
+    icon: <House size={20} />,
   },
   {
     id: "weather",
@@ -56,18 +56,18 @@ const tabs: TabButton[] = [
 ];
 
 export default function DashboardTabs({
+  startContent,
   weatherContent,
-  electricityContent,
   familyContent,
   funContent,
 }: DashboardTabsProps) {
   const [activeTab, setActiveTab] =
-    useState<TabId>("home");
+    useState<TabId>("start");
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
-      case "home":
-        return electricityContent;
+      case "start":
+        return startContent;
 
       case "family":
         return familyContent;

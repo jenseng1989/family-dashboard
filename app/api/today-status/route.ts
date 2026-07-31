@@ -26,6 +26,7 @@ export type TodayNotice = {
   severity?: WeatherWarningLevel;
   startsAt?: string;
   endsAt?: string;
+  url?: string;
 };
 
 type TodayStatusResponse = {
@@ -38,6 +39,9 @@ type UnknownRecord = Record<string, unknown>;
 
 const SMHI_WARNING_URL =
   "https://opendata-download-warnings.smhi.se/ibww/api/version/1/warning.json";
+
+const SMHI_WARNING_PAGE_URL =
+  "https://www.smhi.se/vader/varningar-och-meddelanden";
 
 const RELEVANT_AREA_TERMS = [
   "göteborg",
@@ -70,9 +74,7 @@ function collectStrings(value: unknown): string[] {
   }
 
   if (isRecord(value)) {
-    return Object.values(value).flatMap(
-      collectStrings
-    );
+    return Object.values(value).flatMap(collectStrings);
   }
 
   return [];
@@ -84,10 +86,7 @@ function findFirstStringByKeys(
 ): string | undefined {
   if (Array.isArray(value)) {
     for (const item of value) {
-      const result = findFirstStringByKeys(
-        item,
-        wantedKeys
-      );
+      const result = findFirstStringByKeys(item, wantedKeys);
 
       if (result) {
         return result;
@@ -101,17 +100,13 @@ function findFirstStringByKeys(
     return undefined;
   }
 
-  const normalizedWantedKeys = wantedKeys.map(
-    (key) => key.toLowerCase()
+  const normalizedWantedKeys = wantedKeys.map((key) =>
+    key.toLowerCase()
   );
 
-  for (const [key, propertyValue] of Object.entries(
-    value
-  )) {
+  for (const [key, propertyValue] of Object.entries(value)) {
     if (
-      normalizedWantedKeys.includes(
-        key.toLowerCase()
-      ) &&
+      normalizedWantedKeys.includes(key.toLowerCase()) &&
       typeof propertyValue === "string" &&
       propertyValue.trim()
     ) {
@@ -133,9 +128,7 @@ function findFirstStringByKeys(
   return undefined;
 }
 
-function extractWarningItems(
-  data: unknown
-): UnknownRecord[] {
+function extractWarningItems(data: unknown): UnknownRecord[] {
   if (Array.isArray(data)) {
     return data.filter(isRecord);
   }
@@ -190,10 +183,7 @@ function normalizeWarningLevel(
     return "red";
   }
 
-  if (
-    normalized.includes("orange") ||
-    normalized.includes("orange")
-  ) {
+  if (normalized.includes("orange")) {
     return "orange";
   }
 
@@ -232,9 +222,7 @@ function cleanDescription(
     return "SMHI har utfärdat en vädervarning som berör Göteborgsområdet.";
   }
 
-  const cleaned = description
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleaned = description.replace(/\s+/g, " ").trim();
 
   if (cleaned.length <= 220) {
     return cleaned;
@@ -263,18 +251,14 @@ function createWeatherNotice(
       "eventDescription",
     ]) ?? "Vädervarning";
 
-  const rawLevel = findFirstStringByKeys(
-    warning,
-    [
-      "warningLevel",
-      "level",
-      "severity",
-      "eventLevel",
-    ]
-  );
+  const rawLevel = findFirstStringByKeys(warning, [
+    "warningLevel",
+    "level",
+    "severity",
+    "eventLevel",
+  ]);
 
-  const severity =
-    normalizeWarningLevel(rawLevel);
+  const severity = normalizeWarningLevel(rawLevel);
 
   const area =
     findFirstStringByKeys(warning, [
@@ -284,49 +268,39 @@ function createWeatherNotice(
       "district",
     ]) ?? "Göteborgsområdet";
 
-  const description = findFirstStringByKeys(
-    warning,
-    [
-      "description",
-      "descriptions",
-      "consequence",
-      "consequences",
-      "instruction",
-      "text",
-    ]
-  );
+  const description = findFirstStringByKeys(warning, [
+    "description",
+    "descriptions",
+    "consequence",
+    "consequences",
+    "instruction",
+    "text",
+  ]);
 
-  const startsAt = findFirstStringByKeys(
-    warning,
-    [
-      "start",
-      "startsAt",
-      "onset",
-      "validFrom",
-      "effective",
-    ]
-  );
+  const startsAt = findFirstStringByKeys(warning, [
+    "start",
+    "startsAt",
+    "onset",
+    "validFrom",
+    "effective",
+  ]);
 
-  const endsAt = findFirstStringByKeys(
-    warning,
-    [
-      "end",
-      "endsAt",
-      "expires",
-      "validTo",
-    ]
-  );
+  const endsAt = findFirstStringByKeys(warning, [
+    "end",
+    "endsAt",
+    "expires",
+    "validTo",
+  ]);
 
   return {
     id: `weather-${identifier}`,
     type: "weather",
     severity,
     title: `${getLevelLabel(severity)}: ${eventName}`,
-    description: `${area} – ${cleanDescription(
-      description
-    )}`,
+    description: `${area} – ${cleanDescription(description)}`,
     startsAt,
     endsAt,
+    url: SMHI_WARNING_PAGE_URL,
   };
 }
 
@@ -354,10 +328,7 @@ async function getSmhiWeatherWarnings(): Promise<
     .filter(isRelevantForGothenburg)
     .map(createWeatherNotice)
     .sort((firstNotice, secondNotice) => {
-      const priority: Record<
-        WeatherWarningLevel,
-        number
-      > = {
+      const priority: Record<WeatherWarningLevel, number> = {
         red: 0,
         orange: 1,
         yellow: 2,
@@ -365,19 +336,13 @@ async function getSmhiWeatherWarnings(): Promise<
       };
 
       return (
-        priority[
-          firstNotice.severity ?? "unknown"
-        ] -
-        priority[
-          secondNotice.severity ?? "unknown"
-        ]
+        priority[firstNotice.severity ?? "unknown"] -
+        priority[secondNotice.severity ?? "unknown"]
       );
     });
 }
 
-function createFamilyNotice(
-  event: FamilyEvent
-): TodayNotice {
+function createFamilyNotice(event: FamilyEvent): TodayNotice {
   if (event.type === "birthday") {
     return {
       id: event.id,
@@ -404,8 +369,7 @@ export async function GET() {
   let partialError = false;
 
   try {
-    weatherNotices =
-      await getSmhiWeatherWarnings();
+    weatherNotices = await getSmhiWeatherWarnings();
   } catch (error) {
     partialError = true;
 
@@ -416,10 +380,7 @@ export async function GET() {
   }
 
   const response: TodayStatusResponse = {
-    notices: [
-      ...weatherNotices,
-      ...familyNotices,
-    ],
+    notices: [...weatherNotices, ...familyNotices],
     updatedAt: new Date().toISOString(),
     partialError,
   };

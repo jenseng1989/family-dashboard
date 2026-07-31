@@ -2,6 +2,7 @@ import BathingWidget from "@/components/dashboard/BathingWidget";
 import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
+import ExpensesWidget from "@/components/dashboard/ExpensesWidget";
 import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import FunDashboard from "@/components/dashboard/FunDashboard";
@@ -11,6 +12,7 @@ import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
+import StartTabs from "@/components/dashboard/StartTabs";
 import VacationPlan from "@/components/dashboard/VacationPlan";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 
@@ -27,19 +29,36 @@ export default function Dashboard() {
     </div>
   );
 
-  const electricityContent = (
+  const startHomeContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-      <div className="col-span-12 min-w-0 xl:col-span-6">
-        <ShoppingList />
-      </div>
-
-      <div className="col-span-12 min-w-0 xl:col-span-6">
+      <div className="col-span-12 min-w-0">
         <Countdown />
       </div>
 
       <div className="col-span-12 min-w-0">
         <ElectricityWidget />
       </div>
+    </div>
+  );
+
+  const shoppingContent = (
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 xl:col-span-6 min-w-0">
+        <ShoppingList />
+      </div>
+
+      <div className="col-span-12 xl:col-span-6 min-w-0">
+        <ExpensesWidget />
+      </div>
+    </div>
+  );
+
+  const startContent = (
+    <div className="w-full min-w-0">
+      <StartTabs
+        homeContent={startHomeContent}
+        shoppingContent={shoppingContent}
+      />
     </div>
   );
 
@@ -77,17 +96,17 @@ export default function Dashboard() {
     </div>
   );
 
-const signeContent = (
-  <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-    <div className="col-span-12 min-w-0">
-      <SigneGrowth />
-    </div>
+  const signeContent = (
+    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
+      <div className="col-span-12 min-w-0">
+        <SigneGrowth />
+      </div>
 
-    <div className="col-span-12 min-w-0">
-      <SigneVaccinations />
+      <div className="col-span-12 min-w-0">
+        <SigneVaccinations />
+      </div>
     </div>
-  </div>
-);
+  );
 
   const familyContent = (
     <div className="w-full min-w-0">
@@ -114,8 +133,8 @@ const signeContent = (
   return (
     <div className="w-full min-w-0">
       <DashboardTabs
+        startContent={startContent}
         weatherContent={weatherContent}
-        electricityContent={electricityContent}
         familyContent={familyContent}
         funContent={funContent}
       />
