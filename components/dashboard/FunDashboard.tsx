@@ -20,6 +20,7 @@ import {
 import Card from "@/components/ui/Card";
 import SatellitesWidget from "@/components/dashboard/SatellitesWidget";
 import SolarActivityWidget from "@/components/dashboard/SolarActivityWidget";
+import TonightGothenburgWidget from "@/components/dashboard/TonightGothenburgWidget";
 
 type FunData = {
   generatedAt: string;
@@ -526,6 +527,10 @@ export default function FunDashboard() {
         </header>
 
         <div className="grid gap-5 xl:grid-cols-2">
+          <div className="xl:col-span-2">
+            <TonightGothenburgWidget />
+          </div>
+
           <Card
             title="Var är ISS?"
             icon={<Rocket size={28} />}
