@@ -9,6 +9,7 @@ import FunDashboard from "@/components/dashboard/FunDashboard";
 import FunOtherDashboard from "@/components/dashboard/FunOtherDashboard";
 import FunTabs from "@/components/dashboard/FunTabs";
 import PersonalCenter from "@/components/dashboard/PersonalCenter";
+import PollenWidget from "@/components/dashboard/PollenWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
@@ -25,6 +26,10 @@ export default function Dashboard() {
 
       <div className="col-span-12 min-w-0 xl:col-span-6">
         <BathingWidget />
+      </div>
+
+      <div className="col-span-12 min-w-0">
+        <PollenWidget />
       </div>
     </div>
   );
@@ -43,11 +48,11 @@ export default function Dashboard() {
 
   const shoppingContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-      <div className="col-span-12 xl:col-span-6 min-w-0">
+      <div className="col-span-12 min-w-0 xl:col-span-6">
         <ShoppingList />
       </div>
 
-      <div className="col-span-12 xl:col-span-6 min-w-0">
+      <div className="col-span-12 min-w-0 xl:col-span-6">
         <ExpensesWidget />
       </div>
     </div>

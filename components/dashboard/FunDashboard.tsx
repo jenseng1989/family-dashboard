@@ -8,6 +8,7 @@ import {
   Orbit,
   RefreshCw,
   Rocket,
+  Satellite,
   Sparkles,
   Telescope,
 } from "lucide-react";
@@ -17,6 +18,8 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
+import SatellitesWidget from "@/components/dashboard/SatellitesWidget";
+import SolarActivityWidget from "@/components/dashboard/SolarActivityWidget";
 
 type FunData = {
   generatedAt: string;
@@ -496,8 +499,8 @@ export default function FunDashboard() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-violet-300">
-                <Sparkles size={17} />
-                Rymden
+                <Satellite size={17} />
+                Mission Control
               </p>
 
               <h2 className="mt-2 text-3xl font-bold text-white">
@@ -505,8 +508,8 @@ export default function FunDashboard() {
               </h2>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Live-position för ISS, asteroider från
-                NASA, månfaser och planetpositioner över
+                ISS i realtid, solaktivitet, satellitpassager,
+                asteroider, månfaser och planetpositioner över
                 Göteborg.
               </p>
             </div>
@@ -589,6 +592,8 @@ export default function FunDashboard() {
               />
             )}
           </Card>
+
+          <SolarActivityWidget />
 
           <Card
             title="Asteroidvarning"
@@ -780,6 +785,8 @@ export default function FunDashboard() {
               dagsljus kan ändå göra dem osynliga.
             </p>
           </Card>
+
+          <SatellitesWidget />
         </div>
 
         <p className="mt-5 text-center text-xs text-slate-500">
