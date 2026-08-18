@@ -21,6 +21,7 @@ import Card from "@/components/ui/Card";
 import SatellitesWidget from "@/components/dashboard/SatellitesWidget";
 import SolarActivityWidget from "@/components/dashboard/SolarActivityWidget";
 import TonightGothenburgWidget from "@/components/dashboard/TonightGothenburgWidget";
+import MeteorShowersWidget from "@/components/dashboard/MeteorShowersWidget";
 
 type FunData = {
   generatedAt: string;
@@ -531,6 +532,14 @@ export default function FunDashboard() {
             <TonightGothenburgWidget />
           </div>
 
+          <div className="xl:col-span-2">
+            <SolarActivityWidget />
+          </div>
+
+          <div className="xl:col-span-2">
+            <MeteorShowersWidget />
+          </div>
+
           <Card
             title="Var är ISS?"
             icon={<Rocket size={28} />}
@@ -597,8 +606,6 @@ export default function FunDashboard() {
               />
             )}
           </Card>
-
-          <SolarActivityWidget />
 
           <Card
             title="Asteroidvarning"
