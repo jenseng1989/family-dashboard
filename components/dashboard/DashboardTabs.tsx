@@ -3,20 +3,20 @@
 import { ReactNode, useState } from "react";
 import {
   CloudSun,
-  House,
-  Sparkles,
+  Compass,
+  Home,
   Users,
 } from "lucide-react";
 
 type TabId =
-  | "start"
   | "weather"
+  | "home"
   | "family"
   | "fun";
 
 type DashboardTabsProps = {
-  startContent: ReactNode;
   weatherContent: ReactNode;
+  electricityContent: ReactNode;
   familyContent: ReactNode;
   funContent: ReactNode;
 };
@@ -30,10 +30,10 @@ type TabButton = {
 
 const tabs: TabButton[] = [
   {
-    id: "start",
-    label: "Start",
-    shortLabel: "Start",
-    icon: <House size={20} />,
+    id: "home",
+    label: "Hem",
+    shortLabel: "Hem",
+    icon: <Home size={20} />,
   },
   {
     id: "weather",
@@ -49,25 +49,25 @@ const tabs: TabButton[] = [
   },
   {
     id: "fun",
-    label: "Roligt",
-    shortLabel: "Roligt",
-    icon: <Sparkles size={20} />,
+    label: "Utforska",
+    shortLabel: "Utforska",
+    icon: <Compass size={20} />,
   },
 ];
 
 export default function DashboardTabs({
-  startContent,
   weatherContent,
+  electricityContent,
   familyContent,
   funContent,
 }: DashboardTabsProps) {
   const [activeTab, setActiveTab] =
-    useState<TabId>("start");
+    useState<TabId>("home");
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
-      case "start":
-        return startContent;
+      case "home":
+        return electricityContent;
 
       case "family":
         return familyContent;
@@ -95,7 +95,7 @@ export default function DashboardTabs({
             const isActive =
               activeTab === tab.id;
 
-            const isFunTab =
+            const isExploreTab =
               tab.id === "fun";
 
             return (
@@ -111,7 +111,7 @@ export default function DashboardTabs({
                   "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
                   "text-xs font-semibold transition duration-300 sm:text-sm",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                  isActive && isFunTab
+                  isActive && isExploreTab
                     ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
                     : isActive
                       ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
