@@ -1,107 +1,121 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import { Home, ShoppingCart } from "lucide-react";
+import {
+  Home,
+  ShoppingCart,
+  Sparkles,
+} from "lucide-react";
+import {
+  ReactNode,
+  useState,
+} from "react";
 
-type StartTabId = "home" | "shopping";
+type StartTabId =
+  | "everyday"
+  | "home"
+  | "shopping";
 
 type StartTabsProps = {
+  everydayContent: ReactNode;
   homeContent: ReactNode;
   shoppingContent: ReactNode;
 };
 
-type StartTabButton = {
+const tabs: Array<{
   id: StartTabId;
   label: string;
-  icon: ReactNode;
-};
-
-const tabs: StartTabButton[] = [
+  icon: typeof Sparkles;
+}> = [
+  {
+    id: "everyday",
+    label: "Vardagen",
+    icon: Sparkles,
+  },
   {
     id: "home",
-    label: "Hem",
-    icon: <Home size={18} />,
+    label: "Hemmet",
+    icon: Home,
   },
   {
     id: "shopping",
     label: "Inköp",
-    icon: <ShoppingCart size={18} />,
+    icon: ShoppingCart,
   },
 ];
 
 export default function StartTabs({
+  everydayContent,
   homeContent,
   shoppingContent,
 }: StartTabsProps) {
-  const [activeTab, setActiveTab] =
-    useState<StartTabId>("home");
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState<StartTabId>(
+    "everyday"
+  );
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
+      case "everyday":
+        return everydayContent;
+
+      case "home":
+        return homeContent;
+
       case "shopping":
         return shoppingContent;
 
-      case "home":
       default:
-        return homeContent;
+        return everydayContent;
     }
   }
 
   return (
     <div className="w-full min-w-0">
-      <nav
-        aria-label="Startflikar"
-        className="mb-5 w-full rounded-3xl border border-white/10 bg-white/[0.06] p-2 shadow-xl shadow-black/10 backdrop-blur-xl"
-      >
-        <div
-          className="grid w-full grid-cols-2 gap-2"
-          role="tablist"
-        >
-          {tabs.map((tab) => {
+      <div className="mb-5 grid w-full grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
+        {tabs.map(
+          (tab) => {
             const isActive =
-              activeTab === tab.id;
+              activeTab ===
+              tab.id;
+
+            const Icon =
+              tab.icon;
 
             return (
               <button
                 key={tab.id}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
                 onClick={() =>
-                  setActiveTab(tab.id)
+                  setActiveTab(
+                    tab.id
+                  )
                 }
                 className={[
-                  "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-2xl px-3 py-2.5",
-                  "text-sm font-semibold transition duration-300",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
+                  "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-semibold transition sm:px-3 sm:text-sm",
                   isActive
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white",
+                    ? "bg-blue-500 text-white shadow-lg shadow-blue-950/25"
+                    : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
                 ].join(" ")}
               >
-                <span
-                  className={
-                    isActive
-                      ? "shrink-0 text-white"
-                      : "shrink-0 text-slate-400"
-                  }
-                >
-                  {tab.icon}
-                </span>
+                <Icon
+                  size={17}
+                  className="shrink-0"
+                />
 
-                <span className="min-w-0 truncate">
+                <span className="truncate">
                   {tab.label}
                 </span>
               </button>
             );
-          })}
-        </div>
-      </nav>
+          }
+        )}
+      </div>
 
       <div
         key={activeTab}
-        role="tabpanel"
-        className="w-full min-w-0 animate-[fadeIn_300ms_ease-out]"
+        className="w-full min-w-0 animate-[fadeIn_250ms_ease-out]"
       >
         {getActiveContent()}
       </div>

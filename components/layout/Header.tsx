@@ -1,5 +1,3 @@
-import TodayStatus from "@/components/layout/TodayStatus";
-
 export default function Header() {
   const date = new Date().toLocaleDateString(
     "sv-SE",
@@ -12,7 +10,7 @@ export default function Header() {
   );
 
   return (
-    <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <header className="mb-8">
       <div className="min-w-0">
         <p className="mb-2 text-sm font-medium uppercase tracking-[0.3em] text-blue-300">
           Home control
@@ -26,8 +24,6 @@ export default function Header() {
           {date}
         </p>
       </div>
-
-      <TodayStatus />
     </header>
   );
 }

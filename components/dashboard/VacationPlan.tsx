@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 import {
+  CalendarDays,
   LoaderCircle,
   Plus,
   RefreshCw,
-  Umbrella,
   X,
 } from "lucide-react";
 import Card from "@/components/ui/Card";
@@ -78,12 +78,12 @@ export default function VacationPlan() {
 
     if (error) {
       console.error(
-        "Kunde inte hämta semesterplaneringen:",
+        "Kunde inte hämta dagsplaneringen:",
         error
       );
 
       setErrorMessage(
-        "Kunde inte hämta semesterplaneringen."
+        "Kunde inte hämta dagsplaneringen."
       );
       setIsLoading(false);
       return;
@@ -141,7 +141,7 @@ export default function VacationPlan() {
     return {
       featuredDay: null,
       remainingDays: [],
-      featuredLabel: "Semesterplanering",
+      featuredLabel: "Dagsplanering",
     };
   }, [days, today]);
 
@@ -221,7 +221,7 @@ export default function VacationPlan() {
 
     if (error) {
       console.error(
-        "Kunde inte lägga till semesterdagen:",
+        "Kunde inte lägga till den planerade dagen:",
         error
       );
 
@@ -231,7 +231,7 @@ export default function VacationPlan() {
         );
       } else {
         setErrorMessage(
-          "Den nya semesterdagen kunde inte sparas."
+          "Den nya planerade dagen kunde inte sparas."
         );
       }
 
@@ -340,7 +340,7 @@ export default function VacationPlan() {
 
     if (error) {
       console.error(
-        "Kunde inte uppdatera semesterplaneringen:",
+        "Kunde inte uppdatera dagsplaneringen:",
         error
       );
 
@@ -371,8 +371,8 @@ export default function VacationPlan() {
   if (isLoading) {
     return (
       <Card
-        title="Semesterplanering"
-        icon={<Umbrella size={28} />}
+        title="Dagsplanering"
+        icon={<CalendarDays size={28} />}
       >
         <div className="flex min-h-52 flex-col items-center justify-center gap-3">
           <LoaderCircle
@@ -381,7 +381,7 @@ export default function VacationPlan() {
           />
 
           <p className="text-sm text-slate-400">
-            Hämtar semesterplaneringen…
+            Hämtar dagsplaneringen…
           </p>
         </div>
       </Card>
@@ -390,8 +390,8 @@ export default function VacationPlan() {
 
   return (
     <Card
-      title="Semesterplanering"
-      icon={<Umbrella size={28} />}
+      title="Dagsplanering"
+      icon={<CalendarDays size={28} />}
     >
       <div className="mb-5 flex justify-end">
         <button
@@ -467,7 +467,7 @@ export default function VacationPlan() {
         )
       ) : (
         <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <Umbrella
+          <CalendarDays
             size={36}
             className="mx-auto text-blue-300"
           />
@@ -478,7 +478,7 @@ export default function VacationPlan() {
 
           <p className="mt-1 text-sm text-slate-400">
             Tryck på Lägg till dag för att fortsätta
-            semesterplaneringen.
+            dagsplaneringen.
           </p>
         </div>
       )}

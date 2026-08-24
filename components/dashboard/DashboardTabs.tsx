@@ -118,8 +118,7 @@ export default function DashboardTabs({
                   "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
                   "text-xs font-semibold transition duration-300 sm:text-sm",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                  isActive &&
-                  isExploreTab
+                  isActive && isExploreTab
                     ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
                     : isActive
                       ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"

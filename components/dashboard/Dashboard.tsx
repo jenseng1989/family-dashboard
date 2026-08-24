@@ -2,6 +2,7 @@ import BathingWidget from "@/components/dashboard/BathingWidget";
 import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
+import EverydayOverview from "@/components/dashboard/EverydayOverview";
 import ExpensesWidget from "@/components/dashboard/ExpensesWidget";
 import FamilyTabs from "@/components/dashboard/FamilyTabs";
 import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
@@ -11,7 +12,9 @@ import FunTabs from "@/components/dashboard/FunTabs";
 import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import PollenWidget from "@/components/dashboard/PollenWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
+import SigneOverview from "@/components/dashboard/SigneOverview";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
+import SigneTeeth from "@/components/dashboard/SigneTeeth";
 import SigneVaccinations from "@/components/dashboard/SigneVaccinations";
 import StartTabs from "@/components/dashboard/StartTabs";
 import VacationPlan from "@/components/dashboard/VacationPlan";
@@ -37,6 +40,10 @@ export default function Dashboard() {
   const startHomeContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0">
+        <VacationPlan />
+      </div>
+
+      <div className="col-span-12 min-w-0">
         <Countdown />
       </div>
 
@@ -61,6 +68,7 @@ export default function Dashboard() {
   const startContent = (
     <div className="w-full min-w-0">
       <StartTabs
+        everydayContent={<EverydayOverview />}
         homeContent={startHomeContent}
         shoppingContent={shoppingContent}
       />
@@ -69,10 +77,6 @@ export default function Dashboard() {
 
   const sharedFamilyContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-      <div className="col-span-12 min-w-0">
-        <VacationPlan />
-      </div>
-
       <div className="col-span-12 min-w-0">
         <FamilyTimelineWidget />
       </div>
@@ -104,7 +108,15 @@ export default function Dashboard() {
   const signeContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0">
+        <SigneOverview />
+      </div>
+
+      <div className="col-span-12 min-w-0">
         <SigneGrowth />
+      </div>
+
+      <div className="col-span-12 min-w-0">
+        <SigneTeeth />
       </div>
 
       <div className="col-span-12 min-w-0">
