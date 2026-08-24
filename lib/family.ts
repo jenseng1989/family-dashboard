@@ -1,4 +1,7 @@
-export type AccentColor = "blue" | "rose" | "amber";
+export type AccentColor =
+  | "blue"
+  | "rose"
+  | "amber";
 
 export type FamilyName = {
   name: string;
@@ -37,13 +40,24 @@ export type FamilyEvent = {
   displayName: string;
   emoji: string;
   accent: AccentColor;
-  type: "birthday" | "nameDay";
+  type:
+    | "birthday"
+    | "nameDay";
   eventName?: string;
   date: string;
   daysUntil: number;
   title: string;
 };
 
+/*
+ * OBS:
+ * familyMembers behålls tillfälligt för
+ * andra delar av dashboarden som ännu inte
+ * har flyttats till databasen.
+ *
+ * FamilyTimelineWidget använder INTE längre
+ * denna array efter steg 3.
+ */
 export const familyMembers: FamilyMember[] = [
   {
     id: "jens",
@@ -130,40 +144,81 @@ export const familyMembers: FamilyMember[] = [
   },
 ];
 
-function createLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number);
+function createLocalDate(
+  dateString: string
+): Date {
+  const [year, month, day] =
+    dateString
+      .split("-")
+      .map(Number);
 
-  return new Date(year, month - 1, day);
+  return new Date(
+    year,
+    month - 1,
+    day
+  );
 }
 
-function createDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+function createDateString(
+  date: Date
+): string {
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
 
   return `${year}-${month}-${day}`;
 }
 
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+function startOfDay(
+  date: Date
+): Date {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
 }
 
-function daysBetween(start: Date, end: Date): number {
-  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+function daysBetween(
+  start: Date,
+  end: Date
+): number {
+  const startUtc =
+    Date.UTC(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate()
+    );
 
-  const startUtc = Date.UTC(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate()
+  const endUtc =
+    Date.UTC(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate()
+    );
+
+  return Math.round(
+    (
+      endUtc -
+      startUtc
+    ) /
+      86_400_000
   );
-
-  const endUtc = Date.UTC(
-    end.getFullYear(),
-    end.getMonth(),
-    end.getDate()
-  );
-
-  return Math.round((endUtc - startUtc) / millisecondsPerDay);
 }
 
 function createAnnualDate(
@@ -171,7 +226,11 @@ function createAnnualDate(
   day: number,
   year: number
 ): Date {
-  return new Date(year, month - 1, day);
+  return new Date(
+    year,
+    month - 1,
+    day
+  );
 }
 
 function getNextAnnualDate(
@@ -179,191 +238,340 @@ function getNextAnnualDate(
   day: number,
   today: Date
 ): Date {
-  let nextDate = createAnnualDate(
-    month,
-    day,
-    today.getFullYear()
-  );
-
-  if (nextDate < today) {
-    nextDate = createAnnualDate(
+  let nextDate =
+    createAnnualDate(
       month,
       day,
-      today.getFullYear() + 1
+      today.getFullYear()
     );
+
+  if (
+    nextDate <
+    today
+  ) {
+    nextDate =
+      createAnnualDate(
+        month,
+        day,
+        today.getFullYear() +
+          1
+      );
   }
 
   return nextDate;
 }
 
-export function getFamilyTimeline(): FamilyTimelineItem[] {
-  const today = startOfDay(new Date());
-
-  return familyMembers.map((member) => {
-    const birthday = createLocalDate(member.birthday);
-
-    let latestBirthday = new Date(
-      today.getFullYear(),
-      birthday.getMonth(),
-      birthday.getDate()
+export function createFamilyTimeline(
+  members: FamilyMember[]
+): FamilyTimelineItem[] {
+  const today =
+    startOfDay(
+      new Date()
     );
 
-    if (latestBirthday > today) {
-      latestBirthday = new Date(
-        today.getFullYear() - 1,
-        birthday.getMonth(),
-        birthday.getDate()
-      );
-    }
+  return members.map(
+    (member) => {
+      const birthday =
+        createLocalDate(
+          member.birthday
+        );
 
-    let nextBirthday = new Date(
-      today.getFullYear(),
-      birthday.getMonth(),
-      birthday.getDate()
-    );
+      let latestBirthday =
+        new Date(
+          today.getFullYear(),
+          birthday.getMonth(),
+          birthday.getDate()
+        );
 
-    if (nextBirthday < today) {
-      nextBirthday = new Date(
-        today.getFullYear() + 1,
-        birthday.getMonth(),
-        birthday.getDate()
-      );
-    }
+      if (
+        latestBirthday >
+        today
+      ) {
+        latestBirthday =
+          new Date(
+            today.getFullYear() -
+              1,
+            birthday.getMonth(),
+            birthday.getDate()
+          );
+      }
 
-    const ageYears =
-      latestBirthday.getFullYear() - birthday.getFullYear();
+      let nextBirthday =
+        new Date(
+          today.getFullYear(),
+          birthday.getMonth(),
+          birthday.getDate()
+        );
 
-    const ageDaysAfterBirthday = daysBetween(
-      latestBirthday,
-      today
-    );
+      if (
+        nextBirthday <
+        today
+      ) {
+        nextBirthday =
+          new Date(
+            today.getFullYear() +
+              1,
+            birthday.getMonth(),
+            birthday.getDate()
+          );
+      }
 
-    const daysUntilBirthday = daysBetween(
-      today,
-      nextBirthday
-    );
+      const ageYears =
+        latestBirthday.getFullYear() -
+        birthday.getFullYear();
 
-    const daysInBirthdayYear = daysBetween(
-      latestBirthday,
-      nextBirthday
-    );
+      const ageDaysAfterBirthday =
+        daysBetween(
+          latestBirthday,
+          today
+        );
 
-    const yearProgress =
-      daysInBirthdayYear > 0
-        ? Math.min(
-            100,
-            Math.max(
-              0,
-              (ageDaysAfterBirthday / daysInBirthdayYear) * 100
+      const daysUntilBirthday =
+        daysBetween(
+          today,
+          nextBirthday
+        );
+
+      const daysInBirthdayYear =
+        daysBetween(
+          latestBirthday,
+          nextBirthday
+        );
+
+      const yearProgress =
+        daysInBirthdayYear >
+        0
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                (
+                  ageDaysAfterBirthday /
+                  daysInBirthdayYear
+                ) *
+                  100
+              )
             )
-          )
-        : 0;
+          : 0;
 
-    return {
-      id: member.id,
-      displayName: member.displayName,
-      emoji: member.emoji,
-      accent: member.accent,
-      names: member.names,
-      ageYears,
-      ageDaysAfterBirthday,
-      nextAge: ageYears + 1,
-      daysUntilBirthday,
-      yearProgress,
-      nextBirthday: createDateString(nextBirthday),
-    };
-  });
+      return {
+        id: member.id,
+        displayName:
+          member.displayName,
+        emoji:
+          member.emoji,
+        accent:
+          member.accent,
+        names:
+          member.names,
+        ageYears,
+        ageDaysAfterBirthday,
+        nextAge:
+          ageYears + 1,
+        daysUntilBirthday,
+        yearProgress,
+        nextBirthday:
+          createDateString(
+            nextBirthday
+          ),
+      };
+    }
+  );
+}
+
+export function getFamilyTimeline(): FamilyTimelineItem[] {
+  return createFamilyTimeline(
+    familyMembers
+  );
+}
+
+export function createUpcomingFamilyEvents(
+  members: FamilyMember[]
+): FamilyEvent[] {
+  const today =
+    startOfDay(
+      new Date()
+    );
+
+  const events:
+    FamilyEvent[] = [];
+
+  members.forEach(
+    (member) => {
+      const birthday =
+        createLocalDate(
+          member.birthday
+        );
+
+      const nextBirthday =
+        getNextAnnualDate(
+          birthday.getMonth() +
+            1,
+          birthday.getDate(),
+          today
+        );
+
+      const currentAge =
+        nextBirthday.getFullYear() -
+        birthday.getFullYear() -
+        1;
+
+      events.push({
+        id:
+          `${member.id}-birthday`,
+        memberId:
+          member.id,
+        displayName:
+          member.displayName,
+        emoji:
+          member.emoji,
+        accent:
+          member.accent,
+        type:
+          "birthday",
+        date:
+          createDateString(
+            nextBirthday
+          ),
+        daysUntil:
+          daysBetween(
+            today,
+            nextBirthday
+          ),
+        title:
+          `${member.displayName} fyller ${currentAge + 1} år`,
+      });
+
+      member.names.forEach(
+        (
+          personName
+        ) => {
+          if (
+            !personName.nameDay
+          ) {
+            return;
+          }
+
+          const nextNameDay =
+            getNextAnnualDate(
+              personName.nameDay.month,
+              personName.nameDay.day,
+              today
+            );
+
+          events.push({
+            id:
+              `${member.id}-nameday-${personName.name.toLowerCase()}`,
+            memberId:
+              member.id,
+            displayName:
+              member.displayName,
+            emoji:
+              member.emoji,
+            accent:
+              member.accent,
+            type:
+              "nameDay",
+            eventName:
+              personName.name,
+            date:
+              createDateString(
+                nextNameDay
+              ),
+            daysUntil:
+              daysBetween(
+                today,
+                nextNameDay
+              ),
+            title:
+              `${personName.name} har namnsdag`,
+          });
+        }
+      );
+    }
+  );
+
+  return events.sort(
+    (
+      first,
+      second
+    ) => {
+      if (
+        first.daysUntil !==
+        second.daysUntil
+      ) {
+        return (
+          first.daysUntil -
+          second.daysUntil
+        );
+      }
+
+      return first.title.localeCompare(
+        second.title,
+        "sv-SE"
+      );
+    }
+  );
 }
 
 export function getUpcomingFamilyEvents(): FamilyEvent[] {
-  const today = startOfDay(new Date());
-  const events: FamilyEvent[] = [];
-
-  familyMembers.forEach((member) => {
-    const birthday = createLocalDate(member.birthday);
-
-    const nextBirthday = getNextAnnualDate(
-      birthday.getMonth() + 1,
-      birthday.getDate(),
-      today
-    );
-
-    const currentAge =
-      nextBirthday.getFullYear() - birthday.getFullYear() - 1;
-
-    events.push({
-      id: `${member.id}-birthday`,
-      memberId: member.id,
-      displayName: member.displayName,
-      emoji: member.emoji,
-      accent: member.accent,
-      type: "birthday",
-      date: createDateString(nextBirthday),
-      daysUntil: daysBetween(today, nextBirthday),
-      title: `${member.displayName} fyller ${currentAge + 1} år`,
-    });
-
-    member.names.forEach((personName) => {
-      if (!personName.nameDay) {
-        return;
-      }
-
-      const nextNameDay = getNextAnnualDate(
-        personName.nameDay.month,
-        personName.nameDay.day,
-        today
-      );
-
-      events.push({
-        id: `${member.id}-nameday-${personName.name.toLowerCase()}`,
-        memberId: member.id,
-        displayName: member.displayName,
-        emoji: member.emoji,
-        accent: member.accent,
-        type: "nameDay",
-        eventName: personName.name,
-        date: createDateString(nextNameDay),
-        daysUntil: daysBetween(today, nextNameDay),
-        title: `${personName.name} har namnsdag`,
-      });
-    });
-  });
-
-  return events.sort((a, b) => {
-    if (a.daysUntil !== b.daysUntil) {
-      return a.daysUntil - b.daysUntil;
-    }
-
-    return a.title.localeCompare(b.title, "sv-SE");
-  });
+  return createUpcomingFamilyEvents(
+    familyMembers
+  );
 }
 
-export function formatFamilyDate(dateString: string): string {
-  return createLocalDate(dateString).toLocaleDateString("sv-SE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+export function formatFamilyDate(
+  dateString: string
+): string {
+  return createLocalDate(
+    dateString
+  ).toLocaleDateString(
+    "sv-SE",
+    {
+      weekday:
+        "long",
+      day:
+        "numeric",
+      month:
+        "long",
+    }
+  );
 }
 
 export function formatShortFamilyDate(
   month: number,
   day: number
 ): string {
-  const date = new Date(2026, month - 1, day);
+  const date =
+    new Date(
+      2026,
+      month - 1,
+      day
+    );
 
-  return date.toLocaleDateString("sv-SE", {
-    day: "numeric",
-    month: "long",
-  });
+  return date.toLocaleDateString(
+    "sv-SE",
+    {
+      day:
+        "numeric",
+      month:
+        "long",
+    }
+  );
 }
 
-export function getCountdownText(days: number): string {
-  if (days === 0) {
+export function getCountdownText(
+  days: number
+): string {
+  if (
+    days === 0
+  ) {
     return "Idag! 🎉";
   }
 
-  if (days === 1) {
+  if (
+    days === 1
+  ) {
     return "Imorgon";
   }
 
