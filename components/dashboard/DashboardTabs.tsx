@@ -1,22 +1,25 @@
 "use client";
 
-import { ReactNode, useState } from "react";
 import {
   CloudSun,
   Compass,
   Home,
   Users,
 } from "lucide-react";
+import {
+  ReactNode,
+  useState,
+} from "react";
 
 type TabId =
-  | "weather"
   | "home"
+  | "weather"
   | "family"
   | "fun";
 
 type DashboardTabsProps = {
+  startContent: ReactNode;
   weatherContent: ReactNode;
-  electricityContent: ReactNode;
   familyContent: ReactNode;
   funContent: ReactNode;
 };
@@ -31,8 +34,8 @@ type TabButton = {
 const tabs: TabButton[] = [
   {
     id: "home",
-    label: "Hem",
-    shortLabel: "Hem",
+    label: "Start",
+    shortLabel: "Start",
     icon: <Home size={20} />,
   },
   {
@@ -56,18 +59,23 @@ const tabs: TabButton[] = [
 ];
 
 export default function DashboardTabs({
+  startContent,
   weatherContent,
-  electricityContent,
   familyContent,
   funContent,
 }: DashboardTabsProps) {
-  const [activeTab, setActiveTab] =
-    useState<TabId>("home");
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState<TabId>("home");
 
   function getActiveContent(): ReactNode {
     switch (activeTab) {
       case "home":
-        return electricityContent;
+        return startContent;
+
+      case "weather":
+        return weatherContent;
 
       case "family":
         return familyContent;
@@ -75,9 +83,8 @@ export default function DashboardTabs({
       case "fun":
         return funContent;
 
-      case "weather":
       default:
-        return weatherContent;
+        return startContent;
     }
   }
 
@@ -111,7 +118,8 @@ export default function DashboardTabs({
                   "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
                   "text-xs font-semibold transition duration-300 sm:text-sm",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                  isActive && isExploreTab
+                  isActive &&
+                  isExploreTab
                     ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
                     : isActive
                       ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
