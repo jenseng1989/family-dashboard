@@ -4,7 +4,9 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
+  CloudSun,
   Clock3,
+  ExternalLink,
   Gift,
   Home,
   LoaderCircle,
@@ -63,11 +65,33 @@ type TodayNotice = {
     | "unknown";
   startsAt?: string | null;
   endsAt?: string | null;
+  url?: string;
 };
 
 type TodayStatusResponse = {
   notices?: TodayNotice[];
   partialError?: boolean;
+};
+
+type EverydayWeather = {
+  location: string;
+  temperature: number;
+  apparentTemperature: number;
+  weatherCode: number;
+  description: string;
+  temperatureMax: number;
+  temperatureMin: number;
+  precipitationSum: number;
+  precipitationProbability: number;
+  windSpeed: number;
+  uvIndex: number;
+  outdoor: {
+    start: string;
+    end: string;
+    reason: string;
+    score: number;
+  } | null;
+  updatedAt: string;
 };
 
 function getGreeting(
@@ -78,7 +102,7 @@ function getGreeting(
   }
 
   if (hour < 17) {
-    return "God eftermiddag";
+    return "God dag";
   }
 
   return "God kväll";
@@ -303,8 +327,8 @@ export default function EverydayOverview() {
     now,
     setNow,
   ] =
-    useState(
-      () => new Date()
+    useState<Date | null>(
+      null
     );
 
   const [
@@ -340,6 +364,14 @@ export default function EverydayOverview() {
     >([]);
 
   const [
+    weather,
+    setWeather,
+  ] =
+    useState<
+      EverydayWeather | null
+    >(null);
+
+  const [
     isLoading,
     setIsLoading,
   ] =
@@ -362,6 +394,7 @@ export default function EverydayOverview() {
           countdownResult,
           familyMembers,
           todayStatusResponse,
+          weatherResponse,
         ] =
           await Promise.all([
             supabase
@@ -407,6 +440,14 @@ export default function EverydayOverview() {
 
             fetch(
               "/api/today-status",
+              {
+                cache:
+                  "no-store",
+              }
+            ),
+
+            fetch(
+              "/api/everyday-weather",
               {
                 cache:
                   "no-store",
@@ -481,6 +522,22 @@ export default function EverydayOverview() {
             true
           );
         }
+
+        if (
+          weatherResponse.ok
+        ) {
+          const weatherData =
+            (await weatherResponse.json()) as EverydayWeather;
+
+          setWeather(
+            weatherData
+          );
+        } else {
+          setWeather(null);
+          setHasPartialError(
+            true
+          );
+        }
       } catch (error) {
         console.error(
           "Vardagen kunde inte hämta dagens data:",
@@ -514,6 +571,10 @@ export default function EverydayOverview() {
   }, [loadData]);
 
   useEffect(() => {
+    setNow(
+      new Date()
+    );
+
     const clockId =
       window.setInterval(
         () => {
@@ -568,9 +629,11 @@ export default function EverydayOverview() {
               </div>
 
               <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">
-                {getGreeting(
-                  now.getHours()
-                )} 👋
+                {now
+                  ? getGreeting(
+                      now.getHours()
+                    )
+                  : "Hej"} 👋
               </h2>
 
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400">
@@ -579,17 +642,19 @@ export default function EverydayOverview() {
                     size={16}
                   />
 
-                  {now.toLocaleDateString(
-                    "sv-SE",
-                    {
-                      weekday:
-                        "long",
-                      day:
-                        "numeric",
-                      month:
-                        "long",
-                    }
-                  )}
+                  {now
+                    ? now.toLocaleDateString(
+                        "sv-SE",
+                        {
+                          weekday:
+                            "long",
+                          day:
+                            "numeric",
+                          month:
+                            "long",
+                        }
+                      )
+                    : "Laddar datum…"}
                 </span>
 
                 <span className="flex items-center gap-2">
@@ -597,15 +662,17 @@ export default function EverydayOverview() {
                     size={16}
                   />
 
-                  {now.toLocaleTimeString(
-                    "sv-SE",
-                    {
-                      hour:
-                        "2-digit",
-                      minute:
-                        "2-digit",
-                    }
-                  )}
+                  {now
+                    ? now.toLocaleTimeString(
+                        "sv-SE",
+                        {
+                          hour:
+                            "2-digit",
+                          minute:
+                            "2-digit",
+                        }
+                      )
+                    : "--:--"}
                 </span>
               </div>
             </div>
@@ -643,6 +710,121 @@ export default function EverydayOverview() {
               <p className="text-sm text-amber-100/80">
                 Någon del av dagens information kunde inte hämtas, men övriga delar visas som vanligt.
               </p>
+            </div>
+          )}
+
+          {weather && (
+            <div className="mt-6 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.09] via-blue-400/[0.05] to-transparent p-5 sm:p-6">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-400/10 text-sky-300">
+                    <CloudSun
+                      size={29}
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">
+                      Dagens väder
+                    </p>
+
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <p className="text-3xl font-black text-white">
+                        {Math.round(
+                          weather.temperature
+                        )}
+                        °
+                      </p>
+
+                      <p className="font-semibold text-slate-200">
+                        {
+                          weather.description
+                        }
+                      </p>
+                    </div>
+
+                    <p className="mt-1 text-sm text-slate-400">
+                      {weather.location} · Högst{" "}
+                      {Math.round(
+                        weather.temperatureMax
+                      )}
+                      ° · Lägst{" "}
+                      {Math.round(
+                        weather.temperatureMin
+                      )}
+                      ° · Känns som{" "}
+                      {Math.round(
+                        weather.apparentTemperature
+                      )}
+                      °
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[28rem]">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
+                    <p className="text-xs text-slate-500">
+                      🌧 Regnrisk
+                    </p>
+
+                    <p className="mt-1 font-bold text-white">
+                      {Math.round(
+                        weather.precipitationProbability
+                      )}
+                      %
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
+                    <p className="text-xs text-slate-500">
+                      🌬 Vind
+                    </p>
+
+                    <p className="mt-1 font-bold text-white">
+                      {Math.round(
+                        weather.windSpeed
+                      )}{" "}
+                      m/s
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
+                    <p className="text-xs text-slate-500">
+                      ☀️ UV
+                    </p>
+
+                    <p className="mt-1 font-bold text-white">
+                      {Math.round(
+                        weather.uvIndex
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-white/10 pt-4">
+                {weather.outdoor ? (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-300">
+                        Bästa tiden att vara ute
+                      </p>
+
+                      <p className="mt-1 text-lg font-bold text-white">
+                        {weather.outdoor.start}–{weather.outdoor.end}
+                      </p>
+                    </div>
+
+                    <p className="max-w-2xl text-sm leading-6 text-slate-400 sm:text-right">
+                      {weather.outdoor.reason}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Ingen lämplig utetid återstår att bedöma idag.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -811,7 +993,7 @@ export default function EverydayOverview() {
                         className="mt-0.5 shrink-0 text-amber-300"
                       />
 
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-semibold text-white">
                           {
                             notice.title
@@ -823,6 +1005,23 @@ export default function EverydayOverview() {
                             notice.description
                           }
                         </p>
+
+                        {notice.type === "weather" &&
+                          notice.url && (
+                            <a
+                              href={
+                                notice.url
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-amber-200 transition hover:text-amber-100"
+                            >
+                              Läs mer hos SMHI
+                              <ExternalLink
+                                size={15}
+                              />
+                            </a>
+                          )}
                       </div>
                     </div>
                   </article>

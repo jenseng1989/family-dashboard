@@ -12,6 +12,7 @@ import FunTabs from "@/components/dashboard/FunTabs";
 import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import PollenWidget from "@/components/dashboard/PollenWidget";
 import ShoppingList from "@/components/dashboard/ShoppingList";
+import SkyDashboard from "@/components/dashboard/SkyDashboard";
 import SigneOverview from "@/components/dashboard/SigneOverview";
 import SigneGrowth from "@/components/dashboard/SigneGrowth";
 import SigneTeeth from "@/components/dashboard/SigneTeeth";
@@ -112,15 +113,15 @@ export default function Dashboard() {
       </div>
 
       <div className="col-span-12 min-w-0">
-        <SigneGrowth />
-      </div>
-
-      <div className="col-span-12 min-w-0">
         <SigneTeeth />
       </div>
 
       <div className="col-span-12 min-w-0">
         <SigneVaccinations />
+      </div>
+
+      <div className="col-span-12 min-w-0">
+        <SigneGrowth />
       </div>
     </div>
   );
@@ -142,6 +143,7 @@ export default function Dashboard() {
         <FunTabs
           spaceContent={<FunDashboard />}
           otherContent={<FunOtherDashboard />}
+          skyContent={<SkyDashboard />}
         />
       </div>
     </div>

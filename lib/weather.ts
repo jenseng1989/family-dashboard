@@ -15,6 +15,16 @@ export type WeatherData = {
     temperatureMax: number[];
     temperatureMin: number[];
     weatherCode: number[];
+    uvIndexMax: number[];
+    precipitationSum: number[];
+  };
+  hourly: {
+    time: string[];
+    temperature: number[];
+    apparentTemperature: number[];
+    precipitationProbability: number[];
+    weatherCode: number[];
+    windSpeed: number[];
   };
 };
 
@@ -27,6 +37,7 @@ export async function getWeather(): Promise<WeatherData> {
     `?latitude=${latitude}` +
     `&longitude=${longitude}` +
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day" +
+    "&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m" +
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum" +
     "&timezone=auto";
 
@@ -59,6 +70,17 @@ export async function getWeather(): Promise<WeatherData> {
       temperatureMax: data.daily.temperature_2m_max,
       temperatureMin: data.daily.temperature_2m_min,
       weatherCode: data.daily.weather_code,
+      uvIndexMax: data.daily.uv_index_max,
+      precipitationSum: data.daily.precipitation_sum,
+    },
+    hourly: {
+      time: data.hourly.time,
+      temperature: data.hourly.temperature_2m,
+      apparentTemperature: data.hourly.apparent_temperature,
+      precipitationProbability:
+        data.hourly.precipitation_probability,
+      weatherCode: data.hourly.weather_code,
+      windSpeed: data.hourly.wind_speed_10m,
     },
   };
 }

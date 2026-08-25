@@ -86,7 +86,10 @@ function findFirstStringByKeys(
 ): string | undefined {
   if (Array.isArray(value)) {
     for (const item of value) {
-      const result = findFirstStringByKeys(item, wantedKeys);
+      const result = findFirstStringByKeys(
+        item,
+        wantedKeys
+      );
 
       if (result) {
         return result;
@@ -197,60 +200,9 @@ function normalizeWarningLevel(
   return "unknown";
 }
 
-function getLevelLabel(
-  level: WeatherWarningLevel
-): string {
-  switch (level) {
-    case "red":
-      return "Röd varning";
-
-    case "orange":
-      return "Orange varning";
-
-    case "yellow":
-      return "Gul varning";
-
-    default:
-      return "Vädervarning";
-  }
-}
-
-function cleanDescription(
-  description: string | undefined
-): string {
-  if (!description) {
-    return "SMHI har utfärdat en vädervarning som berör Göteborgsområdet.";
-  }
-
-  const cleaned = description.replace(/\s+/g, " ").trim();
-
-  if (cleaned.length <= 220) {
-    return cleaned;
-  }
-
-  return `${cleaned.slice(0, 217).trim()}…`;
-}
-
-function createWeatherNotice(
-  warning: UnknownRecord,
-  index: number
-): TodayNotice {
-  const identifier =
-    findFirstStringByKeys(warning, [
-      "identifier",
-      "id",
-      "warningId",
-    ]) ?? `smhi-warning-${index}`;
-
-  const eventName =
-    findFirstStringByKeys(warning, [
-      "event",
-      "eventName",
-      "headline",
-      "warningType",
-      "eventDescription",
-    ]) ?? "Vädervarning";
-
+function getWarningSeverity(
+  warning: UnknownRecord
+): WeatherWarningLevel {
   const rawLevel = findFirstStringByKeys(warning, [
     "warningLevel",
     "level",
@@ -258,54 +210,52 @@ function createWeatherNotice(
     "eventLevel",
   ]);
 
-  const severity = normalizeWarningLevel(rawLevel);
+  return normalizeWarningLevel(rawLevel);
+}
 
-  const area =
-    findFirstStringByKeys(warning, [
-      "areaName",
-      "districtName",
-      "area",
-      "district",
-    ]) ?? "Göteborgsområdet";
+function getHighestSeverity(
+  warnings: UnknownRecord[]
+): WeatherWarningLevel {
+  const priority: Record<WeatherWarningLevel, number> = {
+    red: 3,
+    orange: 2,
+    yellow: 1,
+    unknown: 0,
+  };
 
-  const description = findFirstStringByKeys(warning, [
-    "description",
-    "descriptions",
-    "consequence",
-    "consequences",
-    "instruction",
-    "text",
-  ]);
+  let highest: WeatherWarningLevel = "unknown";
 
-  const startsAt = findFirstStringByKeys(warning, [
-    "start",
-    "startsAt",
-    "onset",
-    "validFrom",
-    "effective",
-  ]);
+  for (const warning of warnings) {
+    const severity = getWarningSeverity(warning);
 
-  const endsAt = findFirstStringByKeys(warning, [
-    "end",
-    "endsAt",
-    "expires",
-    "validTo",
-  ]);
+    if (priority[severity] > priority[highest]) {
+      highest = severity;
+    }
+  }
+
+  return highest;
+}
+
+function createCombinedWeatherNotice(
+  warnings: UnknownRecord[]
+): TodayNotice | null {
+  if (warnings.length === 0) {
+    return null;
+  }
 
   return {
-    id: `weather-${identifier}`,
+    id: "weather-gothenburg",
     type: "weather",
-    severity,
-    title: `${getLevelLabel(severity)}: ${eventName}`,
-    description: `${area} – ${cleanDescription(description)}`,
-    startsAt,
-    endsAt,
+    severity: getHighestSeverity(warnings),
+    title: "Vädervarning",
+    description:
+      "Det finns en eller flera vädervarningar i Göteborg.",
     url: SMHI_WARNING_PAGE_URL,
   };
 }
 
-async function getSmhiWeatherWarnings(): Promise<
-  TodayNotice[]
+async function getSmhiWeatherNotice(): Promise<
+  TodayNotice | null
 > {
   const response = await fetch(SMHI_WARNING_URL, {
     headers: {
@@ -324,22 +274,11 @@ async function getSmhiWeatherWarnings(): Promise<
 
   const data: unknown = await response.json();
 
-  return extractWarningItems(data)
-    .filter(isRelevantForGothenburg)
-    .map(createWeatherNotice)
-    .sort((firstNotice, secondNotice) => {
-      const priority: Record<WeatherWarningLevel, number> = {
-        red: 0,
-        orange: 1,
-        yellow: 2,
-        unknown: 3,
-      };
+  const relevantWarnings = extractWarningItems(data).filter(
+    isRelevantForGothenburg
+  );
 
-      return (
-        priority[firstNotice.severity ?? "unknown"] -
-        priority[secondNotice.severity ?? "unknown"]
-      );
-    });
+  return createCombinedWeatherNotice(relevantWarnings);
 }
 
 function createFamilyNotice(event: FamilyEvent): TodayNotice {
@@ -365,11 +304,11 @@ export async function GET() {
     .filter((event) => event.daysUntil === 0)
     .map(createFamilyNotice);
 
-  let weatherNotices: TodayNotice[] = [];
+  let weatherNotice: TodayNotice | null = null;
   let partialError = false;
 
   try {
-    weatherNotices = await getSmhiWeatherWarnings();
+    weatherNotice = await getSmhiWeatherNotice();
   } catch (error) {
     partialError = true;
 
@@ -379,8 +318,13 @@ export async function GET() {
     );
   }
 
+  const notices: TodayNotice[] = [
+    ...(weatherNotice ? [weatherNotice] : []),
+    ...familyNotices,
+  ];
+
   const response: TodayStatusResponse = {
-    notices: [...weatherNotices, ...familyNotices],
+    notices,
     updatedAt: new Date().toISOString(),
     partialError,
   };
