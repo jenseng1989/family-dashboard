@@ -114,8 +114,56 @@ export default function FamilyTimelineWidget() {
         const result =
           await getFamilyMembersFromDatabase();
 
+        const preferredOrder = [
+          "jens",
+          "lenita",
+          "signe",
+        ];
+
+        const sortedResult = [
+          ...result,
+        ].sort(
+          (
+            firstMember,
+            secondMember
+          ) => {
+            const firstIndex =
+              preferredOrder.indexOf(
+                firstMember.displayName
+                  .trim()
+                  .toLocaleLowerCase(
+                    "sv-SE"
+                  )
+              );
+
+            const secondIndex =
+              preferredOrder.indexOf(
+                secondMember.displayName
+                  .trim()
+                  .toLocaleLowerCase(
+                    "sv-SE"
+                  )
+              );
+
+            const normalizedFirstIndex =
+              firstIndex === -1
+                ? preferredOrder.length
+                : firstIndex;
+
+            const normalizedSecondIndex =
+              secondIndex === -1
+                ? preferredOrder.length
+                : secondIndex;
+
+            return (
+              normalizedFirstIndex -
+              normalizedSecondIndex
+            );
+          }
+        );
+
         setMembers(
-          result
+          sortedResult
         );
       } catch (error) {
         console.error(

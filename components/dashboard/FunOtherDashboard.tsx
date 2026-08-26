@@ -102,6 +102,20 @@ function getMagnitudeClasses(magnitude: number): string {
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-200";
 }
 
+function getMagnitudeInterpretation(magnitude: number) {
+  if (magnitude >= 8) return { label: "Mycket stor jordbävning", description: "Ett mycket kraftigt skalv som kan orsaka omfattande skador över stora områden nära epicentrum." };
+  if (magnitude >= 7) return { label: "Stor jordbävning", description: "Ett kraftigt skalv som kan orsaka allvarliga skador, särskilt nära epicentrum." };
+  if (magnitude >= 6) return { label: "Kraftig jordbävning", description: "Kan orsaka betydande skakningar och lokala skador, beroende på bland annat djup och avstånd till bebyggelse." };
+  if (magnitude >= 5) return { label: "Stark jordbävning", description: "Känns ofta tydligt och kan orsaka mindre till måttliga skador nära epicentrum." };
+  return { label: "Måttlig jordbävning", description: "Kan kännas tydligt lokalt men orsakar vanligtvis begränsade skador." };
+}
+
+function getDepthInterpretation(depthKm: number): string {
+  if (depthKm < 70) return "Grunt skalv";
+  if (depthKm < 300) return "Mellandjupt skalv";
+  return "Djupt skalv";
+}
+
 function getActivityClasses(level: EarthData["summary"]["activityLevel"]): string {
   switch (level) {
     case "Kraftig":
@@ -136,6 +150,9 @@ function SummaryStat({
 }
 
 function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
+  const interpretation = getMagnitudeInterpretation(earthquake.magnitude);
+  const depthInterpretation = getDepthInterpretation(earthquake.depthKm);
+
   return (
     <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
       <div className="flex items-start gap-4">
@@ -168,10 +185,15 @@ function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
             </a>
           </div>
 
+          <div className={["mt-4 rounded-xl border px-3 py-3", getMagnitudeClasses(earthquake.magnitude)].join(" ")}>
+            <p className="text-sm font-bold">{interpretation.label}</p>
+            <p className="mt-1 text-xs leading-5 opacity-80">{interpretation.description}</p>
+          </div>
+
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
               <Ruler size={14} className="shrink-0 text-emerald-300" />
-              Djup {Math.round(earthquake.depthKm)} km
+              {depthInterpretation} · {Math.round(earthquake.depthKm)} km
             </div>
 
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">

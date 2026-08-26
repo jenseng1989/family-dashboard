@@ -11,7 +11,6 @@ import {
   RefreshCw,
   Save,
   Trash2,
-  UserRound,
   X,
 } from "lucide-react";
 import {
@@ -393,44 +392,21 @@ export default function PersonalCenter({
 
   if (isLoading) {
     return (
-      <Card
-        title={`${displayName}: Personligt center`}
-        icon={<UserRound size={28} />}
-      >
-        <div className="flex min-h-60 flex-col items-center justify-center gap-3">
-          <LoaderCircle
-            size={32}
-            className="animate-spin text-blue-300"
-          />
+      <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04]">
+        <LoaderCircle
+          size={32}
+          className="animate-spin text-blue-300"
+        />
 
-          <p className="text-sm text-slate-400">
-            Hämtar personligt innehåll…
-          </p>
-        </div>
-      </Card>
+        <p className="text-sm text-slate-400">
+          Hämtar personligt innehåll…
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-xl shadow-black/10 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-300">
-            <UserRound size={25} />
-          </div>
-
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              {displayName}: Personligt center
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-400">
-              Personliga uppgifter och anteckningar.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {errorMessage && (
         <div className="flex flex-col gap-3 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-200">

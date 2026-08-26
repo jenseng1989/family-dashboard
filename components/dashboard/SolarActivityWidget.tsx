@@ -82,6 +82,64 @@ function getLevelClasses(
   }
 }
 
+function getKpInterpretation(kp: number): string {
+  if (kp >= 8) return "Mycket kraftig geomagnetisk aktivitet";
+  if (kp >= 7) return "Kraftig geomagnetisk storm";
+  if (kp >= 5) return "Geomagnetisk storm";
+  if (kp >= 4) return "Förhöjd geomagnetisk aktivitet";
+  return "Lugn geomagnetisk aktivitet";
+}
+
+function getSolarWindInterpretation(speed: number | null): string {
+  if (speed === null) return "Ingen aktuell mätning";
+  if (speed >= 700) return "Mycket hög solvind";
+  if (speed >= 600) return "Hög solvind";
+  if (speed >= 500) return "Förhöjd solvind";
+  return "Normal till lugn solvind";
+}
+
+function getBzInterpretation(bz: number | null): string {
+  if (bz === null) return "Ingen aktuell mätning";
+  if (bz <= -10) return "Mycket gynnsamt för geomagnetisk koppling";
+  if (bz <= -5) return "Gynnsamt för norrsken";
+  if (bz < 0) return "Svagt gynnsam riktning";
+  if (bz >= 5) return "Ogynnsam riktning för norrsken";
+  return "Neutral till svagt ogynnsam riktning";
+}
+
+function getBtInterpretation(bt: number | null): string {
+  if (bt === null) return "Ingen aktuell mätning";
+  if (bt >= 20) return "Mycket starkt interplanetärt magnetfält";
+  if (bt >= 10) return "Förstärkt interplanetärt magnetfält";
+  return "Normalt till måttligt magnetfält";
+}
+
+function getDensityInterpretation(density: number | null): string {
+  if (density === null) return "Ingen aktuell mätning";
+  if (density >= 20) return "Mycket hög protontäthet";
+  if (density >= 10) return "Förhöjd protontäthet";
+  if (density >= 5) return "Måttlig protontäthet";
+  return "Låg protontäthet";
+}
+
+function getPlainLanguageSummary(data: SpaceWeatherData): string {
+  const parts: string[] = [];
+
+  if (data.kpIndex >= 5) parts.push("geomagnetisk storm pågår");
+  else if (data.kpIndex >= 4) parts.push("den geomagnetiska aktiviteten är förhöjd");
+  else parts.push("den geomagnetiska aktiviteten är relativt lugn");
+
+  if (data.bz !== null && data.bz <= -5) parts.push("Bz är tydligt sydlig och gynnsam för norrsken");
+  else if (data.bz !== null && data.bz < 0) parts.push("Bz är sydlig och något gynnsam");
+  else if (data.bz !== null) parts.push("Bz är inte särskilt gynnsam just nu");
+
+  if (data.solarWindSpeed !== null && data.solarWindSpeed >= 600) parts.push("solvinden är hög");
+  else if (data.solarWindSpeed !== null && data.solarWindSpeed >= 500) parts.push("solvinden är förhöjd");
+
+  const sentence = parts.join(", ");
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";
+}
+
 function renderStars(
   stars: number
 ): string {
@@ -187,12 +245,14 @@ function SpaceStat({
   label,
   value,
   description,
+  interpretation,
   highlight,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   description: string;
+  interpretation?: string;
   highlight?: boolean;
 }) {
   return (
@@ -222,6 +282,12 @@ function SpaceStat({
       <p className="mt-3 text-2xl font-bold text-white">
         {value}
       </p>
+
+      {interpretation && (
+        <p className="mt-2 text-sm font-semibold text-slate-300">
+          {interpretation}
+        </p>
+      )}
 
       <p className="mt-1 text-xs leading-5 text-slate-500">
         {description}
@@ -418,6 +484,7 @@ export default function SolarActivityWidget() {
                 value={String(
                   data.kpIndex
                 )}
+                interpretation={getKpInterpretation(data.kpIndex)}
                 description={`Högsta senaste dygnet: ${data.maxKp24h}`}
               />
 
@@ -434,6 +501,7 @@ export default function SolarActivityWidget() {
                     ? `${data.solarWindSpeed} km/s`
                     : "–"
                 }
+                interpretation={getSolarWindInterpretation(data.solarWindSpeed)}
                 description={
                   data.solarWindStatus
                 }
@@ -452,6 +520,7 @@ export default function SolarActivityWidget() {
                     ? `${data.bz} nT`
                     : "–"
                 }
+                interpretation={getBzInterpretation(data.bz)}
                 description={
                   data.bzStatus
                 }
@@ -473,6 +542,7 @@ export default function SolarActivityWidget() {
                     ? `${data.bt} nT`
                     : "–"
                 }
+                interpretation={getBtInterpretation(data.bt)}
                 description={
                   data.btStatus
                 }
@@ -491,6 +561,7 @@ export default function SolarActivityWidget() {
                     ? `${data.protonDensity} p/cm³`
                     : "–"
                 }
+                interpretation={getDensityInterpretation(data.protonDensity)}
                 description={
                   data.protonDensityStatus
                 }
@@ -510,6 +581,23 @@ export default function SolarActivityWidget() {
                   data.stormDescription
                 }
               />
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-sky-300/15 bg-sky-400/[0.06] p-5">
+            <div className="flex items-start gap-3">
+              <Sparkles size={22} className="mt-0.5 shrink-0 text-sky-300" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.17em] text-sky-300">
+                  Sammanfattning
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-white">
+                  {getPlainLanguageSummary(data)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  En förenklad tolkning av Kp-index, Bz och solvind för att göra mätvärdena lättare att förstå.
+                </p>
+              </div>
             </div>
           </div>
 
