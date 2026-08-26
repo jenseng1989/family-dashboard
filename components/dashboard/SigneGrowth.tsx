@@ -115,7 +115,17 @@ function formatSignedNumber(
   return `${sign}${value.toFixed(decimals)} ${unit}`;
 }
 
-export default function SigneGrowth() {
+export type SigneGrowthSection =
+  | "growth"
+  | "weight"
+  | "height"
+  | "history";
+
+export default function SigneGrowth({
+  section = "growth",
+}: {
+  section?: SigneGrowthSection;
+}) {
   const [measurements, setMeasurements] = useState<
     GrowthMeasurement[]
   >([]);
@@ -351,7 +361,8 @@ export default function SigneGrowth() {
 
   return (
     <div className="grid gap-5">
-      <Card
+      {section === "growth" && (
+        <Card
         title="Tillväxt"
         icon={<Baby size={28} />}
         storageKey="signe-growth"
@@ -674,10 +685,10 @@ export default function SigneGrowth() {
             </form>
           </>
         )}
-      </Card>
+        </Card>
+      )}
 
-      {!isLoading && measurements.length > 0 && (
-        <div className="grid gap-5 xl:grid-cols-2">
+      {section === "weight" && !isLoading && measurements.length > 0 && (
           <Card
             title="Viktutveckling"
             icon={<Scale size={28} />}
@@ -749,7 +760,9 @@ export default function SigneGrowth() {
               </ResponsiveContainer>
             </div>
           </Card>
+      )}
 
+      {section === "height" && !isLoading && measurements.length > 0 && (
           <Card
             title="Längdutveckling"
             icon={<Ruler size={28} />}
@@ -821,10 +834,9 @@ export default function SigneGrowth() {
               </ResponsiveContainer>
             </div>
           </Card>
-        </div>
       )}
 
-      {!isLoading && measurements.length > 0 && (
+      {section === "history" && !isLoading && measurements.length > 0 && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.025]">
           <button
             type="button"

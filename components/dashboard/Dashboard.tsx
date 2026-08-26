@@ -75,9 +75,12 @@ export default function Dashboard() {
   const signeContent = (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0"><SigneOverview /></div>
-      <div className="col-span-12 min-w-0"><SigneGrowth /></div>
+      <div className="col-span-12 min-w-0"><SigneGrowth section="growth" /></div>
+      <div className="col-span-12 min-w-0"><SigneGrowth section="weight" /></div>
+      <div className="col-span-12 min-w-0"><SigneGrowth section="height" /></div>
       <div className="col-span-12 min-w-0"><SigneTeeth /></div>
       <div className="col-span-12 min-w-0"><SigneVaccinations /></div>
+      <div className="col-span-12 min-w-0"><SigneGrowth section="history" /></div>
     </div>
   );
 
