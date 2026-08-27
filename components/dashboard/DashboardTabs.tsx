@@ -4,6 +4,7 @@ import {
   CloudSun,
   Compass,
   Home,
+  MapPin,
   Users,
 } from "lucide-react";
 import {
@@ -15,12 +16,14 @@ type TabId =
   | "home"
   | "weather"
   | "family"
+  | "gothenburg"
   | "fun";
 
 type DashboardTabsProps = {
   startContent: ReactNode;
   weatherContent: ReactNode;
   familyContent: ReactNode;
+  gothenburgContent: ReactNode;
   funContent: ReactNode;
 };
 
@@ -51,6 +54,12 @@ const tabs: TabButton[] = [
     icon: <Users size={20} />,
   },
   {
+    id: "gothenburg",
+    label: "Göteborg",
+    shortLabel: "GBG",
+    icon: <MapPin size={20} />,
+  },
+  {
     id: "fun",
     label: "Utforska",
     shortLabel: "Utforska",
@@ -62,6 +71,7 @@ export default function DashboardTabs({
   startContent,
   weatherContent,
   familyContent,
+  gothenburgContent,
   funContent,
 }: DashboardTabsProps) {
   const [
@@ -80,6 +90,9 @@ export default function DashboardTabs({
       case "family":
         return familyContent;
 
+      case "gothenburg":
+        return gothenburgContent;
+
       case "fun":
         return funContent;
 
@@ -95,7 +108,7 @@ export default function DashboardTabs({
         className="mb-6 w-full rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
       >
         <div
-          className="grid w-full grid-cols-4 gap-2"
+          className="grid w-full grid-cols-5 gap-2"
           role="tablist"
         >
           {tabs.map((tab) => {

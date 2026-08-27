@@ -34,17 +34,18 @@ type CheapestPeriod = {
   averagePrice: number;
 };
 
-function findCheapestThreeHourPeriod(
-  prices: ElectricityPrice[]
+function findCheapestPeriod(
+  prices: ElectricityPrice[],
+  hours: number
 ): CheapestPeriod | null {
-  if (prices.length < 3) {
+  if (prices.length < hours || hours < 1) {
     return null;
   }
 
   let cheapestPeriod: CheapestPeriod | null = null;
 
-  for (let index = 0; index <= prices.length - 3; index += 1) {
-    const period = prices.slice(index, index + 3);
+  for (let index = 0; index <= prices.length - hours; index += 1) {
+    const period = prices.slice(index, index + hours);
 
     const averagePrice =
       period.reduce((sum, price) => sum + price.SEK_per_kWh, 0) /
@@ -65,10 +66,58 @@ function findCheapestThreeHourPeriod(
   return cheapestPeriod;
 }
 
+function getPriceLabel(
+  current: number,
+  min: number,
+  max: number
+): string {
+  const range = max - min;
+  if (range <= 0) return "Normalt";
+  const position = (current - min) / range;
+  if (position <= 0.25) return "Billigt";
+  if (position <= 0.55) return "Normalt";
+  if (position <= 0.8) return "Dyrt";
+  return "Mycket dyrt";
+}
+
+function getSmartAdvice(
+  prices: ElectricityPrice[],
+  currentPrice: ElectricityPrice | null,
+  averagePrice: number
+): string {
+  if (!currentPrice) return "Se dagens graf för att hitta de billigaste timmarna.";
+
+  const currentIndex = prices.findIndex(
+    (price) => price.time_start === currentPrice.time_start
+  );
+  if (currentIndex < 0) return "Se dagens graf för att hitta de billigaste timmarna.";
+
+  const current = currentPrice.SEK_per_kWh;
+  const future = prices.slice(currentIndex + 1);
+  const cheaper = future
+    .filter((price) => price.SEK_per_kWh < current)
+    .sort((a, b) => a.SEK_per_kWh - b.SEK_per_kWh)[0];
+
+  if (cheaper && current > 0) {
+    const drop = Math.round(((current - cheaper.SEK_per_kWh) / current) * 100);
+    if (drop >= 20) {
+      return `Kan du vänta? Priset blir cirka ${drop} % lägre från ${formatHour(cheaper.time_start)}.`;
+    }
+  }
+
+  if (current <= averagePrice * 0.75)
+    return "Bra elpris just nu – tydligt under dagens snitt.";
+  if (current >= averagePrice * 1.25)
+    return "Priset är högt jämfört med dagens snitt. Undvik gärna större elförbrukning just nu.";
+
+  return "Priset ligger nära dagens snitt just nu.";
+}
+
 export default function ElectricityWidget() {
   const [electricity, setElectricity] = useState<ElectricityData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedHours, setSelectedHours] = useState(3);
 
   async function loadElectricity() {
     try {
@@ -118,13 +167,13 @@ export default function ElectricityWidget() {
     }));
   }, [electricity]);
 
-  const cheapestThreeHours = useMemo(() => {
+  const cheapestPeriod = useMemo(() => {
     if (!electricity) {
       return null;
     }
 
-    return findCheapestThreeHourPeriod(electricity.prices);
-  }, [electricity]);
+    return findCheapestPeriod(electricity.prices, selectedHours);
+  }, [electricity, selectedHours]);
 
   if (isLoading) {
     return (
@@ -190,6 +239,20 @@ export default function ElectricityWidget() {
     ? formatHour(electricity.currentPrice.time_start)
     : undefined;
 
+  const currentPriceLabel = electricity.currentPrice
+    ? getPriceLabel(
+        electricity.currentPrice.SEK_per_kWh,
+        electricity.minPrice.SEK_per_kWh,
+        electricity.maxPrice.SEK_per_kWh
+      )
+    : null;
+
+  const smartAdvice = getSmartAdvice(
+    electricity.prices,
+    electricity.currentPrice,
+    electricity.averagePrice
+  );
+
   return (
     <Card
       title="Elpris"
@@ -215,6 +278,12 @@ export default function ElectricityWidget() {
           <p className="mt-1 text-xs text-slate-400">
             per kWh · {electricity.area}
           </p>
+
+          {currentPriceLabel && (
+            <p className="mt-2 text-sm font-semibold text-blue-200">
+              {currentPriceLabel}
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
@@ -372,38 +441,66 @@ export default function ElectricityWidget() {
         </div>
       </div>
 
-      {/* Rekommendation */}
-      {cheapestThreeHours && (
-        <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-4">
+      {/* Smart slutsats */}
+      <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
+        <p className="text-sm font-medium text-blue-200">Bra att veta</p>
+        <p className="mt-1 font-semibold leading-6 text-white">
+          {smartAdvice}
+        </p>
+      </div>
+
+      {/* Billigaste sammanhängande period */}
+      <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-emerald-400/15 p-2 text-emerald-200">
               <TrendingDown size={21} />
             </div>
-
             <div>
               <p className="text-sm font-medium text-emerald-200">
-                Rekommenderad tid
+                Billigaste perioden
               </p>
+              {cheapestPeriod && (
+                <>
+                  <p className="mt-1 text-2xl font-bold text-white">
+                    {formatHour(cheapestPeriod.startTime)}–
+                    {formatHour(cheapestPeriod.endTime)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Genomsnittligt pris:{" "}
+                    <span className="font-semibold text-white">
+                      {formatPrice(cheapestPeriod.averagePrice)} kr/kWh
+                    </span>
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
 
-              <p className="mt-1 text-lg font-semibold text-white">
-                Billigast sammanhängande tre timmar
-              </p>
-
-              <p className="mt-2 text-2xl font-bold text-white">
-                {formatHour(cheapestThreeHours.startTime)}–
-                {formatHour(cheapestThreeHours.endTime)}
-              </p>
-
-              <p className="mt-1 text-sm text-slate-300">
-                Genomsnittligt pris:{" "}
-                <span className="font-semibold text-white">
-                  {formatPrice(cheapestThreeHours.averagePrice)} kr/kWh
-                </span>
-              </p>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+              Välj längd
+            </p>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map((hours) => (
+                <button
+                  key={hours}
+                  type="button"
+                  onClick={() => setSelectedHours(hours)}
+                  className={[
+                    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                    selectedHours === hours
+                      ? "border-emerald-300/30 bg-emerald-300/15 text-emerald-100"
+                      : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  {hours} h
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      )}
+      </div>
     </Card>
   );
 }

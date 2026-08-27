@@ -9,6 +9,7 @@ import FamilyTimelineWidget from "@/components/dashboard/FamilyTimelineWidget";
 import FunDashboard from "@/components/dashboard/FunDashboard";
 import FunOtherDashboard from "@/components/dashboard/FunOtherDashboard";
 import FunTabs from "@/components/dashboard/FunTabs";
+import GothenburgDashboard from "@/components/dashboard/GothenburgDashboard";
 import PersonOverview from "@/components/dashboard/PersonOverview";
 import PersonalCenter from "@/components/dashboard/PersonalCenter";
 import PollenWidget from "@/components/dashboard/PollenWidget";
@@ -100,7 +101,7 @@ export default function Dashboard() {
 
   return (
     <div className="w-full min-w-0">
-      <DashboardTabs startContent={startContent} weatherContent={weatherContent} familyContent={familyContent} funContent={funContent} />
+      <DashboardTabs startContent={startContent} weatherContent={weatherContent} familyContent={familyContent} gothenburgContent={<GothenburgDashboard />} funContent={funContent} />
     </div>
   );
 }
