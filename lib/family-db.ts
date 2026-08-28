@@ -159,3 +159,100 @@ export async function getFamilyMembersFromDatabase(): Promise<
     })
   );
 }
+
+export async function updateFamilyMemberInDatabase(
+  member: FamilyMember
+): Promise<void> {
+  const memberResult =
+    await supabase
+      .from("family_members")
+      .update({
+        display_name:
+          member.displayName.trim(),
+        emoji:
+          member.emoji.trim(),
+        birthday:
+          member.birthday,
+        accent:
+          member.accent,
+      })
+      .eq(
+        "id",
+        member.id
+      );
+
+  if (memberResult.error) {
+    console.error(
+      "Kunde inte uppdatera familjemedlem:",
+      memberResult.error
+    );
+
+    throw new Error(
+      "Kunde inte spara familjemedlemmen."
+    );
+  }
+
+  const deleteResult =
+    await supabase
+      .from("family_name_days")
+      .delete()
+      .eq(
+        "member_id",
+        member.id
+      );
+
+  if (deleteResult.error) {
+    console.error(
+      "Kunde inte ersätta namnsdagar:",
+      deleteResult.error
+    );
+
+    throw new Error(
+      "Personuppgifterna sparades, men namnsdagarna kunde inte uppdateras."
+    );
+  }
+
+  const nameDayRows =
+    member.names
+      .filter(
+        (item) =>
+          item.name.trim() &&
+          item.nameDay
+      )
+      .map(
+        (item) => ({
+          member_id:
+            member.id,
+          name:
+            item.name.trim(),
+          month:
+            item.nameDay!.month,
+          day:
+            item.nameDay!.day,
+        })
+      );
+
+  if (
+    nameDayRows.length > 0
+  ) {
+    const insertResult =
+      await supabase
+        .from(
+          "family_name_days"
+        )
+        .insert(
+          nameDayRows
+        );
+
+    if (insertResult.error) {
+      console.error(
+        "Kunde inte spara namnsdagar:",
+        insertResult.error
+      );
+
+      throw new Error(
+        "Personuppgifterna sparades, men namnsdagarna kunde inte sparas."
+      );
+    }
+  }
+}
