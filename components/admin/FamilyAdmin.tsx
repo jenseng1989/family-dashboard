@@ -63,6 +63,84 @@ const EMPTY_NEW_MEMBER: NewMemberForm = {
   memberType: "child",
 };
 
+const ACCENT_OPTIONS: {
+  value: AccentColor;
+  label: string;
+  colorClass: string;
+  selectedClass: string;
+}[] = [
+  {
+    value: "blue",
+    label: "Blå",
+    colorClass: "bg-blue-500",
+    selectedClass:
+      "border-blue-400 bg-blue-400/15 ring-blue-400/30",
+  },
+  {
+    value: "rose",
+    label: "Rosa",
+    colorClass: "bg-rose-500",
+    selectedClass:
+      "border-rose-400 bg-rose-400/15 ring-rose-400/30",
+  },
+  {
+    value: "amber",
+    label: "Bärnsten",
+    colorClass: "bg-amber-500",
+    selectedClass:
+      "border-amber-400 bg-amber-400/15 ring-amber-400/30",
+  },
+  {
+    value: "green",
+    label: "Grön",
+    colorClass: "bg-green-500",
+    selectedClass:
+      "border-green-400 bg-green-400/15 ring-green-400/30",
+  },
+  {
+    value: "purple",
+    label: "Lila",
+    colorClass: "bg-purple-500",
+    selectedClass:
+      "border-purple-400 bg-purple-400/15 ring-purple-400/30",
+  },
+  {
+    value: "cyan",
+    label: "Turkos",
+    colorClass: "bg-cyan-500",
+    selectedClass:
+      "border-cyan-400 bg-cyan-400/15 ring-cyan-400/30",
+  },
+  {
+    value: "orange",
+    label: "Orange",
+    colorClass: "bg-orange-500",
+    selectedClass:
+      "border-orange-400 bg-orange-400/15 ring-orange-400/30",
+  },
+  {
+    value: "red",
+    label: "Röd",
+    colorClass: "bg-red-500",
+    selectedClass:
+      "border-red-400 bg-red-400/15 ring-red-400/30",
+  },
+  {
+    value: "indigo",
+    label: "Indigo",
+    colorClass: "bg-indigo-500",
+    selectedClass:
+      "border-indigo-400 bg-indigo-400/15 ring-indigo-400/30",
+  },
+  {
+    value: "lime",
+    label: "Lime",
+    colorClass: "bg-lime-500",
+    selectedClass:
+      "border-lime-400 bg-lime-400/15 ring-lime-400/30",
+  },
+];
+
 function parseLocalDate(
   dateString: string
 ): Date {
@@ -123,6 +201,20 @@ function accentLabel(
       return "Rosa";
     case "amber":
       return "Bärnsten";
+    case "green":
+      return "Grön";
+    case "purple":
+      return "Lila";
+    case "cyan":
+      return "Turkos";
+    case "orange":
+      return "Orange";
+    case "red":
+      return "Röd";
+    case "indigo":
+      return "Indigo";
+    case "lime":
+      return "Lime";
   }
 }
 
@@ -136,6 +228,20 @@ function accentClasses(
       return "border-rose-300/15 bg-rose-400/[0.06] text-rose-200";
     case "amber":
       return "border-amber-300/15 bg-amber-400/[0.06] text-amber-200";
+    case "green":
+      return "border-green-300/15 bg-green-400/[0.06] text-green-200";
+    case "purple":
+      return "border-purple-300/15 bg-purple-400/[0.06] text-purple-200";
+    case "cyan":
+      return "border-cyan-300/15 bg-cyan-400/[0.06] text-cyan-200";
+    case "orange":
+      return "border-orange-300/15 bg-orange-400/[0.06] text-orange-200";
+    case "red":
+      return "border-red-300/15 bg-red-400/[0.06] text-red-200";
+    case "indigo":
+      return "border-indigo-300/15 bg-indigo-400/[0.06] text-indigo-200";
+    case "lime":
+      return "border-lime-300/15 bg-lime-400/[0.06] text-lime-200";
   }
 }
 
@@ -1446,42 +1552,48 @@ export default function FamilyAdmin() {
                 </label>
               </div>
 
-              <label className="mt-4 block">
+              <div className="mt-4">
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Accentfärg
                 </span>
 
-                <select
-                  value={
-                    newMember.accent
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    setNewMember(
-                      {
-                        ...newMember,
-                        accent:
-                          event.target
-                            .value as AccentColor,
-                      }
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none"
-                >
-                  <option value="blue">
-                    Blå
-                  </option>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {ACCENT_OPTIONS.map(
+                    (option) => {
+                      const selected =
+                        newMember.accent ===
+                        option.value;
 
-                  <option value="rose">
-                    Rosa
-                  </option>
+                      return (
+                        <button
+                          key={
+                            option.value
+                          }
+                          type="button"
+                          onClick={() =>
+                            setNewMember({
+                              ...newMember,
+                              accent:
+                                option.value,
+                            })
+                          }
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                            selected
+                              ? `${option.selectedClass} text-white ring-2`
+                              : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <span
+                            className={`h-4 w-4 shrink-0 rounded-full ${option.colorClass}`}
+                          />
 
-                  <option value="amber">
-                    Bärnsten
-                  </option>
-                </select>
-              </label>
+                          {option.label}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
 
               <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-5">
                 <button
@@ -1598,7 +1710,7 @@ export default function FamilyAdmin() {
                 </label>
               </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label>
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Typ
@@ -1652,41 +1764,49 @@ export default function FamilyAdmin() {
                     className="mt-2 w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-white outline-none"
                   />
                 </label>
+              </div>
 
-                <label>
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    Accentfärg
-                  </span>
+              <div className="mt-4">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Accentfärg
+                </span>
 
-                  <select
-                    value={
-                      editingMember.accent
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {ACCENT_OPTIONS.map(
+                    (option) => {
+                      const selected =
+                        editingMember.accent ===
+                        option.value;
+
+                      return (
+                        <button
+                          key={
+                            option.value
+                          }
+                          type="button"
+                          onClick={() =>
+                            setEditingMember({
+                              ...editingMember,
+                              accent:
+                                option.value,
+                            })
+                          }
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                            selected
+                              ? `${option.selectedClass} text-white ring-2`
+                              : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <span
+                            className={`h-4 w-4 shrink-0 rounded-full ${option.colorClass}`}
+                          />
+
+                          {option.label}
+                        </button>
+                      );
                     }
-                    onChange={(
-                      event
-                    ) =>
-                      setEditingMember({
-                        ...editingMember,
-                        accent:
-                          event.target
-                            .value as AccentColor,
-                      })
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-white outline-none"
-                  >
-                    <option value="blue">
-                      Blå
-                    </option>
-
-                    <option value="rose">
-                      Rosa
-                    </option>
-
-                    <option value="amber">
-                      Bärnsten
-                    </option>
-                  </select>
-                </label>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 border-t border-white/10 pt-5">

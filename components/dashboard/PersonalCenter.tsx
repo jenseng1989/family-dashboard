@@ -19,26 +19,25 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import Card from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
-type PersonalCenterOwner = "jens" | "lenita";
-
 type PersonalCenterProps = {
-  owner: PersonalCenterOwner;
+  memberId: string;
   displayName: string;
 };
 
 type PersonalTodo = {
   id: string;
-  owner: PersonalCenterOwner;
+  member_id: string;
   task: string;
   created_at: string;
 };
 
 type PersonalNote = {
   id: string;
-  owner: PersonalCenterOwner;
+  member_id: string;
   title: string;
   content: string;
   created_at: string;
@@ -64,56 +63,71 @@ function formatDate(dateString: string): string {
 }
 
 export default function PersonalCenter({
-  owner,
+  memberId,
   displayName,
 }: PersonalCenterProps) {
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [notes, setNotes] = useState<PersonalNote[]>([]);
 
   const [newTask, setNewTask] = useState("");
+
   const [noteForm, setNoteForm] =
     useState<NoteForm>(EMPTY_NOTE_FORM);
 
-  const [editingNoteId, setEditingNoteId] = useState<
-    string | null
-  >(null);
+  const [editingNoteId, setEditingNoteId] =
+    useState<string | null>(null);
+
   const [editNoteForm, setEditNoteForm] =
     useState<NoteForm>(EMPTY_NOTE_FORM);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isSavingTodo, setIsSavingTodo] = useState(false);
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [deletingTodoId, setDeletingTodoId] = useState<
-    string | null
-  >(null);
-  const [deletingNoteId, setDeletingNoteId] = useState<
-    string | null
-  >(null);
-  const [errorMessage, setErrorMessage] = useState<
-    string | null
-  >(null);
+
+  const [isSavingTodo, setIsSavingTodo] =
+    useState(false);
+
+  const [isSavingNote, setIsSavingNote] =
+    useState(false);
+
+  const [deletingTodoId, setDeletingTodoId] =
+    useState<string | null>(null);
+
+  const [deletingNoteId, setDeletingNoteId] =
+    useState<string | null>(null);
+
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
   const loadPersonalCenter = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [todosResult, notesResult] = await Promise.all([
-      supabase
-        .from("personal_todos")
-        .select("id, owner, task, created_at")
-        .eq("owner", owner)
-        .order("created_at", { ascending: true }),
+    const [todosResult, notesResult] =
+      await Promise.all([
+        supabase
+          .from("personal_todos")
+          .select(
+            "id, member_id, task, created_at"
+          )
+          .eq("member_id", memberId)
+          .order("created_at", {
+            ascending: true,
+          }),
 
-      supabase
-        .from("personal_notes")
-        .select(
-          "id, owner, title, content, created_at, updated_at"
-        )
-        .eq("owner", owner)
-        .order("updated_at", { ascending: false }),
-    ]);
+        supabase
+          .from("personal_notes")
+          .select(
+            "id, member_id, title, content, created_at, updated_at"
+          )
+          .eq("member_id", memberId)
+          .order("updated_at", {
+            ascending: false,
+          }),
+      ]);
 
-    if (todosResult.error || notesResult.error) {
+    if (
+      todosResult.error ||
+      notesResult.error
+    ) {
       console.error(
         "Kunde inte hämta personligt center:",
         todosResult.error ?? notesResult.error
@@ -122,14 +136,23 @@ export default function PersonalCenter({
       setErrorMessage(
         `Kunde inte hämta innehållet för ${displayName}.`
       );
+
       setIsLoading(false);
       return;
     }
 
-    setTodos((todosResult.data ?? []) as PersonalTodo[]);
-    setNotes((notesResult.data ?? []) as PersonalNote[]);
+    setTodos(
+      (todosResult.data ??
+        []) as unknown as PersonalTodo[]
+    );
+
+    setNotes(
+      (notesResult.data ??
+        []) as unknown as PersonalNote[]
+    );
+
     setIsLoading(false);
-  }, [displayName, owner]);
+  }, [displayName, memberId]);
 
   useEffect(() => {
     void loadPersonalCenter();
@@ -149,14 +172,17 @@ export default function PersonalCenter({
     setIsSavingTodo(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("personal_todos")
-      .insert({
-        owner,
-        task: trimmedTask,
-      })
-      .select("id, owner, task, created_at")
-      .single();
+    const { data, error } =
+      await supabase
+        .from("personal_todos")
+        .insert({
+          member_id: memberId,
+          task: trimmedTask,
+        })
+        .select(
+          "id, member_id, task, created_at"
+        )
+        .single();
 
     if (error) {
       console.error(
@@ -164,14 +190,17 @@ export default function PersonalCenter({
         error
       );
 
-      setErrorMessage("Uppgiften kunde inte sparas.");
+      setErrorMessage(
+        "Uppgiften kunde inte sparas."
+      );
+
       setIsSavingTodo(false);
       return;
     }
 
     setTodos((currentTodos) => [
       ...currentTodos,
-      data as PersonalTodo,
+      data as unknown as PersonalTodo,
     ]);
 
     setNewTask("");
@@ -186,11 +215,12 @@ export default function PersonalCenter({
     setDeletingTodoId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("personal_todos")
-      .delete()
-      .eq("id", id)
-      .eq("owner", owner);
+    const { error } =
+      await supabase
+        .from("personal_todos")
+        .delete()
+        .eq("id", id)
+        .eq("member_id", memberId);
 
     if (error) {
       console.error(
@@ -198,13 +228,18 @@ export default function PersonalCenter({
         error
       );
 
-      setErrorMessage("Uppgiften kunde inte tas bort.");
+      setErrorMessage(
+        "Uppgiften kunde inte tas bort."
+      );
+
       setDeletingTodoId(null);
       return;
     }
 
     setTodos((currentTodos) =>
-      currentTodos.filter((todo) => todo.id !== id)
+      currentTodos.filter(
+        (todo) => todo.id !== id
+      )
     );
 
     setDeletingTodoId(null);
@@ -215,8 +250,11 @@ export default function PersonalCenter({
   ) {
     event.preventDefault();
 
-    const trimmedTitle = noteForm.title.trim();
-    const trimmedContent = noteForm.content.trim();
+    const trimmedTitle =
+      noteForm.title.trim();
+
+    const trimmedContent =
+      noteForm.content.trim();
 
     if (
       !trimmedTitle ||
@@ -229,17 +267,18 @@ export default function PersonalCenter({
     setIsSavingNote(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("personal_notes")
-      .insert({
-        owner,
-        title: trimmedTitle,
-        content: trimmedContent,
-      })
-      .select(
-        "id, owner, title, content, created_at, updated_at"
-      )
-      .single();
+    const { data, error } =
+      await supabase
+        .from("personal_notes")
+        .insert({
+          member_id: memberId,
+          title: trimmedTitle,
+          content: trimmedContent,
+        })
+        .select(
+          "id, member_id, title, content, created_at, updated_at"
+        )
+        .single();
 
     if (error) {
       console.error(
@@ -250,12 +289,13 @@ export default function PersonalCenter({
       setErrorMessage(
         "Anteckningen kunde inte sparas."
       );
+
       setIsSavingNote(false);
       return;
     }
 
     setNotes((currentNotes) => [
-      data as PersonalNote,
+      data as unknown as PersonalNote,
       ...currentNotes,
     ]);
 
@@ -263,12 +303,16 @@ export default function PersonalCenter({
     setIsSavingNote(false);
   }
 
-  function startEditingNote(note: PersonalNote) {
+  function startEditingNote(
+    note: PersonalNote
+  ) {
     setEditingNoteId(note.id);
+
     setEditNoteForm({
       title: note.title,
       content: note.content,
     });
+
     setErrorMessage(null);
   }
 
@@ -290,34 +334,40 @@ export default function PersonalCenter({
       return;
     }
 
-    const trimmedTitle = editNoteForm.title.trim();
-    const trimmedContent = editNoteForm.content.trim();
+    const trimmedTitle =
+      editNoteForm.title.trim();
+
+    const trimmedContent =
+      editNoteForm.content.trim();
 
     if (!trimmedTitle || !trimmedContent) {
       setErrorMessage(
         "Anteckningen behöver både rubrik och innehåll."
       );
+
       return;
     }
 
     setIsSavingNote(true);
     setErrorMessage(null);
 
-    const updatedAt = new Date().toISOString();
+    const updatedAt =
+      new Date().toISOString();
 
-    const { data, error } = await supabase
-      .from("personal_notes")
-      .update({
-        title: trimmedTitle,
-        content: trimmedContent,
-        updated_at: updatedAt,
-      })
-      .eq("id", editingNoteId)
-      .eq("owner", owner)
-      .select(
-        "id, owner, title, content, created_at, updated_at"
-      )
-      .single();
+    const { data, error } =
+      await supabase
+        .from("personal_notes")
+        .update({
+          title: trimmedTitle,
+          content: trimmedContent,
+          updated_at: updatedAt,
+        })
+        .eq("id", editingNoteId)
+        .eq("member_id", memberId)
+        .select(
+          "id, member_id, title, content, created_at, updated_at"
+        )
+        .single();
 
     if (error) {
       console.error(
@@ -328,6 +378,7 @@ export default function PersonalCenter({
       setErrorMessage(
         "Ändringarna kunde inte sparas."
       );
+
       setIsSavingNote(false);
       return;
     }
@@ -336,13 +387,17 @@ export default function PersonalCenter({
       currentNotes
         .map((note) =>
           note.id === editingNoteId
-            ? (data as PersonalNote)
+            ? (data as unknown as PersonalNote)
             : note
         )
         .sort(
           (firstNote, secondNote) =>
-            new Date(secondNote.updated_at).getTime() -
-            new Date(firstNote.updated_at).getTime()
+            new Date(
+              secondNote.updated_at
+            ).getTime() -
+            new Date(
+              firstNote.updated_at
+            ).getTime()
         )
     );
 
@@ -359,11 +414,12 @@ export default function PersonalCenter({
     setDeletingNoteId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("personal_notes")
-      .delete()
-      .eq("id", id)
-      .eq("owner", owner);
+    const { error } =
+      await supabase
+        .from("personal_notes")
+        .delete()
+        .eq("id", id)
+        .eq("member_id", memberId);
 
     if (error) {
       console.error(
@@ -374,12 +430,15 @@ export default function PersonalCenter({
       setErrorMessage(
         "Anteckningen kunde inte tas bort."
       );
+
       setDeletingNoteId(null);
       return;
     }
 
     setNotes((currentNotes) =>
-      currentNotes.filter((note) => note.id !== id)
+      currentNotes.filter(
+        (note) => note.id !== id
+      )
     );
 
     if (editingNoteId === id) {
@@ -415,7 +474,9 @@ export default function PersonalCenter({
 
           <button
             type="button"
-            onClick={() => void loadPersonalCenter()}
+            onClick={() =>
+              void loadPersonalCenter()
+            }
             className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-300/20 bg-red-300/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-300/20"
           >
             <RefreshCw size={16} />
@@ -447,7 +508,10 @@ export default function PersonalCenter({
 
             <button
               type="submit"
-              disabled={!newTask.trim() || isSavingTodo}
+              disabled={
+                !newTask.trim() ||
+                isSavingTodo
+              }
               className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isSavingTodo ? (
@@ -459,7 +523,9 @@ export default function PersonalCenter({
                 <Plus size={19} />
               )}
 
-              {isSavingTodo ? "Sparar…" : "Lägg till"}
+              {isSavingTodo
+                ? "Sparar…"
+                : "Lägg till"}
             </button>
           </div>
         </form>
@@ -496,7 +562,9 @@ export default function PersonalCenter({
                         <input
                           type="checkbox"
                           checked={isDeleting}
-                          disabled={deletingTodoId !== null}
+                          disabled={
+                            deletingTodoId !== null
+                          }
                           onChange={() =>
                             void completeTodo(todo.id)
                           }
@@ -529,8 +597,8 @@ export default function PersonalCenter({
         </div>
 
         <p className="mt-4 text-xs text-slate-500">
-          Bocka i en uppgift när den är klar. Då tas
-          den bort från listan.
+          Bocka i en uppgift när den är klar. Då tas den
+          bort från listan.
         </p>
       </Card>
 
@@ -628,6 +696,7 @@ export default function PersonalCenter({
               {notes.map((note) => {
                 const isEditing =
                   editingNoteId === note.id;
+
                 const isDeleting =
                   deletingNoteId === note.id;
 
@@ -645,7 +714,8 @@ export default function PersonalCenter({
                           setEditNoteForm(
                             (currentForm) => ({
                               ...currentForm,
-                              title: event.target.value,
+                              title:
+                                event.target.value,
                             })
                           )
                         }
@@ -659,7 +729,8 @@ export default function PersonalCenter({
                           setEditNoteForm(
                             (currentForm) => ({
                               ...currentForm,
-                              content: event.target.value,
+                              content:
+                                event.target.value,
                             })
                           )
                         }
@@ -717,7 +788,9 @@ export default function PersonalCenter({
 
                         <p className="mt-1 text-xs text-slate-500">
                           Uppdaterad{" "}
-                          {formatDate(note.updated_at)}
+                          {formatDate(
+                            note.updated_at
+                          )}
                         </p>
                       </div>
 
@@ -738,7 +811,9 @@ export default function PersonalCenter({
                           onClick={() =>
                             void deleteNote(note.id)
                           }
-                          disabled={deletingNoteId !== null}
+                          disabled={
+                            deletingNoteId !== null
+                          }
                           aria-label={`Ta bort ${note.title}`}
                           className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:bg-red-400/10 hover:text-red-300 disabled:opacity-50"
                         >

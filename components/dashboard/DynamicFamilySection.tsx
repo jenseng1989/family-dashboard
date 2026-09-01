@@ -27,42 +27,6 @@ type DynamicFamilySectionProps = {
   sharedContent: React.ReactNode;
 };
 
-type PersonalCenterOwner =
-  | "jens"
-  | "lenita";
-
-function slugify(
-  value: string
-): string {
-  return value
-    .trim()
-    .toLocaleLowerCase(
-      "sv-SE"
-    )
-    .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .replace(
-      /[^a-z0-9]+/g,
-      "-"
-    )
-    .replace(
-      /^-+|-+$/g,
-      ""
-    );
-}
-
-function isPersonalCenterOwner(
-  value: string
-): value is PersonalCenterOwner {
-  return (
-    value === "jens" ||
-    value === "lenita"
-  );
-}
-
 function ChildContent({
   member,
 }: {
@@ -200,49 +164,8 @@ function AdultContent({
 }: {
   member: FamilyMember;
 }) {
-  const slug =
-    slugify(
-      member.displayName
-    ) || member.id;
-
-  const widgets = [
-    {
-      id: `${slug}-overview`,
-      className:
-        "col-span-12 min-w-0",
-      content: (
-        <PersonOverview
-          displayName={
-            member.displayName
-          }
-          fallbackEmoji={
-            member.emoji ||
-            "👤"
-          }
-        />
-      ),
-    },
-  ];
-
-  if (
-    isPersonalCenterOwner(
-      slug
-    )
-  ) {
-    widgets.push({
-      id: `${slug}-personal-center`,
-      className:
-        "col-span-12 min-w-0",
-      content: (
-        <PersonalCenter
-          owner={slug}
-          displayName={
-            member.displayName
-          }
-        />
-      ),
-    });
-  }
+  const adultPrefix =
+    `adult-${member.id}`;
 
   return (
     <OrderedWidgetGroup
@@ -250,9 +173,39 @@ function AdultContent({
       itemComponent={
         WidgetGate
       }
-      widgets={
-        widgets
-      }
+      widgets={[
+        {
+          id: `${adultPrefix}-overview`,
+          className:
+            "col-span-12 min-w-0",
+          content: (
+            <PersonOverview
+              displayName={
+                member.displayName
+              }
+              fallbackEmoji={
+                member.emoji ||
+                "👤"
+              }
+            />
+          ),
+        },
+        {
+          id: `${adultPrefix}-personal-center`,
+          className:
+            "col-span-12 min-w-0",
+          content: (
+            <PersonalCenter
+              memberId={
+                member.id
+              }
+              displayName={
+                member.displayName
+              }
+            />
+          ),
+        },
+      ]}
     />
   );
 }

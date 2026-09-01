@@ -1,7 +1,14 @@
 export type AccentColor =
   | "blue"
   | "rose"
-  | "amber";
+  | "amber"
+  | "green"
+  | "purple"
+  | "cyan"
+  | "orange"
+  | "red"
+  | "indigo"
+  | "lime";
 
 export type MemberType =
   | "adult"

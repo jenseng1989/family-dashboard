@@ -42,7 +42,14 @@ function isAccentColor(
   return (
     value === "blue" ||
     value === "rose" ||
-    value === "amber"
+    value === "amber" ||
+    value === "green" ||
+    value === "purple" ||
+    value === "cyan" ||
+    value === "orange" ||
+    value === "red" ||
+    value === "indigo" ||
+    value === "lime"
   );
 }
 
@@ -130,12 +137,14 @@ export async function getFamilyMembersFromDatabase(): Promise<
 
   const memberRows =
     (
-      membersResult.data ?? []
+      membersResult.data ??
+      []
     ) as unknown as FamilyMemberRow[];
 
   const nameDayRows =
     (
-      nameDaysResult.data ?? []
+      nameDaysResult.data ??
+      []
     ) as unknown as FamilyNameDayRow[];
 
   const nameDaysByMember =
@@ -171,8 +180,7 @@ export async function getFamilyMembersFromDatabase(): Promise<
       id: row.id,
       displayName:
         row.display_name,
-      emoji:
-        row.emoji,
+      emoji: row.emoji,
       birthday:
         row.birthday,
       accent:
@@ -341,9 +349,11 @@ export async function updateFamilyMemberInDatabase(
           name:
             item.name.trim(),
           month:
-            item.nameDay!.month,
+            item.nameDay!
+              .month,
           day:
-            item.nameDay!.day,
+            item.nameDay!
+              .day,
         })
       );
 
