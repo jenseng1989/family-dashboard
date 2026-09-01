@@ -258,11 +258,11 @@ export default function FamilyManagerWidget() {
 
     const memberRows =
       (membersResult.data ??
-        []) as FamilyMemberRow[];
+        []) as unknown as FamilyMemberRow[];
 
     const nameDayRows =
       (nameDaysResult.data ??
-        []) as NameDayRow[];
+        []) as unknown as NameDayRow[];
 
     setMembers(
       memberRows.map((member) => ({

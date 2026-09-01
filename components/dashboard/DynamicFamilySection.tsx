@@ -27,6 +27,10 @@ type DynamicFamilySectionProps = {
   sharedContent: React.ReactNode;
 };
 
+type PersonalCenterOwner =
+  | "jens"
+  | "lenita";
+
 function slugify(
   value: string
 ): string {
@@ -48,6 +52,15 @@ function slugify(
       /^-+|-+$/g,
       ""
     );
+}
+
+function isPersonalCenterOwner(
+  value: string
+): value is PersonalCenterOwner {
+  return (
+    value === "jens" ||
+    value === "lenita"
+  );
 }
 
 function ChildContent({
@@ -192,43 +205,54 @@ function AdultContent({
       member.displayName
     ) || member.id;
 
+  const widgets = [
+    {
+      id: `${slug}-overview`,
+      className:
+        "col-span-12 min-w-0",
+      content: (
+        <PersonOverview
+          displayName={
+            member.displayName
+          }
+          fallbackEmoji={
+            member.emoji ||
+            "👤"
+          }
+        />
+      ),
+    },
+  ];
+
+  if (
+    isPersonalCenterOwner(
+      slug
+    )
+  ) {
+    widgets.push({
+      id: `${slug}-personal-center`,
+      className:
+        "col-span-12 min-w-0",
+      content: (
+        <PersonalCenter
+          owner={slug}
+          displayName={
+            member.displayName
+          }
+        />
+      ),
+    });
+  }
+
   return (
     <OrderedWidgetGroup
       wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
       itemComponent={
         WidgetGate
       }
-      widgets={[
-        {
-          id: `${slug}-overview`,
-          className:
-            "col-span-12 min-w-0",
-          content: (
-            <PersonOverview
-              displayName={
-                member.displayName
-              }
-              fallbackEmoji={
-                member.emoji ||
-                "👤"
-              }
-            />
-          ),
-        },
-        {
-          id: `${slug}-personal-center`,
-          className:
-            "col-span-12 min-w-0",
-          content: (
-            <PersonalCenter
-              owner={slug}
-              displayName={
-                member.displayName
-              }
-            />
-          ),
-        },
-      ]}
+      widgets={
+        widgets
+      }
     />
   );
 }

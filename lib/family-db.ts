@@ -72,18 +72,7 @@ export async function getFamilyMembersFromDatabase(): Promise<
     supabase
       .from("family_members")
       .select(
-        [
-          "id",
-          "display_name",
-          "emoji",
-          "birthday",
-          "accent",
-          "member_type",
-          "sort_order",
-          "is_active",
-          "created_at",
-          "updated_at",
-        ].join(", ")
+        "id, display_name, emoji, birthday, accent, member_type, sort_order, is_active, created_at, updated_at"
       )
       .order(
         "sort_order",
@@ -142,12 +131,12 @@ export async function getFamilyMembersFromDatabase(): Promise<
   const memberRows =
     (
       membersResult.data ?? []
-    ) as FamilyMemberRow[];
+    ) as unknown as FamilyMemberRow[];
 
   const nameDayRows =
     (
       nameDaysResult.data ?? []
-    ) as FamilyNameDayRow[];
+    ) as unknown as FamilyNameDayRow[];
 
   const nameDaysByMember =
     new Map<
