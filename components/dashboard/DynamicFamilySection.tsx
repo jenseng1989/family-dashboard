@@ -351,6 +351,13 @@ export default function DynamicFamilySection({
         id: member.id,
         label:
           member.displayName,
+
+        // FamilyTabs kräver fortfarande emoji
+        // i sin PersonTab-typ. En tom sträng
+        // gör att TypeScript blir nöjd utan
+        // att någon emoji visas i fliken.
+        emoji: "",
+
         memberType:
           member.memberType,
         content: (
