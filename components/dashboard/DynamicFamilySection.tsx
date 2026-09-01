@@ -351,12 +351,6 @@ export default function DynamicFamilySection({
         id: member.id,
         label:
           member.displayName,
-        emoji:
-          member.emoji ||
-          (member.memberType ===
-          "child"
-            ? "👶"
-            : "👤"),
         memberType:
           member.memberType,
         content: (
