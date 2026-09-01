@@ -3,6 +3,7 @@ import type {
   AccentColor,
   FamilyMember,
   FamilyName,
+  MemberType,
 } from "@/lib/family";
 
 type FamilyMemberRow = {
@@ -11,7 +12,11 @@ type FamilyMemberRow = {
   emoji: string;
   birthday: string;
   accent: string;
+  member_type: string;
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 };
 
 type FamilyNameDayRow = {
@@ -21,6 +26,14 @@ type FamilyNameDayRow = {
   month: number;
   day: number;
   created_at: string;
+};
+
+export type CreateFamilyMemberInput = {
+  displayName: string;
+  emoji: string;
+  birthday: string;
+  accent: AccentColor;
+  memberType: MemberType;
 };
 
 function isAccentColor(
@@ -41,6 +54,14 @@ function normalizeAccent(
     : "blue";
 }
 
+function normalizeMemberType(
+  value: string
+): MemberType {
+  return value === "child"
+    ? "child"
+    : "adult";
+}
+
 export async function getFamilyMembersFromDatabase(): Promise<
   FamilyMember[]
 > {
@@ -51,7 +72,24 @@ export async function getFamilyMembersFromDatabase(): Promise<
     supabase
       .from("family_members")
       .select(
-        "id, display_name, emoji, birthday, accent, created_at"
+        [
+          "id",
+          "display_name",
+          "emoji",
+          "birthday",
+          "accent",
+          "member_type",
+          "sort_order",
+          "is_active",
+          "created_at",
+          "updated_at",
+        ].join(", ")
+      )
+      .order(
+        "sort_order",
+        {
+          ascending: true,
+        }
       )
       .order(
         "created_at",
@@ -156,8 +194,88 @@ export async function getFamilyMembersFromDatabase(): Promise<
         nameDaysByMember.get(
           row.id
         ) ?? [],
+      memberType:
+        normalizeMemberType(
+          row.member_type
+        ),
+      sortOrder:
+        row.sort_order,
+      isActive:
+        row.is_active,
     })
   );
+}
+
+export async function createFamilyMemberInDatabase(
+  input: CreateFamilyMemberInput
+): Promise<string> {
+  const membersResult =
+    await supabase
+      .from("family_members")
+      .select("sort_order")
+      .order(
+        "sort_order",
+        {
+          ascending: false,
+        }
+      )
+      .limit(1);
+
+  if (membersResult.error) {
+    console.error(
+      "Kunde inte läsa sorteringsordningen:",
+      membersResult.error
+    );
+
+    throw new Error(
+      "Kunde inte bestämma personens placering."
+    );
+  }
+
+  const highestSortOrder =
+    membersResult.data?.[0]
+      ?.sort_order ?? 0;
+
+  const nextSortOrder =
+    highestSortOrder + 10;
+
+  const insertResult =
+    await supabase
+      .from("family_members")
+      .insert({
+        display_name:
+          input.displayName.trim(),
+        emoji:
+          input.emoji.trim() ||
+          (input.memberType ===
+          "child"
+            ? "👶"
+            : "👤"),
+        birthday:
+          input.birthday,
+        accent:
+          input.accent,
+        member_type:
+          input.memberType,
+        sort_order:
+          nextSortOrder,
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+  if (insertResult.error) {
+    console.error(
+      "Kunde inte skapa familjemedlem:",
+      insertResult.error
+    );
+
+    throw new Error(
+      "Kunde inte lägga till familjemedlemmen."
+    );
+  }
+
+  return insertResult.data.id;
 }
 
 export async function updateFamilyMemberInDatabase(
@@ -175,6 +293,14 @@ export async function updateFamilyMemberInDatabase(
           member.birthday,
         accent:
           member.accent,
+        member_type:
+          member.memberType,
+        sort_order:
+          member.sortOrder,
+        is_active:
+          member.isActive,
+        updated_at:
+          new Date().toISOString(),
       })
       .eq(
         "id",
@@ -244,7 +370,9 @@ export async function updateFamilyMemberInDatabase(
           nameDayRows
         );
 
-    if (insertResult.error) {
+    if (
+      insertResult.error
+    ) {
       console.error(
         "Kunde inte spara namnsdagar:",
         insertResult.error
@@ -254,5 +382,149 @@ export async function updateFamilyMemberInDatabase(
         "Personuppgifterna sparades, men namnsdagarna kunde inte sparas."
       );
     }
+  }
+}
+
+export async function setFamilyMemberActiveInDatabase(
+  memberId: string,
+  isActive: boolean
+): Promise<void> {
+  const result =
+    await supabase
+      .from("family_members")
+      .update({
+        is_active:
+          isActive,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "id",
+        memberId
+      );
+
+  if (result.error) {
+    console.error(
+      "Kunde inte ändra familjemedlemmens status:",
+      result.error
+    );
+
+    throw new Error(
+      isActive
+        ? "Personen kunde inte återaktiveras."
+        : "Personen kunde inte arkiveras."
+    );
+  }
+}
+
+export async function deleteFamilyMemberFromDatabase(
+  memberId: string
+): Promise<void> {
+  const result =
+    await supabase
+      .from("family_members")
+      .delete()
+      .eq(
+        "id",
+        memberId
+      )
+      .eq(
+        "is_active",
+        false
+      )
+      .select("id");
+
+  if (result.error) {
+    console.error(
+      "Kunde inte radera familjemedlem:",
+      result.error
+    );
+
+    throw new Error(
+      "Personen kunde inte tas bort permanent."
+    );
+  }
+
+  if (
+    !result.data ||
+    result.data.length === 0
+  ) {
+    throw new Error(
+      "Personen kunde inte tas bort. Endast arkiverade personer får raderas permanent."
+    );
+  }
+}
+
+export async function moveFamilyMemberInDatabase(
+  member: FamilyMember,
+  target: FamilyMember
+): Promise<void> {
+  const memberOrder =
+    member.sortOrder;
+
+  const targetOrder =
+    target.sortOrder;
+
+  const firstResult =
+    await supabase
+      .from("family_members")
+      .update({
+        sort_order:
+          targetOrder,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "id",
+        member.id
+      );
+
+  if (firstResult.error) {
+    console.error(
+      "Kunde inte flytta familjemedlem:",
+      firstResult.error
+    );
+
+    throw new Error(
+      "Ordningen kunde inte ändras."
+    );
+  }
+
+  const secondResult =
+    await supabase
+      .from("family_members")
+      .update({
+        sort_order:
+          memberOrder,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "id",
+        target.id
+      );
+
+  if (secondResult.error) {
+    console.error(
+      "Kunde inte flytta den andra familjemedlemmen:",
+      secondResult.error
+    );
+
+    await supabase
+      .from("family_members")
+      .update({
+        sort_order:
+          memberOrder,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "id",
+        member.id
+      );
+
+    throw new Error(
+      "Ordningen kunde inte ändras."
+    );
   }
 }

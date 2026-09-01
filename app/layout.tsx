@@ -1,9 +1,16 @@
-import type { Metadata, Viewport } from "next";
+import type {
+  Metadata,
+  Viewport,
+} from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Family Dashboard",
-  description: "Familjens gemensamma dashboard",
+  title: {
+    default: "Family Dashboard",
+    template: "%s",
+  },
+  description:
+    "Familjens gemensamma dashboard",
   applicationName: "Family Dashboard",
   icons: {
     icon: "/icon-192.png",

@@ -13,8 +13,15 @@ import {
   Ruler,
   Waves,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Card from "@/components/ui/Card";
+import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
+import WidgetGate from "@/components/dashboard/WidgetGate";
 
 type EarthquakeItem = {
   id: string;
@@ -42,7 +49,11 @@ type EarthData = {
     magnitude6: number;
     largest: EarthquakeItem | null;
     latestM4: EarthquakeItem | null;
-    activityLevel: "Lugn" | "Normal" | "Förhöjd" | "Kraftig";
+    activityLevel:
+      | "Lugn"
+      | "Normal"
+      | "Förhöjd"
+      | "Kraftig";
   };
   earthquakes: EarthquakeItem[];
 };
@@ -66,12 +77,18 @@ type VolcanoData = {
   volcanoes: VolcanoItem[];
 };
 
-function formatMagnitude(value: number): string {
+function formatMagnitude(
+  value: number
+): string {
   return value.toFixed(1);
 }
 
-function formatEventTime(value: string): string {
-  return new Date(value).toLocaleString("sv-SE", {
+function formatEventTime(
+  value: string
+): string {
+  return new Date(
+    value
+  ).toLocaleString("sv-SE", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -79,51 +96,130 @@ function formatEventTime(value: string): string {
   });
 }
 
-function getTimeAgo(value: string): string {
-  const timestamp = new Date(value).getTime();
+function getTimeAgo(
+  value: string
+): string {
+  const timestamp =
+    new Date(value).getTime();
 
   if (!Number.isFinite(timestamp)) {
     return "Okänd tid";
   }
 
-  const minutes = Math.floor(Math.max(0, Date.now() - timestamp) / 60000);
+  const minutes = Math.floor(
+    Math.max(
+      0,
+      Date.now() - timestamp
+    ) / 60000
+  );
 
-  if (minutes < 1) return "Nyss";
-  if (minutes < 60) return `${minutes} min sedan`;
+  if (minutes < 1) {
+    return "Nyss";
+  }
 
-  const hours = Math.floor(minutes / 60);
-  return `${hours} ${hours === 1 ? "timme" : "timmar"} sedan`;
+  if (minutes < 60) {
+    return `${minutes} min sedan`;
+  }
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  return `${hours} ${
+    hours === 1
+      ? "timme"
+      : "timmar"
+  } sedan`;
 }
 
-function getMagnitudeClasses(magnitude: number): string {
-  if (magnitude >= 7) return "border-red-400/30 bg-red-400/15 text-red-200";
-  if (magnitude >= 6) return "border-orange-400/30 bg-orange-400/15 text-orange-200";
-  if (magnitude >= 5) return "border-amber-300/25 bg-amber-300/10 text-amber-200";
+function getMagnitudeClasses(
+  magnitude: number
+): string {
+  if (magnitude >= 7) {
+    return "border-red-400/30 bg-red-400/15 text-red-200";
+  }
+
+  if (magnitude >= 6) {
+    return "border-orange-400/30 bg-orange-400/15 text-orange-200";
+  }
+
+  if (magnitude >= 5) {
+    return "border-amber-300/25 bg-amber-300/10 text-amber-200";
+  }
+
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-200";
 }
 
-function getMagnitudeInterpretation(magnitude: number) {
-  if (magnitude >= 8) return { label: "Mycket stor jordbävning", description: "Ett mycket kraftigt skalv som kan orsaka omfattande skador över stora områden nära epicentrum." };
-  if (magnitude >= 7) return { label: "Stor jordbävning", description: "Ett kraftigt skalv som kan orsaka allvarliga skador, särskilt nära epicentrum." };
-  if (magnitude >= 6) return { label: "Kraftig jordbävning", description: "Kan orsaka betydande skakningar och lokala skador, beroende på bland annat djup och avstånd till bebyggelse." };
-  if (magnitude >= 5) return { label: "Stark jordbävning", description: "Känns ofta tydligt och kan orsaka mindre till måttliga skador nära epicentrum." };
-  return { label: "Måttlig jordbävning", description: "Kan kännas tydligt lokalt men orsakar vanligtvis begränsade skador." };
+function getMagnitudeInterpretation(
+  magnitude: number
+) {
+  if (magnitude >= 8) {
+    return {
+      label:
+        "Mycket stor jordbävning",
+      description:
+        "Ett mycket kraftigt skalv som kan orsaka omfattande skador över stora områden nära epicentrum.",
+    };
+  }
+
+  if (magnitude >= 7) {
+    return {
+      label: "Stor jordbävning",
+      description:
+        "Ett kraftigt skalv som kan orsaka allvarliga skador, särskilt nära epicentrum.",
+    };
+  }
+
+  if (magnitude >= 6) {
+    return {
+      label:
+        "Kraftig jordbävning",
+      description:
+        "Kan orsaka betydande skakningar och lokala skador, beroende på bland annat djup och avstånd till bebyggelse.",
+    };
+  }
+
+  if (magnitude >= 5) {
+    return {
+      label: "Stark jordbävning",
+      description:
+        "Känns ofta tydligt och kan orsaka mindre till måttliga skador nära epicentrum.",
+    };
+  }
+
+  return {
+    label: "Måttlig jordbävning",
+    description:
+      "Kan kännas tydligt lokalt men orsakar vanligtvis begränsade skador.",
+  };
 }
 
-function getDepthInterpretation(depthKm: number): string {
-  if (depthKm < 70) return "Grunt skalv";
-  if (depthKm < 300) return "Mellandjupt skalv";
+function getDepthInterpretation(
+  depthKm: number
+): string {
+  if (depthKm < 70) {
+    return "Grunt skalv";
+  }
+
+  if (depthKm < 300) {
+    return "Mellandjupt skalv";
+  }
+
   return "Djupt skalv";
 }
 
-function getActivityClasses(level: EarthData["summary"]["activityLevel"]): string {
+function getActivityClasses(
+  level: EarthData["summary"]["activityLevel"]
+): string {
   switch (level) {
     case "Kraftig":
       return "border-red-400/25 bg-red-400/10 text-red-200";
+
     case "Förhöjd":
       return "border-orange-400/25 bg-orange-400/10 text-orange-200";
+
     case "Normal":
       return "border-amber-300/20 bg-amber-300/10 text-amber-200";
+
     default:
       return "border-emerald-300/20 bg-emerald-400/10 text-emerald-200";
   }
@@ -143,15 +239,32 @@ function SummaryStat({
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+
+      <p className="mt-2 text-2xl font-bold text-white">
+        {value}
+      </p>
+
+      <p className="mt-1 text-xs leading-5 text-slate-500">
+        {description}
+      </p>
     </div>
   );
 }
 
-function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
-  const interpretation = getMagnitudeInterpretation(earthquake.magnitude);
-  const depthInterpretation = getDepthInterpretation(earthquake.depthKm);
+function EarthquakeCard({
+  earthquake,
+}: {
+  earthquake: EarthquakeItem;
+}) {
+  const interpretation =
+    getMagnitudeInterpretation(
+      earthquake.magnitude
+    );
+
+  const depthInterpretation =
+    getDepthInterpretation(
+      earthquake.depthKm
+    );
 
   return (
     <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
@@ -159,18 +272,31 @@ function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
         <div
           className={[
             "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-black",
-            getMagnitudeClasses(earthquake.magnitude),
+            getMagnitudeClasses(
+              earthquake.magnitude
+            ),
           ].join(" ")}
         >
-          {formatMagnitude(earthquake.magnitude)}
+          {formatMagnitude(
+            earthquake.magnitude
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-semibold leading-6 text-white">{earthquake.place}</p>
+              <p className="font-semibold leading-6 text-white">
+                {earthquake.place}
+              </p>
+
               <p className="mt-1 text-xs text-slate-500">
-                {getTimeAgo(earthquake.time)} · {formatEventTime(earthquake.time)}
+                {getTimeAgo(
+                  earthquake.time
+                )}{" "}
+                ·{" "}
+                {formatEventTime(
+                  earthquake.time
+                )}
               </p>
             </div>
 
@@ -181,36 +307,78 @@ function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
               aria-label={`Öppna ${earthquake.place} hos USGS`}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:border-emerald-300/20 hover:bg-emerald-400/10 hover:text-emerald-200"
             >
-              <ExternalLink size={16} />
+              <ExternalLink
+                size={16}
+              />
             </a>
           </div>
 
-          <div className={["mt-4 rounded-xl border px-3 py-3", getMagnitudeClasses(earthquake.magnitude)].join(" ")}>
-            <p className="text-sm font-bold">{interpretation.label}</p>
-            <p className="mt-1 text-xs leading-5 opacity-80">{interpretation.description}</p>
+          <div
+            className={[
+              "mt-4 rounded-xl border px-3 py-3",
+              getMagnitudeClasses(
+                earthquake.magnitude
+              ),
+            ].join(" ")}
+          >
+            <p className="text-sm font-bold">
+              {
+                interpretation.label
+              }
+            </p>
+
+            <p className="mt-1 text-xs leading-5 opacity-80">
+              {
+                interpretation.description
+              }
+            </p>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <Ruler size={14} className="shrink-0 text-emerald-300" />
-              {depthInterpretation} · {Math.round(earthquake.depthKm)} km
+              <Ruler
+                size={14}
+                className="shrink-0 text-emerald-300"
+              />
+              {depthInterpretation} ·{" "}
+              {Math.round(
+                earthquake.depthKm
+              )}{" "}
+              km
             </div>
 
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <MapPin size={14} className="shrink-0 text-emerald-300" />
-              {earthquake.latitude.toFixed(1)}°, {earthquake.longitude.toFixed(1)}°
+              <MapPin
+                size={14}
+                className="shrink-0 text-emerald-300"
+              />
+              {earthquake.latitude.toFixed(
+                1
+              )}
+              °,{" "}
+              {earthquake.longitude.toFixed(
+                1
+              )}
+              °
             </div>
 
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <Activity size={14} className="shrink-0 text-emerald-300" />
-              Signifikans {earthquake.significance ?? "–"}
+              <Activity
+                size={14}
+                className="shrink-0 text-emerald-300"
+              />
+              Signifikans{" "}
+              {earthquake.significance ??
+                "–"}
             </div>
           </div>
 
           {earthquake.tsunami && (
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-300/20 bg-blue-400/10 px-3 py-2 text-xs font-semibold text-blue-200">
               <Waves size={15} />
-              USGS-flödet har tsunami-flagga för händelsen
+              USGS-flödet har
+              tsunami-flagga för
+              händelsen
             </div>
           )}
         </div>
@@ -220,20 +388,39 @@ function EarthquakeCard({ earthquake }: { earthquake: EarthquakeItem }) {
 }
 
 export default function FunOtherDashboard() {
-  const [data, setData] = useState<EarthData | null>(null);
+  const [data, setData] =
+    useState<EarthData | null>(
+      null
+    );
 
-  const [volcanoData, setVolcanoData] =
-    useState<VolcanoData | null>(null);
+  const [
+    volcanoData,
+    setVolcanoData,
+  ] = useState<VolcanoData | null>(
+    null
+  );
 
-  const [volcanoError, setVolcanoError] =
-    useState<string | null>(null);
+  const [
+    volcanoError,
+    setVolcanoError,
+  ] = useState<string | null>(
+    null
+  );
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState<string | null>(
+    null
+  );
 
-  const [clock, setClock] = useState(0);
+  const [clock, setClock] =
+    useState(0);
 
   const loadData =
     useCallback(async () => {
@@ -274,6 +461,7 @@ export default function FunOtherDashboard() {
           );
         } else {
           setVolcanoData(null);
+
           setVolcanoError(
             "Vulkandata kunde inte hämtas just nu."
           );
@@ -295,32 +483,50 @@ export default function FunOtherDashboard() {
   useEffect(() => {
     void loadData();
 
-    const intervalId = window.setInterval(() => {
-      void loadData();
-    }, 5 * 60 * 1000);
+    const intervalId =
+      window.setInterval(() => {
+        void loadData();
+      }, 5 * 60 * 1000);
 
-    return () => window.clearInterval(intervalId);
+    return () =>
+      window.clearInterval(
+        intervalId
+      );
   }, [loadData]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setClock((value) => value + 1);
-    }, 60 * 1000);
+    const intervalId =
+      window.setInterval(() => {
+        setClock(
+          (value) => value + 1
+        );
+      }, 60 * 1000);
 
-    return () => window.clearInterval(intervalId);
+    return () =>
+      window.clearInterval(
+        intervalId
+      );
   }, []);
 
-  const earthquakes = useMemo(
-    () => data?.earthquakes ?? [],
-    [data, clock]
-  );
+  const earthquakes =
+    useMemo(
+      () =>
+        data?.earthquakes ?? [],
+      [data, clock]
+    );
 
   if (isLoading) {
     return (
       <section className="relative overflow-hidden rounded-[2rem] border border-emerald-300/10 bg-gradient-to-br from-slate-950 via-emerald-950/45 to-slate-950 p-6 shadow-2xl shadow-emerald-950/20">
         <div className="flex min-h-[28rem] flex-col items-center justify-center gap-4">
-          <LoaderCircle size={38} className="animate-spin text-emerald-300" />
-          <p className="text-slate-300">Lyssnar på jordskorpan…</p>
+          <LoaderCircle
+            size={38}
+            className="animate-spin text-emerald-300"
+          />
+
+          <p className="text-slate-300">
+            Lyssnar på jordskorpan…
+          </p>
         </div>
       </section>
     );
@@ -330,12 +536,24 @@ export default function FunOtherDashboard() {
     return (
       <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-6">
         <div className="flex min-h-72 flex-col items-center justify-center text-center">
-          <AlertTriangle size={38} className="text-red-300" />
-          <p className="mt-4 font-semibold text-white">Jorden kunde inte laddas</p>
-          <p className="mt-2 text-sm text-slate-400">{errorMessage}</p>
+          <AlertTriangle
+            size={38}
+            className="text-red-300"
+          />
+
+          <p className="mt-4 font-semibold text-white">
+            Jorden kunde inte laddas
+          </p>
+
+          <p className="mt-2 text-sm text-slate-400">
+            {errorMessage}
+          </p>
+
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() =>
+              void loadData()
+            }
             className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white transition hover:bg-emerald-500"
           >
             <RefreshCw size={17} />
@@ -346,97 +564,16 @@ export default function FunOtherDashboard() {
     );
   }
 
-  return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-300/10 bg-gradient-to-br from-slate-950 via-emerald-950/40 to-slate-950 p-4 shadow-2xl shadow-emerald-950/20 sm:p-6">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-amber-500/[0.07] blur-3xl" />
-      </div>
-
-      <div className="relative z-10">
-        <header className="mb-5 rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                <Globe2 size={17} />
-                Earth Control
-              </p>
-              <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Jorden just nu</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Jordbävningar i realtid och pågående vulkanutbrott. Blixtar och oväder bygger vi in i nästa steg.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
-            >
-              <RefreshCw size={17} />
-              Uppdatera
-            </button>
-          </div>
-        </header>
-
-        <div className="mb-5 rounded-3xl border border-emerald-300/10 bg-gradient-to-br from-emerald-400/[0.08] via-slate-950/30 to-amber-400/[0.05] p-5">
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                  Global seismisk aktivitet · senaste 24 timmarna
-                </p>
-                <h3 className="mt-2 text-2xl font-bold text-white">
-                  {data.summary.largest
-                    ? `Starkast: M ${formatMagnitude(data.summary.largest.magnitude)}`
-                    : "Inga skalv tillgängliga"}
-                </h3>
-                {data.summary.largest && (
-                  <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                    {data.summary.largest.place}
-                  </p>
-                )}
-              </div>
-
-              <span
-                className={[
-                  "rounded-full border px-3 py-1.5 text-sm font-semibold",
-                  getActivityClasses(data.summary.activityLevel),
-                ].join(" ")}
-              >
-                {data.summary.activityLevel} aktivitet
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <SummaryStat label="M4+" value={String(data.summary.magnitude4)} description="Skalv med magnitud 4,0 eller högre." />
-              <SummaryStat label="M5+" value={String(data.summary.magnitude5)} description="Skalv med magnitud 5,0 eller högre." />
-              <SummaryStat label="M6+" value={String(data.summary.magnitude6)} description="Kraftiga skalv senaste dygnet." />
-              <SummaryStat label="Alla registrerade" value={String(data.summary.totalEarthquakes)} description="Händelser i USGS globala dygnsflöde." />
-            </div>
-
-            {data.summary.latestM4 && (
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                <Clock3 size={19} className="mt-0.5 shrink-0 text-emerald-300" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Senaste M4+</p>
-                  <p className="mt-1 font-semibold text-white">
-                    M {formatMagnitude(data.summary.latestM4.magnitude)} · {data.summary.latestM4.place}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{getTimeAgo(data.summary.latestM4.time)}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
+  const earthWidgets = [
+    {
+      id: "earth-volcanoes",
+      className:
+        "col-span-12 min-w-0",
+      content: (
         <Card
           title="Pågående vulkanutbrott"
-          icon={
-            <Flame
-              size={28}
-            />
-          }
-          className="mb-5 border-orange-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+          icon={<Flame size={28} />}
+          className="h-full border-orange-300/15 bg-slate-950/55 hover:bg-slate-950/70"
           storageKey="earth-volcanoes"
         >
           {volcanoError ||
@@ -450,7 +587,9 @@ export default function FunOtherDashboard() {
 
                 <div>
                   <p className="font-semibold text-amber-100">
-                    Vulkandata är tillfälligt otillgänglig
+                    Vulkandata är
+                    tillfälligt
+                    otillgänglig
                   </p>
 
                   <p className="mt-1 text-sm text-amber-100/70">
@@ -470,11 +609,23 @@ export default function FunOtherDashboard() {
                     </p>
 
                     <p className="mt-1 text-3xl font-bold text-white">
-                      {volcanoData.total}
+                      {
+                        volcanoData.total
+                      }
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Smithsonian använder "continuing eruption" för utbrott med åtminstone intermittent eruptiv aktivitet utan ett uppehåll på tre månader eller mer.
+                      Smithsonian
+                      använder
+                      "continuing
+                      eruption" för
+                      utbrott med
+                      åtminstone
+                      intermittent
+                      eruptiv aktivitet
+                      utan ett uppehåll
+                      på tre månader
+                      eller mer.
                     </p>
                   </div>
 
@@ -496,7 +647,9 @@ export default function FunOtherDashboard() {
                 {volcanoData.statusDate && (
                   <p className="mt-3 text-xs text-slate-500">
                     Liststatus:{" "}
-                    {volcanoData.statusDate}
+                    {
+                      volcanoData.statusDate
+                    }
                   </p>
                 )}
               </div>
@@ -519,17 +672,23 @@ export default function FunOtherDashboard() {
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
                               <p className="font-semibold text-white">
-                                {volcano.name}
+                                {
+                                  volcano.name
+                                }
                               </p>
 
                               <p className="mt-1 text-xs text-slate-500">
-                                {volcano.country} ·{" "}
+                                {
+                                  volcano.country
+                                }{" "}
+                                ·{" "}
                                 {new Intl.NumberFormat(
                                   "sv-SE"
                                 ).format(
                                   volcano.distanceKm
                                 )}{" "}
-                                km från Göteborg
+                                km från
+                                Göteborg
                               </p>
                             </div>
 
@@ -555,23 +714,30 @@ export default function FunOtherDashboard() {
                               </p>
 
                               <p className="mt-1 text-xs font-semibold text-slate-300">
-                                {volcano.eruptionStart}
+                                {
+                                  volcano.eruptionStart
+                                }
                               </p>
                             </div>
 
                             <div className="rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                                Senast känd aktivitet
+                                Senast känd
+                                aktivitet
                               </p>
 
                               <p className="mt-1 text-xs font-semibold text-slate-300">
-                                {volcano.lastKnownActivity}
+                                {
+                                  volcano.lastKnownActivity
+                                }
                               </p>
                             </div>
                           </div>
 
                           <p className="mt-3 text-xs text-orange-200/80">
-                            {volcano.eruptionType}
+                            {
+                              volcano.eruptionType
+                            }
                           </p>
                         </div>
                       </div>
@@ -581,51 +747,284 @@ export default function FunOtherDashboard() {
               </div>
 
               <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
-                Smithsonian påpekar att listan över fortsatta utbrott uppdateras i större omgångar, medan Weekly Volcanic Activity Report innehåller nyare aktivitet mellan databasuppdateringarna.
+                Smithsonian påpekar
+                att listan över
+                fortsatta utbrott
+                uppdateras i större
+                omgångar, medan Weekly
+                Volcanic Activity
+                Report innehåller
+                nyare aktivitet mellan
+                databasuppdateringarna.
               </p>
             </>
           )}
         </Card>
-
+      ),
+    },
+    {
+      id: "earth-earthquakes",
+      className:
+        "col-span-12 min-w-0",
+      content: (
         <Card
           title="Jordbävningar"
           icon={<Activity size={28} />}
-          className="border-emerald-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+          className="h-full border-emerald-300/15 bg-slate-950/55 hover:bg-slate-950/70"
           storageKey="earth-earthquakes"
         >
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-semibold text-white">De starkaste M4+ senaste 24 timmarna</p>
-              <p className="mt-1 text-xs text-slate-500">Listan sorteras efter magnitud och uppdateras automatiskt.</p>
+              <p className="font-semibold text-white">
+                De starkaste M4+
+                senaste 24 timmarna
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Listan sorteras efter
+                magnitud och uppdateras
+                automatiskt.
+              </p>
             </div>
-            <p className="text-xs text-slate-500">Källa: {data.source}</p>
+
+            <p className="text-xs text-slate-500">
+              Källa: {data.source}
+            </p>
           </div>
 
-          {earthquakes.length === 0 ? (
+          {earthquakes.length ===
+          0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-              <Globe2 size={32} className="mx-auto text-emerald-300" />
-              <p className="mt-3 font-semibold text-white">Inga M4+ hittades</p>
-              <p className="mt-1 text-sm text-slate-400">Det finns inga sådana händelser i det aktuella dygnsflödet.</p>
+              <Globe2
+                size={32}
+                className="mx-auto text-emerald-300"
+              />
+
+              <p className="mt-3 font-semibold text-white">
+                Inga M4+ hittades
+              </p>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Det finns inga sådana
+                händelser i det aktuella
+                dygnsflödet.
+              </p>
             </div>
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
-              {earthquakes.map((earthquake) => (
-                <EarthquakeCard key={earthquake.id} earthquake={earthquake} />
-              ))}
+              {earthquakes.map(
+                (earthquake) => (
+                  <EarthquakeCard
+                    key={
+                      earthquake.id
+                    }
+                    earthquake={
+                      earthquake
+                    }
+                  />
+                )
+              )}
             </div>
           )}
 
           <p className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-500">
-            USGS realtidsflöden uppdateras löpande. Magnitud, plats och djup kan justeras när fler mätningar analyseras.
+            USGS realtidsflöden
+            uppdateras löpande.
+            Magnitud, plats och djup
+            kan justeras när fler
+            mätningar analyseras.
           </p>
         </Card>
+      ),
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-300/10 bg-gradient-to-br from-slate-950 via-emerald-950/40 to-slate-950 p-4 shadow-2xl shadow-emerald-950/20 sm:p-6">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-amber-500/[0.07] blur-3xl" />
+      </div>
+
+      <div className="relative z-10">
+        <header className="mb-5 rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                <Globe2 size={17} />
+                Earth Control
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
+                Jorden just nu
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                Jordbävningar i
+                realtid och pågående
+                vulkanutbrott. Blixtar
+                och oväder bygger vi in
+                i nästa steg.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                void loadData()
+              }
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
+            >
+              <RefreshCw size={17} />
+              Uppdatera
+            </button>
+          </div>
+        </header>
+
+        {/* Fast informationsdel – administreras inte som widget */}
+        <div className="mb-5 rounded-3xl border border-emerald-300/10 bg-gradient-to-br from-emerald-400/[0.08] via-slate-950/30 to-amber-400/[0.05] p-5">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  Global seismisk
+                  aktivitet · senaste
+                  24 timmarna
+                </p>
+
+                <h3 className="mt-2 text-2xl font-bold text-white">
+                  {data.summary.largest
+                    ? `Starkast: M ${formatMagnitude(
+                        data.summary
+                          .largest
+                          .magnitude
+                      )}`
+                    : "Inga skalv tillgängliga"}
+                </h3>
+
+                {data.summary
+                  .largest && (
+                  <p className="mt-2 max-w-2xl text-sm text-slate-400">
+                    {
+                      data.summary
+                        .largest.place
+                    }
+                  </p>
+                )}
+              </div>
+
+              <span
+                className={[
+                  "rounded-full border px-3 py-1.5 text-sm font-semibold",
+                  getActivityClasses(
+                    data.summary
+                      .activityLevel
+                  ),
+                ].join(" ")}
+              >
+                {
+                  data.summary
+                    .activityLevel
+                }{" "}
+                aktivitet
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryStat
+                label="M4+"
+                value={String(
+                  data.summary
+                    .magnitude4
+                )}
+                description="Skalv med magnitud 4,0 eller högre."
+              />
+
+              <SummaryStat
+                label="M5+"
+                value={String(
+                  data.summary
+                    .magnitude5
+                )}
+                description="Skalv med magnitud 5,0 eller högre."
+              />
+
+              <SummaryStat
+                label="M6+"
+                value={String(
+                  data.summary
+                    .magnitude6
+                )}
+                description="Kraftiga skalv senaste dygnet."
+              />
+
+              <SummaryStat
+                label="Alla registrerade"
+                value={String(
+                  data.summary
+                    .totalEarthquakes
+                )}
+                description="Händelser i USGS globala dygnsflöde."
+              />
+            </div>
+
+            {data.summary.latestM4 && (
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+                <Clock3
+                  size={19}
+                  className="mt-0.5 shrink-0 text-emerald-300"
+                />
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+                    Senaste M4+
+                  </p>
+
+                  <p className="mt-1 font-semibold text-white">
+                    M{" "}
+                    {formatMagnitude(
+                      data.summary
+                        .latestM4
+                        .magnitude
+                    )}{" "}
+                    ·{" "}
+                    {
+                      data.summary
+                        .latestM4
+                        .place
+                    }
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {getTimeAgo(
+                      data.summary
+                        .latestM4
+                        .time
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <OrderedWidgetGroup
+          wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+          itemComponent={WidgetGate}
+          widgets={earthWidgets}
+        />
 
         <p className="mt-5 text-center text-xs text-slate-500">
           USGS-data senast genererad{" "}
-          {new Date(data.generatedAt).toLocaleTimeString("sv-SE", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {new Date(
+            data.generatedAt
+          ).toLocaleTimeString(
+            "sv-SE",
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          )}
         </p>
       </div>
     </section>

@@ -9,7 +9,6 @@ import {
   RefreshCw,
   Rocket,
   Satellite,
-  Sparkles,
   Telescope,
 } from "lucide-react";
 import {
@@ -18,10 +17,12 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
+import MeteorShowersWidget from "@/components/dashboard/MeteorShowersWidget";
+import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import SatellitesWidget from "@/components/dashboard/SatellitesWidget";
 import SolarActivityWidget from "@/components/dashboard/SolarActivityWidget";
 import TonightGothenburgWidget from "@/components/dashboard/TonightGothenburgWidget";
-import MeteorShowersWidget from "@/components/dashboard/MeteorShowersWidget";
+import WidgetGate from "@/components/dashboard/WidgetGate";
 
 type FunData = {
   generatedAt: string;
@@ -137,6 +138,7 @@ function IssWorldMap({
 }) {
   const markerLeft =
     ((longitude + 180) / 360) * 100;
+
   const markerTop =
     ((90 - latitude) / 180) * 100;
 
@@ -207,7 +209,6 @@ function IssWorldMap({
           fill="url(#oceanGradient)"
         />
 
-        {/* Longitudlinjer */}
         {Array.from({ length: 11 }).map(
           (_, index) => (
             <line
@@ -223,7 +224,6 @@ function IssWorldMap({
           )
         )}
 
-        {/* Latitudlinjer */}
         {Array.from({ length: 6 }).map(
           (_, index) => (
             <line
@@ -239,7 +239,6 @@ function IssWorldMap({
           )
         )}
 
-        {/* Nordamerika */}
         <path
           d="M85 105 L135 78 L195 72 L242 92 L270 118 L254 151 L222 171 L211 206 L176 219 L143 199 L112 164 L78 142 Z"
           fill="url(#landGradient)"
@@ -248,7 +247,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Centralamerika */}
         <path
           d="M207 205 L229 214 L245 232 L235 247 L214 239 L197 221 Z"
           fill="url(#landGradient)"
@@ -257,7 +255,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Sydamerika */}
         <path
           d="M257 243 L303 252 L329 284 L323 326 L301 365 L286 414 L260 438 L245 400 L230 354 L216 313 L228 276 Z"
           fill="url(#landGradient)"
@@ -266,7 +263,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Grönland */}
         <path
           d="M286 52 L332 38 L359 58 L345 96 L307 104 L282 79 Z"
           fill="#bbf7d0"
@@ -275,7 +271,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Europa */}
         <path
           d="M442 118 L470 101 L507 108 L525 128 L510 146 L479 151 L456 141 Z"
           fill="url(#landGradient)"
@@ -284,7 +279,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Afrika */}
         <path
           d="M462 157 L509 151 L548 181 L555 227 L533 280 L506 329 L475 312 L451 266 L438 212 Z"
           fill="url(#landGradient)"
@@ -293,7 +287,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Asien */}
         <path
           d="M515 103 L580 77 L666 73 L749 91 L805 123 L793 157 L744 169 L714 196 L667 181 L635 155 L589 157 L552 138 Z"
           fill="url(#landGradient)"
@@ -302,7 +295,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Indien */}
         <path
           d="M629 180 L661 188 L675 222 L653 260 L632 230 L615 201 Z"
           fill="url(#landGradient)"
@@ -311,7 +303,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Sydostasien */}
         <path
           d="M704 190 L742 201 L768 224 L751 245 L721 229 L692 209 Z"
           fill="url(#landGradient)"
@@ -320,7 +311,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Japan */}
         <path
           d="M812 142 L824 151 L817 177 L806 166 Z"
           fill="#4ade80"
@@ -328,7 +318,6 @@ function IssWorldMap({
           strokeWidth="2"
         />
 
-        {/* Australien */}
         <path
           d="M744 305 L797 286 L850 303 L872 337 L851 375 L800 388 L754 367 L728 336 Z"
           fill="url(#landGradient)"
@@ -337,7 +326,6 @@ function IssWorldMap({
           filter="url(#landShadow)"
         />
 
-        {/* Antarktis */}
         <path
           d="M110 462 L220 445 L342 451 L458 440 L573 450 L690 442 L815 454 L910 465 L878 486 L738 490 L590 485 L432 492 L284 485 L151 489 Z"
           fill="#dbeafe"
@@ -346,7 +334,6 @@ function IssWorldMap({
           opacity="0.9"
         />
 
-        {/* Ekvator */}
         <line
           x1="0"
           y1="250"
@@ -387,8 +374,10 @@ function IssWorldMap({
 export default function FunDashboard() {
   const [data, setData] =
     useState<FunData | null>(null);
+
   const [isLoading, setIsLoading] =
     useState(true);
+
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
@@ -397,9 +386,12 @@ export default function FunDashboard() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/fun", {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        "/api/fun",
+        {
+          cache: "no-store",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -481,272 +473,286 @@ export default function FunDashboard() {
       (planet) => planet.visible
     );
 
-  return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-violet-300/10 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 p-4 shadow-2xl shadow-violet-950/30 sm:p-6">
-      <div className="pointer-events-none absolute inset-0">
-        <span className="absolute left-[8%] top-[8%] h-1 w-1 rounded-full bg-white/70 shadow-[0_0_8px_white]" />
-        <span className="absolute left-[27%] top-[18%] h-1.5 w-1.5 rounded-full bg-violet-200/70 shadow-[0_0_10px_#c4b5fd]" />
-        <span className="absolute right-[16%] top-[12%] h-1 w-1 rounded-full bg-white/70 shadow-[0_0_8px_white]" />
-        <span className="absolute right-[35%] top-[38%] h-1 w-1 rounded-full bg-blue-200/70 shadow-[0_0_8px_#bfdbfe]" />
-        <span className="absolute bottom-[16%] left-[14%] h-1 w-1 rounded-full bg-white/60 shadow-[0_0_8px_white]" />
-        <span className="absolute bottom-[9%] right-[12%] h-1.5 w-1.5 rounded-full bg-fuchsia-200/60 shadow-[0_0_10px_#f5d0fe]" />
-
-        <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
-
-        <div className="absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10">
-        <header className="mb-6 rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  const spaceWidgets = [
+    {
+      id: "space-tonight",
+      className:
+        "col-span-12 min-w-0",
+      content: (
+        <TonightGothenburgWidget />
+      ),
+    },
+    {
+      id: "space-solar-activity",
+      className:
+        "col-span-12 min-w-0",
+      content: (
+        <SolarActivityWidget />
+      ),
+    },
+    {
+      id: "space-meteor-showers",
+      className:
+        "col-span-12 min-w-0",
+      content: (
+        <MeteorShowersWidget />
+      ),
+    },
+    {
+      id: "space-iss",
+      className:
+        "col-span-12 min-w-0 xl:col-span-6",
+      content: (
+        <Card
+          title="Var är ISS?"
+          icon={<Rocket size={28} />}
+          className="h-full border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+        >
+          {data.iss ? (
             <div>
-              <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-violet-300">
-                <Satellite size={17} />
-                Mission Control
-              </p>
+              <IssWorldMap
+                latitude={
+                  data.iss.latitude
+                }
+                longitude={
+                  data.iss.longitude
+                }
+              />
 
-              <h2 className="mt-2 text-3xl font-bold text-white">
-                Utforska rymden
-              </h2>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                ISS i realtid, solaktivitet, satellitpassager,
-                asteroider, månfaser och planetpositioner över
-                Göteborg.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void loadData()}
-              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-violet-300/20 bg-violet-400/10 px-4 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-400/20"
-            >
-              <RefreshCw size={17} />
-              Uppdatera
-            </button>
-          </div>
-        </header>
-
-        <div className="grid gap-5 xl:grid-cols-2">
-          <div className="xl:col-span-2">
-            <TonightGothenburgWidget />
-          </div>
-
-          <div className="xl:col-span-2">
-            <SolarActivityWidget />
-          </div>
-
-          <div className="xl:col-span-2">
-            <MeteorShowersWidget />
-          </div>
-
-          <Card
-            title="Var är ISS?"
-            icon={<Rocket size={28} />}
-            className="border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          >
-            {data.iss ? (
-              <div>
-                <IssWorldMap
-                  latitude={data.iss.latitude}
-                  longitude={data.iss.longitude}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatBox
+                  label="Position"
+                  value={`${data.iss.latitude}°, ${data.iss.longitude}°`}
                 />
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <StatBox
-                    label="Position"
-                    value={`${data.iss.latitude}°, ${data.iss.longitude}°`}
-                  />
+                <StatBox
+                  label="Höjd"
+                  value={`${formatNumber(
+                    data.iss.altitudeKm
+                  )} km`}
+                />
 
-                  <StatBox
-                    label="Höjd"
-                    value={`${formatNumber(
-                      data.iss.altitudeKm
-                    )} km`}
-                  />
+                <StatBox
+                  label="Hastighet"
+                  value={`${formatNumber(
+                    data.iss.velocityKmh
+                  )} km/h`}
+                />
 
-                  <StatBox
-                    label="Hastighet"
-                    value={`${formatNumber(
-                      data.iss.velocityKmh
-                    )} km/h`}
-                  />
-
-                  <StatBox
-                    label="Ljusförhållande"
-                    value={
-                      data.iss.visibility ===
-                      "daylight"
-                        ? "Dagsljus"
-                        : data.iss.visibility ===
-                            "eclipsed"
-                          ? "Mörker"
-                          : "Okänt"
-                    }
-                  />
-                </div>
-
-                <a
-                  href={data.iss.mapsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-400/10 px-4 py-2.5 text-sm font-semibold text-violet-200 transition hover:bg-violet-400/20"
-                >
-                  <Globe2 size={17} />
-                  Öppna positionen
-                  <ExternalLink size={15} />
-                </a>
+                <StatBox
+                  label="Ljusförhållande"
+                  value={
+                    data.iss.visibility ===
+                    "daylight"
+                      ? "Dagsljus"
+                      : data.iss
+                            .visibility ===
+                          "eclipsed"
+                        ? "Mörker"
+                        : "Okänt"
+                  }
+                />
               </div>
-            ) : (
-              <SpaceError
-                message={
-                  data.errors.iss ||
-                  "ISS-data saknas."
-                }
-              />
-            )}
-          </Card>
 
-          <Card
-            title="Asteroidvarning"
-            icon={<Orbit size={28} />}
-            className="border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          >
-            {data.asteroid?.nearest ? (
-              <div>
-                <div
+              <a
+                href={data.iss.mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-400/10 px-4 py-2.5 text-sm font-semibold text-violet-200 transition hover:bg-violet-400/20"
+              >
+                <Globe2 size={17} />
+                Öppna positionen
+                <ExternalLink
+                  size={15}
+                />
+              </a>
+            </div>
+          ) : (
+            <SpaceError
+              message={
+                data.errors.iss ||
+                "ISS-data saknas."
+              }
+            />
+          )}
+        </Card>
+      ),
+    },
+    {
+      id: "space-asteroids",
+      className:
+        "col-span-12 min-w-0 xl:col-span-6",
+      content: (
+        <Card
+          title="Asteroidvarning"
+          icon={<Orbit size={28} />}
+          className="h-full border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+        >
+          {data.asteroid?.nearest ? (
+            <div>
+              <div
+                className={[
+                  "rounded-2xl border p-5",
+                  data.asteroid
+                    .nearest.hazardous
+                    ? "border-amber-300/25 bg-amber-400/10"
+                    : "border-emerald-300/20 bg-emerald-400/10",
+                ].join(" ")}
+              >
+                <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
+                  Närmaste passage kommande
+                  sju dagar
+                </p>
+
+                <h3 className="mt-2 break-words text-2xl font-bold text-white">
+                  {
+                    data.asteroid
+                      .nearest.name
+                  }
+                </h3>
+
+                <p
                   className={[
-                    "rounded-2xl border p-5",
-                    data.asteroid.nearest
-                      .hazardous
-                      ? "border-amber-300/25 bg-amber-400/10"
-                      : "border-emerald-300/20 bg-emerald-400/10",
+                    "mt-3 text-sm font-semibold",
+                    data.asteroid
+                      .nearest.hazardous
+                      ? "text-amber-200"
+                      : "text-emerald-200",
                   ].join(" ")}
                 >
-                  <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
-                    Närmaste passage kommande sju dagar
-                  </p>
-
-                  <h3 className="mt-2 break-words text-2xl font-bold text-white">
-                    {data.asteroid.nearest.name}
-                  </h3>
-
-                  <p
-                    className={[
-                      "mt-3 text-sm font-semibold",
-                      data.asteroid.nearest
-                        .hazardous
-                        ? "text-amber-200"
-                        : "text-emerald-200",
-                    ].join(" ")}
-                  >
-                    {data.asteroid.nearest
-                      .hazardous
-                      ? "NASA klassar objektet som potentiellt riskfyllt"
-                      : "Ingen klassning som potentiellt riskfyllt objekt"}
-                  </p>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <StatBox
-                    label="Uppskattad diameter"
-                    value={`${formatNumber(
-                      data.asteroid.nearest
-                        .diameterMeters
-                    )} m`}
-                  />
-
-                  <StatBox
-                    label="Avstånd"
-                    value={`${data.asteroid.nearest.lunarDistances} månavstånd`}
-                  />
-
-                  <StatBox
-                    label="Hastighet"
-                    value={`${formatNumber(
-                      data.asteroid.nearest
-                        .velocityKmh
-                    )} km/h`}
-                  />
-
-                  <StatBox
-                    label="Passage"
-                    value={
-                      data.asteroid.nearest
-                        .approachDate
-                    }
-                  />
-                </div>
-
-                <p className="mt-4 text-xs text-slate-500">
-                  NASA listar totalt{" "}
-                  {data.asteroid.totalThisWeek} objekt
-                  under perioden.
+                  {data.asteroid
+                    .nearest.hazardous
+                    ? "NASA klassar objektet som potentiellt riskfyllt"
+                    : "Ingen klassning som potentiellt riskfyllt objekt"}
                 </p>
               </div>
-            ) : (
-              <SpaceError
-                message={
-                  data.errors.asteroid ||
-                  "Asteroiddata saknas."
-                }
-              />
-            )}
-          </Card>
 
-          <Card
-            title="Månfaser"
-            icon={
-              <span className="text-2xl">
-                {data.moon.emoji}
-              </span>
-            }
-            className="border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          >
-            <div className="flex flex-col items-center rounded-2xl border border-violet-300/10 bg-gradient-to-b from-violet-400/10 to-transparent p-6 text-center">
-              <div className="text-7xl drop-shadow-[0_0_24px_rgba(196,181,253,0.35)]">
-                {data.moon.emoji}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <StatBox
+                  label="Uppskattad diameter"
+                  value={`${formatNumber(
+                    data.asteroid
+                      .nearest
+                      .diameterMeters
+                  )} m`}
+                />
+
+                <StatBox
+                  label="Avstånd"
+                  value={`${data.asteroid.nearest.lunarDistances} månavstånd`}
+                />
+
+                <StatBox
+                  label="Hastighet"
+                  value={`${formatNumber(
+                    data.asteroid
+                      .nearest
+                      .velocityKmh
+                  )} km/h`}
+                />
+
+                <StatBox
+                  label="Passage"
+                  value={
+                    data.asteroid
+                      .nearest
+                      .approachDate
+                  }
+                />
               </div>
 
-              <h3 className="mt-4 text-2xl font-bold text-white">
-                {data.moon.phaseName}
-              </h3>
-
-              <p className="mt-2 text-violet-200">
-                {data.moon.illuminatedPercent}% belyst
+              <p className="mt-4 text-xs text-slate-500">
+                NASA listar totalt{" "}
+                {
+                  data.asteroid
+                    .totalThisWeek
+                }{" "}
+                objekt under perioden.
               </p>
             </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <StatBox
-                label="Nästa fullmåne"
-                value={formatSwedishDate(
-                  data.moon.nextFullMoon
-                )}
-              />
-
-              <StatBox
-                label="Nästa nymåne"
-                value={formatSwedishDate(
-                  data.moon.nextNewMoon
-                )}
-              />
+          ) : (
+            <SpaceError
+              message={
+                data.errors.asteroid ||
+                "Asteroiddata saknas."
+              }
+            />
+          )}
+        </Card>
+      ),
+    },
+    {
+      id: "space-moon",
+      className:
+        "col-span-12 min-w-0 xl:col-span-6",
+      content: (
+        <Card
+          title="Månfaser"
+          icon={
+            <span className="text-2xl">
+              {data.moon.emoji}
+            </span>
+          }
+          className="h-full border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+        >
+          <div className="flex flex-col items-center rounded-2xl border border-violet-300/10 bg-gradient-to-b from-violet-400/10 to-transparent p-6 text-center">
+            <div className="text-7xl drop-shadow-[0_0_24px_rgba(196,181,253,0.35)]">
+              {data.moon.emoji}
             </div>
-          </Card>
 
-          <Card
-            title="Planetguide"
-            icon={<Telescope size={28} />}
-            className="border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          >
-            <p className="mb-4 text-sm text-slate-400">
-              Planeternas läge just nu sett från
-              Göteborg. Positiv höjd betyder att
-              planeten är ovanför horisonten.
+            <h3 className="mt-4 text-2xl font-bold text-white">
+              {data.moon.phaseName}
+            </h3>
+
+            <p className="mt-2 text-violet-200">
+              {
+                data.moon
+                  .illuminatedPercent
+              }
+              % belyst
             </p>
+          </div>
 
-            <div className="grid gap-3">
-              {data.planets.map((planet) => (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <StatBox
+              label="Nästa fullmåne"
+              value={formatSwedishDate(
+                data.moon.nextFullMoon
+              )}
+            />
+
+            <StatBox
+              label="Nästa nymåne"
+              value={formatSwedishDate(
+                data.moon.nextNewMoon
+              )}
+            />
+          </div>
+        </Card>
+      ),
+    },
+    {
+      id: "space-planets",
+      className:
+        "col-span-12 min-w-0 xl:col-span-6",
+      content: (
+        <Card
+          title="Planetguide"
+          icon={
+            <Telescope size={28} />
+          }
+          className="h-full border-violet-300/15 bg-slate-950/55 hover:bg-slate-950/70"
+        >
+          <p className="mb-4 text-sm text-slate-400">
+            Planeternas läge just nu
+            sett från Göteborg. Positiv
+            höjd betyder att planeten är
+            ovanför horisonten.
+          </p>
+
+          <div className="grid gap-3">
+            {data.planets.map(
+              (planet) => (
                 <div
                   key={planet.name}
                   className={[
@@ -763,7 +769,9 @@ export default function FunDashboard() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold text-white">
-                        {planet.name}
+                        {
+                          planet.name
+                        }
                       </p>
 
                       <span
@@ -781,34 +789,105 @@ export default function FunDashboard() {
                     </div>
 
                     <p className="mt-1 text-sm text-slate-400">
-                      {planet.altitude}° höjd ·{" "}
-                      {planet.direction} · magnitud{" "}
-                      {planet.magnitude}
+                      {planet.altitude}°
+                      höjd ·{" "}
+                      {planet.direction} ·
+                      magnitud{" "}
+                      {
+                        planet.magnitude
+                      }
                     </p>
                   </div>
                 </div>
-              ))}
+              )
+            )}
+          </div>
+
+          <p className="mt-4 text-xs text-slate-500">
+            {visiblePlanets.length} av{" "}
+            {data.planets.length} planeter
+            är ovanför horisonten just nu.
+            Moln och dagsljus kan ändå göra
+            dem osynliga.
+          </p>
+        </Card>
+      ),
+    },
+    {
+      id: "space-satellites",
+      className:
+        "col-span-12 min-w-0",
+      content: <SatellitesWidget />,
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-violet-300/10 bg-gradient-to-br from-slate-950 via-indigo-950/80 to-slate-950 p-4 shadow-2xl shadow-violet-950/30 sm:p-6">
+      <div className="pointer-events-none absolute inset-0">
+        <span className="absolute left-[8%] top-[8%] h-1 w-1 rounded-full bg-white/70 shadow-[0_0_8px_white]" />
+        <span className="absolute left-[27%] top-[18%] h-1.5 w-1.5 rounded-full bg-violet-200/70 shadow-[0_0_10px_#c4b5fd]" />
+        <span className="absolute right-[16%] top-[12%] h-1 w-1 rounded-full bg-white/70 shadow-[0_0_8px_white]" />
+        <span className="absolute right-[35%] top-[38%] h-1 w-1 rounded-full bg-blue-200/70 shadow-[0_0_8px_#bfdbfe]" />
+        <span className="absolute bottom-[16%] left-[14%] h-1 w-1 rounded-full bg-white/60 shadow-[0_0_8px_white]" />
+        <span className="absolute bottom-[9%] right-[12%] h-1.5 w-1.5 rounded-full bg-fuchsia-200/60 shadow-[0_0_10px_#f5d0fe]" />
+
+        <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-28 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+      </div>
+
+      <div className="relative z-10">
+        <header className="mb-6 rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-violet-300">
+                <Satellite size={17} />
+                Mission Control
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold text-white">
+                Utforska rymden
+              </h2>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                ISS i realtid,
+                solaktivitet,
+                satellitpassager,
+                asteroider, månfaser och
+                planetpositioner över
+                Göteborg.
+              </p>
             </div>
 
-            <p className="mt-4 text-xs text-slate-500">
-              {visiblePlanets.length} av{" "}
-              {data.planets.length} planeter är
-              ovanför horisonten just nu. Moln och
-              dagsljus kan ändå göra dem osynliga.
-            </p>
-          </Card>
+            <button
+              type="button"
+              onClick={() =>
+                void loadData()
+              }
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-violet-300/20 bg-violet-400/10 px-4 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-400/20"
+            >
+              <RefreshCw size={17} />
+              Uppdatera
+            </button>
+          </div>
+        </header>
 
-          <SatellitesWidget />
-        </div>
+        <OrderedWidgetGroup
+          wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+          itemComponent={WidgetGate}
+          widgets={spaceWidgets}
+        />
 
         <p className="mt-5 text-center text-xs text-slate-500">
           Senast uppdaterad{" "}
           {new Date(
             data.generatedAt
-          ).toLocaleTimeString("sv-SE", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          ).toLocaleTimeString(
+            "sv-SE",
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          )}
         </p>
       </div>
     </section>

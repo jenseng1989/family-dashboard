@@ -1,32 +1,41 @@
 "use client";
 
 import {
+  Activity,
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
   Baby,
   Bath,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   CloudSun,
   Coins,
-  Compass,
   Gauge,
+  Globe2,
   Heart,
   Home,
   ListChecks,
   LoaderCircle,
   MapPin,
+  Moon,
+  Orbit,
   ReceiptText,
   Rocket,
+  Satellite,
   Scale,
   ShoppingCart,
   Smile,
   Sparkles,
+  Sun,
   Syringe,
+  Telescope,
+  TramFront,
   UserRound,
   Users,
   Wind,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
@@ -36,10 +45,13 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   getWidgetSettings,
-  setWidgetVisibility,
   setWidgetOrder,
+  setWidgetSize,
+  setWidgetVisibility,
+  type WidgetSize,
 } from "@/lib/widget-settings";
 
 type WidgetItem = {
@@ -47,7 +59,7 @@ type WidgetItem = {
   name: string;
   description: string;
   icon: LucideIcon;
-  size: "Helbredd" | "Halvbredd";
+  defaultSize: WidgetSize;
 };
 
 type WidgetGroup = {
@@ -57,106 +69,392 @@ type WidgetGroup = {
   widgets: WidgetItem[];
 };
 
+const COLLAPSED_STORAGE_KEY =
+  "admin-widgets-collapsed-groups";
+
 const groups: WidgetGroup[] = [
   {
     title: "Start · Vardagen",
-    subtitle: "Innehållet kommer från EverydayOverview.",
+    subtitle:
+      "Innehållet kommer från EverydayOverview.",
     icon: Home,
     widgets: [
-      { id: "everyday-overview", name: "Vardagsöversikt", description: "Samlad översikt för vardagen.", icon: Gauge, size: "Helbredd" },
+      {
+        id: "everyday-overview",
+        name: "Vardagsöversikt",
+        description:
+          "Samlad översikt för vardagen.",
+        icon: Gauge,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Start · Hemmet",
     icon: Home,
     widgets: [
-      { id: "vacation-plan", name: "Dagsplanering", description: "Planering av dagen.", icon: CalendarClock, size: "Helbredd" },
-      { id: "countdown", name: "Nedräkning", description: "Nedräkningar till kommande datum.", icon: CalendarClock, size: "Helbredd" },
-      { id: "electricity", name: "Elpris", description: "Aktuella elpriser och prisutveckling.", icon: Coins, size: "Helbredd" },
+      {
+        id: "vacation-plan",
+        name: "Dagsplanering",
+        description:
+          "Planering av dagen.",
+        icon: CalendarClock,
+        defaultSize: "full",
+      },
+      {
+        id: "countdown",
+        name: "Nedräkning",
+        description:
+          "Nedräkningar till kommande datum.",
+        icon: CalendarClock,
+        defaultSize: "full",
+      },
+      {
+        id: "electricity",
+        name: "Elpris",
+        description:
+          "Aktuella elpriser och prisutveckling.",
+        icon: Coins,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Start · Inköp",
     icon: ShoppingCart,
     widgets: [
-      { id: "shopping-list", name: "Inköpslista", description: "Familjens gemensamma inköpslista.", icon: ListChecks, size: "Halvbredd" },
-      { id: "expenses", name: "Utgifter", description: "Översikt och registrering av utgifter.", icon: ReceiptText, size: "Halvbredd" },
+      {
+        id: "shopping-list",
+        name: "Inköpslista",
+        description:
+          "Familjens gemensamma inköpslista.",
+        icon: ListChecks,
+        defaultSize: "half",
+      },
+      {
+        id: "expenses",
+        name: "Utgifter",
+        description:
+          "Översikt och registrering av utgifter.",
+        icon: ReceiptText,
+        defaultSize: "half",
+      },
     ],
   },
+
   {
     title: "Väder & bad",
     icon: CloudSun,
     widgets: [
-      { id: "weather", name: "Väder", description: "Aktuellt väder och prognos.", icon: CloudSun, size: "Halvbredd" },
-      { id: "bathing", name: "Badtemperaturer", description: "Badplatser och aktuella temperaturer.", icon: Bath, size: "Halvbredd" },
-      { id: "pollen", name: "Pollen", description: "Aktuellt pollenläge.", icon: Wind, size: "Helbredd" },
+      {
+        id: "weather",
+        name: "Väder",
+        description:
+          "Aktuellt väder och prognos.",
+        icon: CloudSun,
+        defaultSize: "half",
+      },
+      {
+        id: "bathing",
+        name: "Badtemperaturer",
+        description:
+          "Badplatser och aktuella temperaturer.",
+        icon: Bath,
+        defaultSize: "half",
+      },
+      {
+        id: "pollen",
+        name: "Pollen",
+        description:
+          "Aktuellt pollenläge.",
+        icon: Wind,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Familjen · Gemensam",
     icon: Users,
     widgets: [
-      { id: "family-timeline", name: "Family Timeline", description: "Familjens gemensamma tidslinje.", icon: Users, size: "Helbredd" },
+      {
+        id: "family-timeline",
+        name: "Family Timeline",
+        description:
+          "Familjens gemensamma tidslinje.",
+        icon: Users,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Familjen · Jens",
     icon: UserRound,
     widgets: [
-      { id: "jens-overview", name: "Översikt", description: "Personlig översikt för Jens.", icon: UserRound, size: "Helbredd" },
-      { id: "jens-personal-center", name: "Personligt center", description: "Jens personliga innehåll.", icon: Heart, size: "Helbredd" },
+      {
+        id: "jens-overview",
+        name: "Översikt",
+        description:
+          "Personlig översikt för Jens.",
+        icon: UserRound,
+        defaultSize: "full",
+      },
+      {
+        id: "jens-personal-center",
+        name: "Personligt center",
+        description:
+          "Jens personliga innehåll.",
+        icon: Heart,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Familjen · Lenita",
     icon: UserRound,
     widgets: [
-      { id: "lenita-overview", name: "Översikt", description: "Personlig översikt för Lenita.", icon: UserRound, size: "Helbredd" },
-      { id: "lenita-personal-center", name: "Personligt center", description: "Lenitas personliga innehåll.", icon: Heart, size: "Helbredd" },
+      {
+        id: "lenita-overview",
+        name: "Översikt",
+        description:
+          "Personlig översikt för Lenita.",
+        icon: UserRound,
+        defaultSize: "full",
+      },
+      {
+        id: "lenita-personal-center",
+        name: "Personligt center",
+        description:
+          "Lenitas personliga innehåll.",
+        icon: Heart,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Familjen · Signe",
     icon: Baby,
     widgets: [
-      { id: "signe-overview", name: "Översikt", description: "Signes sammanfattande översikt.", icon: Baby, size: "Helbredd" },
-      { id: "signe-growth", name: "Tillväxt", description: "Sammanfattning av Signes tillväxt.", icon: Sparkles, size: "Helbredd" },
-      { id: "signe-weight", name: "Viktutveckling", description: "Graf och utveckling för vikt.", icon: Scale, size: "Helbredd" },
-      { id: "signe-height", name: "Längdutveckling", description: "Graf och utveckling för längd.", icon: Gauge, size: "Helbredd" },
-      { id: "signe-teeth", name: "Tänder", description: "Registrering och översikt över tänder.", icon: Smile, size: "Helbredd" },
-      { id: "signe-vaccinations", name: "Vaccinationer", description: "Vaccinationsschema och registrering.", icon: Syringe, size: "Helbredd" },
-      { id: "signe-history", name: "Mäthistorik", description: "Historik över registrerade mätningar.", icon: ListChecks, size: "Helbredd" },
+      {
+        id: "signe-overview",
+        name: "Översikt",
+        description:
+          "Signes sammanfattande översikt.",
+        icon: Baby,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-growth",
+        name: "Tillväxt",
+        description:
+          "Sammanfattning av Signes tillväxt.",
+        icon: Sparkles,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-weight",
+        name: "Viktutveckling",
+        description:
+          "Graf och utveckling för vikt.",
+        icon: Scale,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-height",
+        name: "Längdutveckling",
+        description:
+          "Graf och utveckling för längd.",
+        icon: Gauge,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-teeth",
+        name: "Tänder",
+        description:
+          "Registrering och översikt över tänder.",
+        icon: Smile,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-vaccinations",
+        name: "Vaccinationer",
+        description:
+          "Vaccinationsschema och registrering.",
+        icon: Syringe,
+        defaultSize: "full",
+      },
+      {
+        id: "signe-history",
+        name: "Mäthistorik",
+        description:
+          "Historik över registrerade mätningar.",
+        icon: ListChecks,
+        defaultSize: "full",
+      },
     ],
   },
+
   {
     title: "Göteborg",
+    subtitle:
+      "Widgets på huvudfliken Göteborg.",
     icon: MapPin,
     widgets: [
-      { id: "gothenburg", name: "Göteborg", description: "Västtrafik, luftkvalitet och lokala funktioner.", icon: MapPin, size: "Helbredd" },
+      {
+        id: "gothenburg-vasttrafik",
+        name: "Västtrafik",
+        description:
+          "Avgångar och kollektivtrafik i Göteborg.",
+        icon: TramFront,
+        defaultSize: "half",
+      },
+      {
+        id: "gothenburg-air-quality",
+        name: "Luftkvalitet",
+        description:
+          "Aktuell luftkvalitet i Göteborg.",
+        icon: Wind,
+        defaultSize: "half",
+      },
     ],
   },
+
   {
-    title: "Utforska",
-    icon: Compass,
+    title: "Utforska · Rymden",
+    subtitle:
+      "Widgets på underfliken Rymden.",
+    icon: Rocket,
     widgets: [
-      { id: "fun-space", name: "Rymden", description: "Rymdrelaterat innehåll.", icon: Rocket, size: "Helbredd" },
-      { id: "fun-other", name: "Kul & fakta", description: "Dagens djur, historia och pappaskämt.", icon: Sparkles, size: "Helbredd" },
-      { id: "fun-sky", name: "Himlen", description: "Information om himlen och astronomi.", icon: CloudSun, size: "Helbredd" },
+      {
+        id: "space-tonight",
+        name: "Ikväll i Göteborg",
+        description:
+          "Astronomisk översikt för kvällen i Göteborg.",
+        icon: Telescope,
+        defaultSize: "full",
+      },
+      {
+        id: "space-solar-activity",
+        name: "Solaktivitet",
+        description:
+          "Aktuell solaktivitet och rymdväder.",
+        icon: Sun,
+        defaultSize: "full",
+      },
+      {
+        id: "space-meteor-showers",
+        name: "Meteorregn",
+        description:
+          "Aktuella och kommande meteorregn.",
+        icon: Sparkles,
+        defaultSize: "full",
+      },
+      {
+        id: "space-iss",
+        name: "Var är ISS?",
+        description:
+          "ISS-position och information i realtid.",
+        icon: Rocket,
+        defaultSize: "half",
+      },
+      {
+        id: "space-asteroids",
+        name: "Asteroidvarning",
+        description:
+          "Närgångna asteroider och aktuell riskinformation.",
+        icon: Orbit,
+        defaultSize: "half",
+      },
+      {
+        id: "space-moon",
+        name: "Månfaser",
+        description:
+          "Aktuell månfas och kommande full- och nymåne.",
+        icon: Moon,
+        defaultSize: "half",
+      },
+      {
+        id: "space-planets",
+        name: "Planetguide",
+        description:
+          "Synliga planeter och deras positioner.",
+        icon: Telescope,
+        defaultSize: "half",
+      },
+      {
+        id: "space-satellites",
+        name: "Satelliter",
+        description:
+          "Satellitpassager över Göteborg.",
+        icon: Satellite,
+        defaultSize: "full",
+      },
     ],
+  },
+
+  {
+    title: "Utforska · Jorden",
+    subtitle:
+      "Widgets på underfliken Jorden.",
+    icon: Globe2,
+    widgets: [
+      {
+        id: "earth-volcanoes",
+        name: "Pågående vulkanutbrott",
+        description:
+          "Aktuella pågående vulkanutbrott från Smithsonian.",
+        icon: Activity,
+        defaultSize: "full",
+      },
+      {
+        id: "earth-earthquakes",
+        name: "Jordbävningar",
+        description:
+          "De starkaste jordbävningarna under det senaste dygnet.",
+        icon: Globe2,
+        defaultSize: "full",
+      },
+    ],
+  },
+
+  {
+    title: "Utforska · Himlen",
+    subtitle:
+      "Underfliken finns, men innehåller inga widgets ännu.",
+    icon: CloudSun,
+    widgets: [],
   },
 ];
 
 export default function WidgetsAdmin() {
   const [visibility, setVisibility] =
     useState<Record<string, boolean>>({});
+
+  const [sizes, setSizes] =
+    useState<Record<string, WidgetSize>>({});
+
   const [isLoading, setIsLoading] =
     useState(true);
+
   const [savingId, setSavingId] =
     useState<string | null>(null);
+
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
+
   const [orderedGroups, setOrderedGroups] =
     useState<WidgetGroup[]>(groups);
+
+  const [collapsedGroups, setCollapsedGroups] =
+    useState<Record<string, boolean>>({});
+
+  const [collapseStateLoaded, setCollapseStateLoaded] =
+    useState(false);
 
   const totalWidgets = useMemo(
     () =>
@@ -168,100 +466,178 @@ export default function WidgetsAdmin() {
     []
   );
 
-  const loadSettings = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const allCollapsed = useMemo(
+    () =>
+      groups.every(
+        (group) =>
+          collapsedGroups[group.title] === true
+      ),
+    [collapsedGroups]
+  );
+
+  useEffect(() => {
+    try {
+      const storedValue = window.localStorage.getItem(
+        COLLAPSED_STORAGE_KEY
+      );
+
+      if (storedValue) {
+        const parsed = JSON.parse(
+          storedValue
+        ) as Record<string, boolean>;
+
+        setCollapsedGroups(parsed);
+      }
+    } catch (error) {
+      console.error(
+        "Kunde inte läsa minimeringsläget för Admin → Widgets:",
+        error
+      );
+    } finally {
+      setCollapseStateLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!collapseStateLoaded) {
+      return;
+    }
 
     try {
-      const settings =
-        await getWidgetSettings();
-
-      const nextVisibility:
-        Record<string, boolean> = {};
-
-      for (const group of groups) {
-        for (const widget of group.widgets) {
-          const setting =
-            settings.find(
-              (item) =>
-                item.widgetId ===
-                widget.id
-            );
-
-          nextVisibility[widget.id] =
-            setting?.isVisible ??
-            true;
-        }
-      }
-
-      setVisibility(
-        nextVisibility
-      );
-
-      const orderMap = new Map(
-        settings.map((item) => [
-          item.widgetId,
-          item.sortOrder,
-        ])
-      );
-
-      setOrderedGroups(
-        groups.map((group) => ({
-          ...group,
-          widgets: [...group.widgets].sort(
-            (a, b) =>
-              (orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-              (orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER)
-          ),
-        }))
+      window.localStorage.setItem(
+        COLLAPSED_STORAGE_KEY,
+        JSON.stringify(collapsedGroups)
       );
     } catch (error) {
       console.error(
-        "Kunde inte läsa widgetinställningar i Admin:",
+        "Kunde inte spara minimeringsläget för Admin → Widgets:",
         error
       );
-
-      setErrorMessage(
-        "Widgetinställningarna kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [
+    collapsedGroups,
+    collapseStateLoaded,
+  ]);
+
+  const loadSettings =
+    useCallback(async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const settings =
+          await getWidgetSettings();
+
+        const nextVisibility:
+          Record<string, boolean> = {};
+
+        const nextSizes:
+          Record<string, WidgetSize> = {};
+
+        for (const group of groups) {
+          for (const widget of group.widgets) {
+            const setting =
+              settings.find(
+                (item) =>
+                  item.widgetId === widget.id
+              );
+
+            nextVisibility[widget.id] =
+              setting?.isVisible ?? true;
+
+            nextSizes[widget.id] =
+              setting?.size ??
+              widget.defaultSize;
+          }
+        }
+
+        setVisibility(nextVisibility);
+        setSizes(nextSizes);
+
+        const orderMap = new Map(
+          settings.map((item) => [
+            item.widgetId,
+            item.sortOrder,
+          ])
+        );
+
+        setOrderedGroups(
+          groups.map((group) => ({
+            ...group,
+            widgets: [
+              ...group.widgets,
+            ].sort(
+              (a, b) =>
+                (orderMap.get(a.id) ??
+                  Number.MAX_SAFE_INTEGER) -
+                (orderMap.get(b.id) ??
+                  Number.MAX_SAFE_INTEGER)
+            ),
+          }))
+        );
+      } catch (error) {
+        console.error(
+          "Kunde inte läsa widgetinställningar i Admin:",
+          error
+        );
+
+        setErrorMessage(
+          "Widgetinställningarna kunde inte hämtas."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }, []);
 
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
 
+  function toggleGroup(
+    groupTitle: string
+  ) {
+    setCollapsedGroups((current) => ({
+      ...current,
+      [groupTitle]:
+        !current[groupTitle],
+    }));
+  }
+
+  function collapseAll() {
+    const nextState:
+      Record<string, boolean> = {};
+
+    for (const group of groups) {
+      nextState[group.title] = true;
+    }
+
+    setCollapsedGroups(nextState);
+  }
+
+  function expandAll() {
+    setCollapsedGroups({});
+  }
+
   async function toggleWidget(
     widgetId: string
   ) {
-    const currentValue =
-      visibility[widgetId] ??
-      true;
+    const old =
+      visibility[widgetId] ?? true;
 
-    const nextValue =
-      !currentValue;
+    const next = !old;
 
-    setSavingId(
-      widgetId
-    );
-
+    setSavingId(widgetId);
     setErrorMessage(null);
 
-    // Optimistisk uppdatering för snabb respons.
-    setVisibility(
-      (current) => ({
-        ...current,
-        [widgetId]:
-          nextValue,
-      })
-    );
+    setVisibility((current) => ({
+      ...current,
+      [widgetId]: next,
+    }));
 
     try {
       await setWidgetVisibility(
         widgetId,
-        nextValue
+        next
       );
 
       window.dispatchEvent(
@@ -270,18 +646,10 @@ export default function WidgetsAdmin() {
         )
       );
     } catch (error) {
-      console.error(
-        `Kunde inte spara widgetinställningen för "${widgetId}":`,
-        error
-      );
-
-      setVisibility(
-        (current) => ({
-          ...current,
-          [widgetId]:
-            currentValue,
-        })
-      );
+      setVisibility((current) => ({
+        ...current,
+        [widgetId]: old,
+      }));
 
       setErrorMessage(
         error instanceof Error
@@ -289,9 +657,49 @@ export default function WidgetsAdmin() {
           : "Widgetinställningen kunde inte sparas."
       );
     } finally {
-      setSavingId(
-        null
+      setSavingId(null);
+    }
+  }
+
+  async function changeWidgetSize(
+    widgetId: string,
+    next: WidgetSize
+  ) {
+    const old =
+      sizes[widgetId] ?? "full";
+
+    setSavingId(widgetId);
+    setErrorMessage(null);
+
+    setSizes((current) => ({
+      ...current,
+      [widgetId]: next,
+    }));
+
+    try {
+      await setWidgetSize(
+        widgetId,
+        next
       );
+
+      window.dispatchEvent(
+        new Event(
+          "widget-settings-changed"
+        )
+      );
+    } catch (error) {
+      setSizes((current) => ({
+        ...current,
+        [widgetId]: old,
+      }));
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Widgetstorleken kunde inte sparas."
+      );
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -300,35 +708,49 @@ export default function WidgetsAdmin() {
     widgetId: string,
     direction: "up" | "down"
   ) {
-    const group = orderedGroups.find(
-      (item) => item.title === groupTitle
-    );
-    if (!group) return;
+    const group =
+      orderedGroups.find(
+        (item) =>
+          item.title === groupTitle
+      );
 
-    const index = group.widgets.findIndex(
-      (widget) => widget.id === widgetId
-    );
-    const targetIndex =
-      direction === "up" ? index - 1 : index + 1;
+    if (!group) {
+      return;
+    }
+
+    const index =
+      group.widgets.findIndex(
+        (widget) =>
+          widget.id === widgetId
+      );
+
+    const target =
+      direction === "up"
+        ? index - 1
+        : index + 1;
 
     if (
       index < 0 ||
-      targetIndex < 0 ||
-      targetIndex >= group.widgets.length
+      target < 0 ||
+      target >= group.widgets.length
     ) {
       return;
     }
 
-    const nextWidgets = [...group.widgets];
-    [nextWidgets[index], nextWidgets[targetIndex]] = [
-      nextWidgets[targetIndex],
-      nextWidgets[index],
+    const next = [...group.widgets];
+
+    [next[index], next[target]] = [
+      next[target],
+      next[index],
     ];
 
     setOrderedGroups((current) =>
       current.map((item) =>
         item.title === groupTitle
-          ? { ...item, widgets: nextWidgets }
+          ? {
+              ...item,
+              widgets: next,
+            }
           : item
       )
     );
@@ -338,19 +760,23 @@ export default function WidgetsAdmin() {
 
     try {
       await setWidgetOrder(
-        nextWidgets.map((widget) => widget.id)
+        next.map(
+          (widget) => widget.id
+        )
       );
 
       window.dispatchEvent(
-        new Event("widget-settings-changed")
+        new Event(
+          "widget-settings-changed"
+        )
       );
     } catch (error) {
-      console.error("Kunde inte spara widgetordningen:", error);
       setErrorMessage(
         error instanceof Error
           ? error.message
           : "Widgetordningen kunde inte sparas."
       );
+
       await loadSettings();
     } finally {
       setSavingId(null);
@@ -380,7 +806,8 @@ export default function WidgetsAdmin() {
               </h1>
 
               <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-                Visa, dölj och ändra ordningen på dashboardens widgets.
+                Visa, dölj, ändra ordning och välj
+                storlek på dashboardens widgets.
               </p>
             </div>
 
@@ -410,51 +837,131 @@ export default function WidgetsAdmin() {
             />
 
             <p className="text-sm leading-6 text-slate-300">
-              Ändringar sparas direkt i Supabase. Använd pilarna för att flytta widgets inom samma sektion. Visa/Dölj fortsätter fungera som tidigare.
+              Göteborg, Rymden och Jorden visas med
+              sina riktiga widgets. Underfliken Himlen
+              innehåller ännu inga widgets.
             </p>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="mt-5 flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl">
-            <div className="flex flex-col items-center gap-3 text-slate-400">
-              <LoaderCircle
-                size={30}
-                className="animate-spin text-blue-300"
-              />
+        {!isLoading && (
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Widgetgrupper
+              </p>
 
-              <p className="text-sm">
-                Hämtar widgetinställningar…
+              <p className="mt-0.5 text-xs text-slate-500">
+                Klicka på en grupp för att minimera
+                eller visa innehållet.
               </p>
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={collapseAll}
+                disabled={allCollapsed}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:cursor-default disabled:opacity-40"
+              >
+                <ChevronRight size={16} />
+                Minimera alla
+              </button>
+
+              <button
+                type="button"
+                onClick={expandAll}
+                disabled={
+                  Object.keys(
+                    collapsedGroups
+                  ).length === 0
+                }
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20 disabled:cursor-default disabled:opacity-40"
+              >
+                <ChevronDown size={16} />
+                Visa alla
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="mt-5 flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/10">
+            <LoaderCircle
+              size={30}
+              className="animate-spin text-blue-300"
+            />
           </div>
         ) : (
-          <div className="mt-5 space-y-5">
+          <div className="mt-5 space-y-3">
             {orderedGroups.map(
               (group) => {
                 const GroupIcon =
                   group.icon;
 
+                const isCollapsed =
+                  collapsedGroups[
+                    group.title
+                  ] === true;
+
+                const visibleCount =
+                  group.widgets.filter(
+                    (widget) =>
+                      visibility[
+                        widget.id
+                      ] ?? true
+                  ).length;
+
                 return (
                   <section
-                    key={
-                      group.title
-                    }
+                    key={group.title}
                     className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl"
                   >
-                    <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-blue-500/20 text-blue-300">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleGroup(
+                          group.title
+                        )
+                      }
+                      aria-expanded={
+                        !isCollapsed
+                      }
+                      className={[
+                        "flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[0.04]",
+                        !isCollapsed
+                          ? "border-b border-white/10"
+                          : "",
+                      ].join(" ")}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-blue-500/20 text-blue-300">
                         <GroupIcon
                           size={20}
                         />
                       </div>
 
-                      <div>
-                        <h2 className="font-bold text-white">
-                          {
-                            group.title
-                          }
-                        </h2>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="font-bold text-white">
+                            {group.title}
+                          </h2>
+
+                          <span className="rounded-full border border-white/10 bg-slate-950/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                            {group.widgets.length}{" "}
+                            {group.widgets.length ===
+                            1
+                              ? "widget"
+                              : "widgets"}
+                          </span>
+
+                          {group.widgets.length >
+                            0 && (
+                            <span className="rounded-full border border-emerald-300/10 bg-emerald-400/[0.06] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-300">
+                              {visibleCount}{" "}
+                              aktiva
+                            </span>
+                          )}
+                        </div>
 
                         {group.subtitle && (
                           <p className="mt-0.5 text-xs text-slate-400">
@@ -464,163 +971,279 @@ export default function WidgetsAdmin() {
                           </p>
                         )}
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-2">
-                      {group.widgets.map(
-                        (
-                          widget
-                        ) => {
-                          const WidgetIcon =
-                            widget.icon;
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/25 text-slate-400">
+                        {isCollapsed ? (
+                          <ChevronRight
+                            size={19}
+                          />
+                        ) : (
+                          <ChevronDown
+                            size={19}
+                          />
+                        )}
+                      </div>
+                    </button>
 
-                          const isVisible =
-                            visibility[
-                              widget.id
-                            ] ??
-                            true;
+                    {!isCollapsed && (
+                      <>
+                        {group.widgets
+                          .length === 0 ? (
+                          <div className="p-4">
+                            <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/20 px-5 py-8 text-center">
+                              <CloudSun
+                                size={30}
+                                className="mx-auto text-slate-500"
+                              />
 
-                          const isSaving =
-                            savingId ===
-                            widget.id;
+                              <p className="mt-3 font-semibold text-slate-300">
+                                Inga widgets
+                                ännu
+                              </p>
 
-                          return (
-                            <article
-                              key={
-                                widget.id
-                              }
-                              className={[
-                                "flex items-center gap-4 rounded-2xl border p-4 transition",
-                                isVisible
-                                  ? "border-white/10 bg-slate-950/25"
-                                  : "border-white/[0.06] bg-slate-950/10 opacity-65",
-                              ].join(
-                                " "
-                              )}
-                            >
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300">
-                                <WidgetIcon
-                                  size={21}
-                                />
-                              </div>
+                              <p className="mt-1 text-sm text-slate-500">
+                                Widgets som
+                                läggs till här
+                                kommer senare
+                                kunna
+                                administreras
+                                från denna sida.
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-2">
+                            {group.widgets.map(
+                              (widget) => {
+                                const Icon =
+                                  widget.icon;
 
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="font-semibold text-white">
-                                    {
-                                      widget.name
+                                const visible =
+                                  visibility[
+                                    widget.id
+                                  ] ?? true;
+
+                                const saving =
+                                  savingId ===
+                                  widget.id;
+
+                                const size =
+                                  sizes[
+                                    widget.id
+                                  ] ??
+                                  widget.defaultSize;
+
+                                const index =
+                                  group.widgets.findIndex(
+                                    (item) =>
+                                      item.id ===
+                                      widget.id
+                                  );
+
+                                return (
+                                  <article
+                                    key={
+                                      widget.id
                                     }
-                                  </h3>
-
-                                  <span
                                     className={[
-                                      "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                                      isVisible
-                                        ? "border-emerald-300/10 bg-emerald-400/[0.06] text-emerald-300"
-                                        : "border-slate-400/10 bg-slate-400/[0.06] text-slate-400",
+                                      "flex items-center gap-4 rounded-2xl border p-4 transition",
+                                      visible
+                                        ? "border-white/10 bg-slate-950/25"
+                                        : "border-white/[0.06] bg-slate-950/10 opacity-65",
                                     ].join(
                                       " "
                                     )}
                                   >
-                                    {isVisible
-                                      ? "Aktiv"
-                                      : "Dold"}
-                                  </span>
-                                </div>
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300">
+                                      <Icon
+                                        size={
+                                          21
+                                        }
+                                      />
+                                    </div>
 
-                                <p className="mt-1 text-sm text-slate-400">
-                                  {
-                                    widget.description
-                                  }
-                                </p>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-semibold text-white">
+                                          {
+                                            widget.name
+                                          }
+                                        </h3>
 
-                                <p className="mt-2 text-xs font-semibold text-slate-500">
-                                  {
-                                    widget.size
-                                  }
-                                </p>
-                              </div>
+                                        <span
+                                          className={[
+                                            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                                            visible
+                                              ? "border-emerald-300/10 bg-emerald-400/[0.06] text-emerald-300"
+                                              : "border-slate-400/10 bg-slate-400/[0.06] text-slate-400",
+                                          ].join(
+                                            " "
+                                          )}
+                                        >
+                                          {visible
+                                            ? "Aktiv"
+                                            : "Dold"}
+                                        </span>
+                                      </div>
 
-                              <div className="flex shrink-0 items-center gap-2">
-                                <div className="flex flex-col gap-1">
-                                  <button
-                                    type="button"
-                                    aria-label={`Flytta ${widget.name} upp`}
-                                    disabled={
-                                      isSaving ||
-                                      group.widgets.findIndex((item) => item.id === widget.id) === 0
-                                    }
-                                    onClick={() =>
-                                      void moveWidget(group.title, widget.id, "up")
-                                    }
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-25"
-                                  >
-                                    <ArrowUp size={14} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    aria-label={`Flytta ${widget.name} ner`}
-                                    disabled={
-                                      isSaving ||
-                                      group.widgets.findIndex((item) => item.id === widget.id) === group.widgets.length - 1
-                                    }
-                                    onClick={() =>
-                                      void moveWidget(group.title, widget.id, "down")
-                                    }
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-25"
-                                  >
-                                    <ArrowDown size={14} />
-                                  </button>
-                                </div>
+                                      <p className="mt-1 text-sm text-slate-400">
+                                        {
+                                          widget.description
+                                        }
+                                      </p>
 
-                              <button
-                                type="button"
-                                role="switch"
-                                aria-checked={
-                                  isVisible
-                                }
-                                aria-label={`${isVisible ? "Dölj" : "Visa"} ${widget.name}`}
-                                onClick={() =>
-                                  void toggleWidget(
-                                    widget.id
-                                  )
-                                }
-                                disabled={
-                                  isSaving
-                                }
-                                className={[
-                                  "relative h-7 w-12 shrink-0 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:opacity-50",
-                                  isVisible
-                                    ? "border-blue-400/30 bg-blue-500"
-                                    : "border-white/10 bg-white/10",
-                                ].join(
-                                  " "
-                                )}
-                              >
-                                <span
-                                  className={[
-                                    "absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow transition",
-                                    isVisible
-                                      ? "left-6"
-                                      : "left-1",
-                                  ].join(
-                                    " "
-                                  )}
-                                />
+                                      <div className="mt-3">
+                                        <label
+                                          htmlFor={`widget-size-${widget.id}`}
+                                          className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500"
+                                        >
+                                          Storlek
+                                        </label>
 
-                                {isSaving && (
-                                  <LoaderCircle
-                                    size={12}
-                                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-slate-900"
-                                  />
-                                )}
-                              </button>
-                              </div>
-                            </article>
-                          );
-                        }
-                      )}
-                    </div>
+                                        <select
+                                          id={`widget-size-${widget.id}`}
+                                          value={
+                                            size
+                                          }
+                                          disabled={
+                                            saving
+                                          }
+                                          onChange={(
+                                            event
+                                          ) =>
+                                            void changeWidgetSize(
+                                              widget.id,
+                                              event
+                                                .target
+                                                .value as WidgetSize
+                                            )
+                                          }
+                                          className="mt-1 block w-full max-w-40 rounded-xl border border-white/10 bg-[#151515] px-3 py-2 text-sm font-semibold text-slate-200 outline-none transition focus:border-blue-400/40 focus:ring-2 focus:ring-blue-400/20 disabled:opacity-50"
+                                        >
+                                          <option value="full">
+                                            Helbredd
+                                          </option>
+
+                                          <option value="half">
+                                            Halvbredd
+                                          </option>
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <div className="flex flex-col gap-1">
+                                        <button
+                                          type="button"
+                                          aria-label={`Flytta ${widget.name} upp`}
+                                          disabled={
+                                            saving ||
+                                            index ===
+                                              0
+                                          }
+                                          onClick={() =>
+                                            void moveWidget(
+                                              group.title,
+                                              widget.id,
+                                              "up"
+                                            )
+                                          }
+                                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-300 transition hover:bg-white/15 disabled:opacity-25"
+                                        >
+                                          <ArrowUp
+                                            size={
+                                              14
+                                            }
+                                          />
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          aria-label={`Flytta ${widget.name} ner`}
+                                          disabled={
+                                            saving ||
+                                            index ===
+                                              group
+                                                .widgets
+                                                .length -
+                                                1
+                                          }
+                                          onClick={() =>
+                                            void moveWidget(
+                                              group.title,
+                                              widget.id,
+                                              "down"
+                                            )
+                                          }
+                                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-300 transition hover:bg-white/15 disabled:opacity-25"
+                                        >
+                                          <ArrowDown
+                                            size={
+                                              14
+                                            }
+                                          />
+                                        </button>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={
+                                          visible
+                                        }
+                                        aria-label={`${
+                                          visible
+                                            ? "Dölj"
+                                            : "Visa"
+                                        } ${
+                                          widget.name
+                                        }`}
+                                        onClick={() =>
+                                          void toggleWidget(
+                                            widget.id
+                                          )
+                                        }
+                                        disabled={
+                                          saving
+                                        }
+                                        className={[
+                                          "relative h-7 w-12 shrink-0 rounded-full border transition disabled:opacity-50",
+                                          visible
+                                            ? "border-blue-400/30 bg-blue-500"
+                                            : "border-white/10 bg-white/10",
+                                        ].join(
+                                          " "
+                                        )}
+                                      >
+                                        <span
+                                          className={[
+                                            "absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow transition",
+                                            visible
+                                              ? "left-6"
+                                              : "left-1",
+                                          ].join(
+                                            " "
+                                          )}
+                                        />
+
+                                        {saving && (
+                                          <LoaderCircle
+                                            size={
+                                              12
+                                            }
+                                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-slate-900"
+                                          />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </article>
+                                );
+                              }
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </section>
                 );
               }

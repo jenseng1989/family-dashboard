@@ -8,7 +8,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getWidgetSettings } from "@/lib/widget-settings";
+import {
+  getWidgetSettings,
+  type WidgetSize,
+} from "@/lib/widget-settings";
 
 export type OrderedWidget = {
   id: string;
@@ -26,6 +29,48 @@ type OrderedWidgetGroupProps = {
   }>;
 };
 
+function getDefaultSize(
+  className?: string
+): WidgetSize {
+  if (
+    className?.includes(
+      "xl:col-span-6"
+    )
+  ) {
+    return "half";
+  }
+
+  return "full";
+}
+
+function getSizedClassName(
+  className: string | undefined,
+  size: WidgetSize
+): string {
+  const baseClassName =
+    (
+      className ??
+      "col-span-12 min-w-0"
+    )
+      .replace(
+        /\s*xl:col-span-\d+/g,
+        ""
+      )
+      .trim();
+
+  const sizeClassName =
+    size === "half"
+      ? "xl:col-span-6"
+      : "xl:col-span-12";
+
+  return [
+    baseClassName,
+    sizeClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export default function OrderedWidgetGroup({
   widgets,
   wrapperClassName = "contents",
@@ -34,12 +79,17 @@ export default function OrderedWidgetGroup({
   const widgetIdsKey = useMemo(
     () =>
       widgets
-        .map((widget) => widget.id)
+        .map(
+          (widget) => widget.id
+        )
         .join("|"),
     [widgets]
   );
 
-  const [orderedIds, setOrderedIds] =
+  const [
+    orderedIds,
+    setOrderedIds,
+  ] =
     useState<string[]>(
       () =>
         widgets.map(
@@ -47,7 +97,18 @@ export default function OrderedWidgetGroup({
         )
     );
 
-  const loadOrder =
+  const [
+    sizes,
+    setSizes,
+  ] =
+    useState<
+      Record<
+        string,
+        WidgetSize
+      >
+    >({});
+
+  const loadSettings =
     useCallback(async () => {
       const widgetIds =
         widgetIdsKey.split("|");
@@ -66,39 +127,106 @@ export default function OrderedWidgetGroup({
             )
           );
 
+        const sizeMap =
+          new Map(
+            settings.map(
+              (setting) => [
+                setting.widgetId,
+                setting.size,
+              ]
+            )
+          );
+
         const sortedIds =
           [...widgetIds].sort(
-            (firstId, secondId) =>
+            (
+              firstId,
+              secondId
+            ) =>
               (
-                orderMap.get(firstId) ??
+                orderMap.get(
+                  firstId
+                ) ??
                 Number.MAX_SAFE_INTEGER
               ) -
               (
-                orderMap.get(secondId) ??
+                orderMap.get(
+                  secondId
+                ) ??
                 Number.MAX_SAFE_INTEGER
               )
           );
 
+        const nextSizes:
+          Record<
+            string,
+            WidgetSize
+          > = {};
+
+        for (
+          const widget
+          of widgets
+        ) {
+          nextSizes[
+            widget.id
+          ] =
+            sizeMap.get(
+              widget.id
+            ) ??
+            getDefaultSize(
+              widget.className
+            );
+        }
+
         setOrderedIds(
           sortedIds
         );
+
+        setSizes(
+          nextSizes
+        );
       } catch (error) {
         console.error(
-          "Kunde inte läsa widgetordningen:",
+          "Kunde inte läsa widgetinställningarna:",
           error
         );
 
         setOrderedIds(
           widgetIds
         );
+
+        const fallbackSizes:
+          Record<
+            string,
+            WidgetSize
+          > = {};
+
+        for (
+          const widget
+          of widgets
+        ) {
+          fallbackSizes[
+            widget.id
+          ] =
+            getDefaultSize(
+              widget.className
+            );
+        }
+
+        setSizes(
+          fallbackSizes
+        );
       }
-    }, [widgetIdsKey]);
+    }, [
+      widgetIdsKey,
+      widgets,
+    ]);
 
   useEffect(() => {
-    void loadOrder();
+    void loadSettings();
 
     function handleChanged() {
-      void loadOrder();
+      void loadSettings();
     }
 
     window.addEventListener(
@@ -112,7 +240,7 @@ export default function OrderedWidgetGroup({
         handleChanged
       );
     };
-  }, [loadOrder]);
+  }, [loadSettings]);
 
   const widgetMap =
     new Map(
@@ -125,36 +253,70 @@ export default function OrderedWidgetGroup({
     );
 
   return (
-    <div className={wrapperClassName}>
+    <div
+      className={
+        wrapperClassName
+      }
+    >
       {orderedIds.map(
         (id) => {
           const widget =
-            widgetMap.get(id);
+            widgetMap.get(
+              id
+            );
 
           if (!widget) {
             return null;
           }
 
-          if (ItemComponent) {
+          const widgetSize =
+            sizes[
+              widget.id
+            ] ??
+            getDefaultSize(
+              widget.className
+            );
+
+          const sizedClassName =
+            getSizedClassName(
+              widget.className,
+              widgetSize
+            );
+
+          if (
+            ItemComponent
+          ) {
             return (
               <ItemComponent
-                key={widget.id}
-                widgetId={widget.id}
-                className={widget.className}
+                key={
+                  widget.id
+                }
+                widgetId={
+                  widget.id
+                }
+                className={
+                  sizedClassName
+                }
               >
-                {widget.content}
+                {
+                  widget.content
+                }
               </ItemComponent>
             );
           }
 
           return (
             <div
-              key={widget.id}
+              key={
+                widget.id
+              }
               className={
-                widget.className
+                sizedClassName
               }
             >
-              {widget.content}
+              {
+                widget.content
+              }
             </div>
           );
         }

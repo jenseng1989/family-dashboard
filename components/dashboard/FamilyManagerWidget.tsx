@@ -1,13 +1,18 @@
 "use client";
 
 import {
+  Archive,
+  ArchiveRestore,
+  Baby,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   LoaderCircle,
   Pencil,
   Plus,
   RefreshCw,
   Save,
-  Trash2,
+  UserRound,
   UserPlus,
   Users,
   X,
@@ -19,11 +24,12 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import Card from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
-import type {
-  AccentColor,
-} from "@/lib/family";
+import type { AccentColor } from "@/lib/family";
+
+type MemberType = "adult" | "child";
 
 type FamilyMemberRow = {
   id: string;
@@ -31,7 +37,11 @@ type FamilyMemberRow = {
   emoji: string;
   birthday: string;
   accent: AccentColor;
+  member_type: MemberType;
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 };
 
 type NameDayRow = {
@@ -52,6 +62,7 @@ type MemberFormState = {
   emoji: string;
   birthday: string;
   accent: AccentColor;
+  memberType: MemberType;
 };
 
 type NameDayFormState = {
@@ -65,6 +76,7 @@ const EMPTY_MEMBER_FORM: MemberFormState = {
   emoji: "👤",
   birthday: "",
   accent: "blue",
+  memberType: "adult",
 };
 
 const EMPTY_NAME_DAY_FORM: NameDayFormState = {
@@ -73,19 +85,12 @@ const EMPTY_NAME_DAY_FORM: NameDayFormState = {
   day: "",
 };
 
-function formatBirthday(
-  dateString: string
-): string {
-  const [year, month, day] =
-    dateString
-      .split("-")
-      .map(Number);
+function formatBirthday(dateString: string): string {
+  const [year, month, day] = dateString
+    .split("-")
+    .map(Number);
 
-  if (
-    !year ||
-    !month ||
-    !day
-  ) {
+  if (!year || !month || !day) {
     return dateString;
   }
 
@@ -93,14 +98,11 @@ function formatBirthday(
     year,
     month - 1,
     day
-  ).toLocaleDateString(
-    "sv-SE",
-    {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }
-  );
+  ).toLocaleDateString("sv-SE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function formatNameDay(
@@ -111,13 +113,10 @@ function formatNameDay(
     2026,
     month - 1,
     day
-  ).toLocaleDateString(
-    "sv-SE",
-    {
-      day: "numeric",
-      month: "long",
-    }
-  );
+  ).toLocaleDateString("sv-SE", {
+    day: "numeric",
+    month: "long",
+  });
 }
 
 function getAccentLabel(
@@ -134,272 +133,234 @@ function getAccentLabel(
   }
 }
 
-export default function FamilyManagerWidget() {
-  const [
-    members,
-    setMembers,
-  ] =
-    useState<
-      MemberWithNameDays[]
-    >([]);
+function getMemberTypeLabel(
+  memberType: MemberType
+): string {
+  return memberType === "child"
+    ? "Barn"
+    : "Vuxen";
+}
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
+export default function FamilyManagerWidget() {
+  const [members, setMembers] =
+    useState<MemberWithNameDays[]>([]);
+
+  const [isLoading, setIsLoading] =
     useState(true);
 
-  const [
-    isSaving,
-    setIsSaving,
-  ] =
+  const [isSaving, setIsSaving] =
     useState(false);
 
-  const [
-    deletingId,
-    setDeletingId,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const [workingId, setWorkingId] =
+    useState<string | null>(null);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
-  const [
-    successMessage,
-    setSuccessMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const [successMessage, setSuccessMessage] =
+    useState<string | null>(null);
 
-  const [
-    showAddMember,
-    setShowAddMember,
-  ] =
+  const [showAddMember, setShowAddMember] =
     useState(false);
 
-  const [
-    editingMemberId,
-    setEditingMemberId,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const [editingMemberId, setEditingMemberId] =
+    useState<string | null>(null);
 
-  const [
-    memberForm,
-    setMemberForm,
-  ] =
+  const [memberForm, setMemberForm] =
     useState<MemberFormState>(
       EMPTY_MEMBER_FORM
     );
 
-  const [
-    nameDayMemberId,
-    setNameDayMemberId,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const [nameDayMemberId, setNameDayMemberId] =
+    useState<string | null>(null);
 
-  const [
-    nameDayForm,
-    setNameDayForm,
-  ] =
+  const [nameDayForm, setNameDayForm] =
     useState<NameDayFormState>(
       EMPTY_NAME_DAY_FORM
     );
 
-  const loadFamily =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+  const [
+    showArchivedMembers,
+    setShowArchivedMembers,
+  ] = useState(false);
 
-      const [
-        membersResult,
-        nameDaysResult,
-      ] =
-        await Promise.all([
-          supabase
-            .from(
-              "family_members"
-            )
-            .select(
-              "id, display_name, emoji, birthday, accent, created_at"
-            )
-            .order(
-              "created_at",
-              {
-                ascending:
-                  true,
-              }
-            ),
+  const loadFamily = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
 
-          supabase
-            .from(
-              "family_name_days"
-            )
-            .select(
-              "id, member_id, name, month, day, created_at"
-            )
-            .order(
-              "month",
-              {
-                ascending:
-                  true,
-              }
-            )
-            .order(
-              "day",
-              {
-                ascending:
-                  true,
-              }
-            ),
-        ]);
-
-      if (
-        membersResult.error
-      ) {
-        console.error(
-          "Kunde inte hämta familjemedlemmar:",
-          membersResult.error
-        );
-
-        setErrorMessage(
-          "Kunde inte hämta familjemedlemmarna."
-        );
-
-        setIsLoading(false);
-        return;
-      }
-
-      if (
-        nameDaysResult.error
-      ) {
-        console.error(
-          "Kunde inte hämta namnsdagar:",
-          nameDaysResult.error
-        );
-
-        setErrorMessage(
-          "Kunde inte hämta namnsdagarna."
-        );
-
-        setIsLoading(false);
-        return;
-      }
-
-      const memberRows =
-        (
-          membersResult.data ??
-          []
-        ) as FamilyMemberRow[];
-
-      const nameDayRows =
-        (
-          nameDaysResult.data ??
-          []
-        ) as NameDayRow[];
-
-      setMembers(
-        memberRows.map(
-          (member) => ({
-            ...member,
-            nameDays:
-              nameDayRows.filter(
-                (nameDay) =>
-                  nameDay.member_id ===
-                  member.id
-              ),
-          })
+    const [
+      membersResult,
+      nameDaysResult,
+    ] = await Promise.all([
+      supabase
+        .from("family_members")
+        .select(
+          [
+            "id",
+            "display_name",
+            "emoji",
+            "birthday",
+            "accent",
+            "member_type",
+            "sort_order",
+            "is_active",
+            "created_at",
+            "updated_at",
+          ].join(", ")
         )
+        .order("sort_order", {
+          ascending: true,
+        })
+        .order("created_at", {
+          ascending: true,
+        }),
+
+      supabase
+        .from("family_name_days")
+        .select(
+          "id, member_id, name, month, day, created_at"
+        )
+        .order("month", {
+          ascending: true,
+        })
+        .order("day", {
+          ascending: true,
+        }),
+    ]);
+
+    if (membersResult.error) {
+      console.error(
+        "Kunde inte hämta familjemedlemmar:",
+        membersResult.error
+      );
+
+      setErrorMessage(
+        "Kunde inte hämta familjemedlemmarna."
       );
 
       setIsLoading(false);
-    }, []);
+      return;
+    }
+
+    if (nameDaysResult.error) {
+      console.error(
+        "Kunde inte hämta namnsdagar:",
+        nameDaysResult.error
+      );
+
+      setErrorMessage(
+        "Kunde inte hämta namnsdagarna."
+      );
+
+      setIsLoading(false);
+      return;
+    }
+
+    const memberRows =
+      (membersResult.data ??
+        []) as FamilyMemberRow[];
+
+    const nameDayRows =
+      (nameDaysResult.data ??
+        []) as NameDayRow[];
+
+    setMembers(
+      memberRows.map((member) => ({
+        ...member,
+        nameDays: nameDayRows.filter(
+          (nameDay) =>
+            nameDay.member_id === member.id
+        ),
+      }))
+    );
+
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     void loadFamily();
   }, [loadFamily]);
 
-  const sortedMembers =
-    useMemo(
-      () =>
-        [...members].sort(
-          (
-            first,
-            second
-          ) =>
+  const activeMembers = useMemo(
+    () =>
+      members
+        .filter(
+          (member) => member.is_active
+        )
+        .sort(
+          (first, second) =>
+            first.sort_order -
+              second.sort_order ||
             first.created_at.localeCompare(
               second.created_at
             )
         ),
-      [members]
+    [members]
+  );
+
+  const archivedMembers = useMemo(
+    () =>
+      members
+        .filter(
+          (member) => !member.is_active
+        )
+        .sort(
+          (first, second) =>
+            first.sort_order -
+              second.sort_order ||
+            first.created_at.localeCompare(
+              second.created_at
+            )
+        ),
+    [members]
+  );
+
+  function dispatchFamilyChange() {
+    window.dispatchEvent(
+      new CustomEvent(
+        "family-data-changed"
+      )
     );
+  }
 
   function resetMemberForm() {
     setMemberForm(
       EMPTY_MEMBER_FORM
     );
-    setEditingMemberId(
-      null
-    );
-    setShowAddMember(
-      false
-    );
+    setEditingMemberId(null);
+    setShowAddMember(false);
   }
 
   function startAddMember() {
-    setEditingMemberId(
-      null
-    );
-    setMemberForm(
-      EMPTY_MEMBER_FORM
-    );
-    setShowAddMember(
-      true
-    );
-    setSuccessMessage(
-      null
-    );
-    setErrorMessage(
-      null
-    );
+    setEditingMemberId(null);
+
+    setMemberForm({
+      ...EMPTY_MEMBER_FORM,
+      memberType: "child",
+      emoji: "👶",
+    });
+
+    setShowAddMember(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
   }
 
   function startEditMember(
     member: MemberWithNameDays
   ) {
-    setShowAddMember(
-      false
-    );
-    setEditingMemberId(
-      member.id
-    );
+    setShowAddMember(false);
+    setEditingMemberId(member.id);
+
     setMemberForm({
-      displayName:
-        member.display_name,
-      emoji:
-        member.emoji,
-      birthday:
-        member.birthday,
-      accent:
-        member.accent,
+      displayName: member.display_name,
+      emoji: member.emoji,
+      birthday: member.birthday,
+      accent: member.accent,
+      memberType: member.member_type,
     });
-    setSuccessMessage(
-      null
-    );
-    setErrorMessage(
-      null
-    );
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
   }
 
   async function handleMemberSubmit(
@@ -411,8 +372,7 @@ export default function FamilyManagerWidget() {
       memberForm.displayName.trim();
 
     const emoji =
-      memberForm.emoji.trim() ||
-      "👤";
+      memberForm.emoji.trim() || "👤";
 
     if (
       !displayName ||
@@ -427,26 +387,21 @@ export default function FamilyManagerWidget() {
     setSuccessMessage(null);
 
     if (editingMemberId) {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "family_members"
-          )
-          .update({
-            display_name:
-              displayName,
-            emoji,
-            birthday:
-              memberForm.birthday,
-            accent:
-              memberForm.accent,
-          })
-          .eq(
-            "id",
-            editingMemberId
-          );
+      const { error } = await supabase
+        .from("family_members")
+        .update({
+          display_name: displayName,
+          emoji,
+          birthday:
+            memberForm.birthday,
+          accent:
+            memberForm.accent,
+          member_type:
+            memberForm.memberType,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", editingMemberId);
 
       if (error) {
         console.error(
@@ -466,22 +421,34 @@ export default function FamilyManagerWidget() {
         `${displayName} är uppdaterad.`
       );
     } else {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "family_members"
-          )
-          .insert({
-            display_name:
-              displayName,
-            emoji,
-            birthday:
-              memberForm.birthday,
-            accent:
-              memberForm.accent,
-          });
+      const highestSortOrder =
+        members.reduce(
+          (highest, member) =>
+            Math.max(
+              highest,
+              member.sort_order ?? 0
+            ),
+          0
+        );
+
+      const nextSortOrder =
+        highestSortOrder + 10;
+
+      const { error } = await supabase
+        .from("family_members")
+        .insert({
+          display_name: displayName,
+          emoji,
+          birthday:
+            memberForm.birthday,
+          accent:
+            memberForm.accent,
+          member_type:
+            memberForm.memberType,
+          sort_order:
+            nextSortOrder,
+          is_active: true,
+        });
 
       if (error) {
         console.error(
@@ -505,99 +472,229 @@ export default function FamilyManagerWidget() {
     resetMemberForm();
     await loadFamily();
     setIsSaving(false);
-
-    window.dispatchEvent(
-      new CustomEvent(
-        "family-data-changed"
-      )
-    );
+    dispatchFamilyChange();
   }
 
-  async function deleteMember(
+  async function archiveMember(
     member: MemberWithNameDays
   ) {
-    if (
-      deletingId ||
-      isSaving
-    ) {
+    if (workingId || isSaving) {
       return;
     }
 
     const confirmed =
       window.confirm(
-        `Ta bort ${member.display_name}? Alla namnsdagar för personen tas också bort.`
+        `Arkivera ${member.display_name}? Personen försvinner från den aktiva familjen, men all information sparas.`
       );
 
     if (!confirmed) {
       return;
     }
 
-    setDeletingId(
-      member.id
-    );
+    setWorkingId(member.id);
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const {
-      error,
-    } =
-      await supabase
-        .from(
-          "family_members"
-        )
-        .delete()
-        .eq(
-          "id",
-          member.id
-        );
+    const { error } = await supabase
+      .from("family_members")
+      .update({
+        is_active: false,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("id", member.id);
 
     if (error) {
       console.error(
-        "Kunde inte ta bort familjemedlem:",
+        "Kunde inte arkivera familjemedlem:",
         error
       );
 
       setErrorMessage(
-        "Personen kunde inte tas bort."
+        "Personen kunde inte arkiveras."
       );
 
-      setDeletingId(
-        null
+      setWorkingId(null);
+      return;
+    }
+
+    if (
+      editingMemberId === member.id
+    ) {
+      resetMemberForm();
+    }
+
+    setSuccessMessage(
+      `${member.display_name} är arkiverad.`
+    );
+
+    await loadFamily();
+    setWorkingId(null);
+    dispatchFamilyChange();
+  }
+
+  async function restoreMember(
+    member: MemberWithNameDays
+  ) {
+    if (workingId || isSaving) {
+      return;
+    }
+
+    setWorkingId(member.id);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const { error } = await supabase
+      .from("family_members")
+      .update({
+        is_active: true,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq("id", member.id);
+
+    if (error) {
+      console.error(
+        "Kunde inte återaktivera familjemedlem:",
+        error
       );
+
+      setErrorMessage(
+        "Personen kunde inte återaktiveras."
+      );
+
+      setWorkingId(null);
       return;
     }
 
     setSuccessMessage(
-      `${member.display_name} är borttagen.`
+      `${member.display_name} är aktiv igen.`
     );
 
     await loadFamily();
-    setDeletingId(
-      null
-    );
+    setWorkingId(null);
+    dispatchFamilyChange();
+  }
 
-    window.dispatchEvent(
-      new CustomEvent(
-        "family-data-changed"
-      )
-    );
+  async function moveMember(
+    member: MemberWithNameDays,
+    direction: "up" | "down"
+  ) {
+    if (workingId || isSaving) {
+      return;
+    }
+
+    const currentIndex =
+      activeMembers.findIndex(
+        (item) =>
+          item.id === member.id
+      );
+
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const targetIndex =
+      direction === "up"
+        ? currentIndex - 1
+        : currentIndex + 1;
+
+    if (
+      targetIndex < 0 ||
+      targetIndex >=
+        activeMembers.length
+    ) {
+      return;
+    }
+
+    const targetMember =
+      activeMembers[targetIndex];
+
+    setWorkingId(member.id);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const currentSortOrder =
+      member.sort_order;
+
+    const targetSortOrder =
+      targetMember.sort_order;
+
+    const firstUpdate =
+      await supabase
+        .from("family_members")
+        .update({
+          sort_order:
+            targetSortOrder,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", member.id);
+
+    if (firstUpdate.error) {
+      console.error(
+        "Kunde inte ändra personordningen:",
+        firstUpdate.error
+      );
+
+      setErrorMessage(
+        "Ordningen kunde inte ändras."
+      );
+
+      setWorkingId(null);
+      return;
+    }
+
+    const secondUpdate =
+      await supabase
+        .from("family_members")
+        .update({
+          sort_order:
+            currentSortOrder,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", targetMember.id);
+
+    if (secondUpdate.error) {
+      console.error(
+        "Kunde inte slutföra personordningen:",
+        secondUpdate.error
+      );
+
+      await supabase
+        .from("family_members")
+        .update({
+          sort_order:
+            currentSortOrder,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", member.id);
+
+      setErrorMessage(
+        "Ordningen kunde inte ändras."
+      );
+
+      await loadFamily();
+      setWorkingId(null);
+      return;
+    }
+
+    await loadFamily();
+    setWorkingId(null);
+    dispatchFamilyChange();
   }
 
   function startAddNameDay(
     memberId: string
   ) {
-    setNameDayMemberId(
-      memberId
-    );
+    setNameDayMemberId(memberId);
     setNameDayForm(
       EMPTY_NAME_DAY_FORM
     );
-    setErrorMessage(
-      null
-    );
-    setSuccessMessage(
-      null
-    );
+    setErrorMessage(null);
+    setSuccessMessage(null);
   }
 
   async function addNameDay(
@@ -629,14 +726,10 @@ export default function FamilyManagerWidget() {
 
     if (
       !name ||
-      !Number.isInteger(
-        month
-      ) ||
+      !Number.isInteger(month) ||
       month < 1 ||
       month > 12 ||
-      !Number.isInteger(
-        day
-      ) ||
+      !Number.isInteger(day) ||
       day < 1 ||
       day > 31
     ) {
@@ -650,20 +743,15 @@ export default function FamilyManagerWidget() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const {
-      error,
-    } =
-      await supabase
-        .from(
-          "family_name_days"
-        )
-        .insert({
-          member_id:
-            nameDayMemberId,
-          name,
-          month,
-          day,
-        });
+    const { error } = await supabase
+      .from("family_name_days")
+      .insert({
+        member_id:
+          nameDayMemberId,
+        name,
+        month,
+        day,
+      });
 
     if (error) {
       console.error(
@@ -679,33 +767,24 @@ export default function FamilyManagerWidget() {
       return;
     }
 
-    setNameDayMemberId(
-      null
-    );
+    setNameDayMemberId(null);
     setNameDayForm(
       EMPTY_NAME_DAY_FORM
     );
+
     setSuccessMessage(
       `${name} har fått en namnsdag.`
     );
 
     await loadFamily();
     setIsSaving(false);
-
-    window.dispatchEvent(
-      new CustomEvent(
-        "family-data-changed"
-      )
-    );
+    dispatchFamilyChange();
   }
 
   async function deleteNameDay(
     nameDay: NameDayRow
   ) {
-    if (
-      deletingId ||
-      isSaving
-    ) {
+    if (workingId || isSaving) {
       return;
     }
 
@@ -718,24 +797,14 @@ export default function FamilyManagerWidget() {
       return;
     }
 
-    setDeletingId(
-      nameDay.id
-    );
+    setWorkingId(nameDay.id);
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const {
-      error,
-    } =
-      await supabase
-        .from(
-          "family_name_days"
-        )
-        .delete()
-        .eq(
-          "id",
-          nameDay.id
-        );
+    const { error } = await supabase
+      .from("family_name_days")
+      .delete()
+      .eq("id", nameDay.id);
 
     if (error) {
       console.error(
@@ -747,9 +816,7 @@ export default function FamilyManagerWidget() {
         "Namnsdagen kunde inte tas bort."
       );
 
-      setDeletingId(
-        null
-      );
+      setWorkingId(null);
       return;
     }
 
@@ -758,15 +825,8 @@ export default function FamilyManagerWidget() {
     );
 
     await loadFamily();
-    setDeletingId(
-      null
-    );
-
-    window.dispatchEvent(
-      new CustomEvent(
-        "family-data-changed"
-      )
-    );
+    setWorkingId(null);
+    dispatchFamilyChange();
   }
 
   function MemberForm({
@@ -782,9 +842,18 @@ export default function FamilyManagerWidget() {
         className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.05] p-4"
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="font-semibold text-white">
-            {title}
-          </p>
+          <div>
+            <p className="font-semibold text-white">
+              {title}
+            </p>
+
+            {!editingMemberId && (
+              <p className="mt-1 text-xs text-slate-400">
+                En ny person läggs sist
+                i Familjen.
+              </p>
+            )}
+          </div>
 
           <button
             type="button"
@@ -794,9 +863,7 @@ export default function FamilyManagerWidget() {
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
             aria-label="Stäng formuläret"
           >
-            <X
-              size={17}
-            />
+            <X size={17} />
           </button>
         </div>
 
@@ -810,27 +877,62 @@ export default function FamilyManagerWidget() {
               value={
                 memberForm.displayName
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setMemberForm(
-                  (
-                    current
-                  ) => ({
+                  (current) => ({
                     ...current,
                     displayName:
-                      event
-                        .target
-                        .value,
+                      event.target.value,
                   })
                 )
               }
-              maxLength={
-                60
-              }
+              maxLength={60}
               className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
               placeholder="Till exempel Anna"
             />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-300">
+              Typ
+            </span>
+
+            <select
+              value={
+                memberForm.memberType
+              }
+              onChange={(event) => {
+                const memberType =
+                  event.target
+                    .value as MemberType;
+
+                setMemberForm(
+                  (current) => ({
+                    ...current,
+                    memberType,
+                    emoji:
+                      current.emoji ===
+                        "👤" ||
+                      current.emoji ===
+                        "👶"
+                        ? memberType ===
+                          "child"
+                          ? "👶"
+                          : "👤"
+                        : current.emoji,
+                  })
+                );
+              }}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+            >
+              <option value="adult">
+                Vuxen
+              </option>
+
+              <option value="child">
+                Barn
+              </option>
+            </select>
           </label>
 
           <label className="block">
@@ -842,24 +944,16 @@ export default function FamilyManagerWidget() {
               value={
                 memberForm.emoji
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setMemberForm(
-                  (
-                    current
-                  ) => ({
+                  (current) => ({
                     ...current,
                     emoji:
-                      event
-                        .target
-                        .value,
+                      event.target.value,
                   })
                 )
               }
-              maxLength={
-                8
-              }
+              maxLength={8}
               className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
               placeholder="👤"
             />
@@ -875,18 +969,12 @@ export default function FamilyManagerWidget() {
               value={
                 memberForm.birthday
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setMemberForm(
-                  (
-                    current
-                  ) => ({
+                  (current) => ({
                     ...current,
                     birthday:
-                      event
-                        .target
-                        .value,
+                      event.target.value,
                   })
                 )
               }
@@ -894,7 +982,7 @@ export default function FamilyManagerWidget() {
             />
           </label>
 
-          <label className="block">
+          <label className="block sm:col-span-2">
             <span className="mb-2 block text-sm font-medium text-slate-300">
               Färg
             </span>
@@ -903,17 +991,12 @@ export default function FamilyManagerWidget() {
               value={
                 memberForm.accent
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setMemberForm(
-                  (
-                    current
-                  ) => ({
+                  (current) => ({
                     ...current,
                     accent:
-                      event
-                        .target
+                      event.target
                         .value as AccentColor,
                   })
                 )
@@ -923,9 +1006,11 @@ export default function FamilyManagerWidget() {
               <option value="blue">
                 Blå
               </option>
+
               <option value="rose">
                 Rosa
               </option>
+
               <option value="amber">
                 Gul
               </option>
@@ -948,9 +1033,7 @@ export default function FamilyManagerWidget() {
               className="animate-spin"
             />
           ) : (
-            <Save
-              size={17}
-            />
+            <Save size={17} />
           )}
 
           {editingMemberId
@@ -961,14 +1044,407 @@ export default function FamilyManagerWidget() {
     );
   }
 
+  function MemberCard({
+    member,
+    index,
+  }: {
+    member: MemberWithNameDays;
+    index: number;
+  }) {
+    const isWorking =
+      workingId === member.id;
+
+    const TypeIcon =
+      member.member_type ===
+      "child"
+        ? Baby
+        : UserRound;
+
+    return (
+      <div key={member.id}>
+        {editingMemberId ===
+        member.id ? (
+          <MemberForm
+            title={`Redigera ${member.display_name}`}
+          />
+        ) : (
+          <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-3xl">
+                  {member.emoji}
+                </div>
+
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-xl font-bold text-white">
+                      {
+                        member.display_name
+                      }
+                    </p>
+
+                    <span className="inline-flex items-center gap-1 rounded-full border border-blue-300/15 bg-blue-400/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-blue-200">
+                      <TypeIcon
+                        size={12}
+                      />
+
+                      {getMemberTypeLabel(
+                        member.member_type
+                      )}
+                    </span>
+
+                    <span className="rounded-full border border-emerald-300/15 bg-emerald-400/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-300">
+                      Aktiv
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDays
+                        size={15}
+                      />
+
+                      {formatBirthday(
+                        member.birthday
+                      )}
+                    </span>
+
+                    <span>
+                      Färg:{" "}
+                      {getAccentLabel(
+                        member.accent
+                      )}
+                    </span>
+
+                    <span>
+                      Ordning:{" "}
+                      {index + 1}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="flex overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                  <button
+                    type="button"
+                    disabled={
+                      workingId !==
+                        null ||
+                      index === 0
+                    }
+                    onClick={() =>
+                      void moveMember(
+                        member,
+                        "up"
+                      )
+                    }
+                    className="flex h-10 w-10 items-center justify-center text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
+                    aria-label={`Flytta ${member.display_name} upp`}
+                  >
+                    <ChevronUp
+                      size={17}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      workingId !==
+                        null ||
+                      index ===
+                        activeMembers.length -
+                          1
+                    }
+                    onClick={() =>
+                      void moveMember(
+                        member,
+                        "down"
+                      )
+                    }
+                    className="flex h-10 w-10 items-center justify-center border-l border-white/10 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
+                    aria-label={`Flytta ${member.display_name} ner`}
+                  >
+                    <ChevronDown
+                      size={17}
+                    />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    startEditMember(
+                      member
+                    )
+                  }
+                  disabled={
+                    workingId !== null
+                  }
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                  aria-label={`Redigera ${member.display_name}`}
+                >
+                  <Pencil
+                    size={17}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    workingId !== null
+                  }
+                  onClick={() =>
+                    void archiveMember(
+                      member
+                    )
+                  }
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/[0.06] text-amber-300 transition hover:bg-amber-400/15 disabled:opacity-40"
+                  aria-label={`Arkivera ${member.display_name}`}
+                >
+                  {isWorking ? (
+                    <LoaderCircle
+                      size={17}
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <Archive
+                      size={17}
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-white">
+                  Namnsdagar
+                </p>
+
+                {nameDayMemberId !==
+                  member.id && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      startAddNameDay(
+                        member.id
+                      )
+                    }
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Plus size={14} />
+                    Lägg till
+                  </button>
+                )}
+              </div>
+
+              {member.nameDays.length >
+              0 ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {member.nameDays.map(
+                    (nameDay) => (
+                      <div
+                        key={
+                          nameDay.id
+                        }
+                        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            {
+                              nameDay.name
+                            }
+                          </p>
+
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {formatNameDay(
+                              nameDay.month,
+                              nameDay.day
+                            )}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={
+                            workingId !==
+                              null ||
+                            isSaving
+                          }
+                          onClick={() =>
+                            void deleteNameDay(
+                              nameDay
+                            )
+                          }
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-400/10 hover:text-red-300 disabled:opacity-40"
+                          aria-label={`Ta bort namnsdag ${nameDay.name}`}
+                        >
+                          {workingId ===
+                          nameDay.id ? (
+                            <LoaderCircle
+                              size={15}
+                              className="animate-spin"
+                            />
+                          ) : (
+                            <X size={15} />
+                          )}
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">
+                  Inga namnsdagar
+                  registrerade.
+                </p>
+              )}
+
+              {nameDayMemberId ===
+                member.id && (
+                <form
+                  onSubmit={
+                    addNameDay
+                  }
+                  className="mt-4 rounded-xl border border-amber-300/15 bg-amber-400/[0.05] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-white">
+                      Ny namnsdag
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNameDayMemberId(
+                          null
+                        )
+                      }
+                      className="text-slate-400 transition hover:text-white"
+                      aria-label="Stäng"
+                    >
+                      <X size={17} />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_110px_110px_auto] sm:items-end">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs text-slate-400">
+                        Namn
+                      </span>
+
+                      <input
+                        value={
+                          nameDayForm.name
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNameDayForm(
+                            (current) => ({
+                              ...current,
+                              name:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
+                        placeholder="Namn"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs text-slate-400">
+                        Månad
+                      </span>
+
+                      <input
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={
+                          nameDayForm.month
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNameDayForm(
+                            (current) => ({
+                              ...current,
+                              month:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs text-slate-400">
+                        Dag
+                      </span>
+
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={
+                          nameDayForm.day
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNameDayForm(
+                            (current) => ({
+                              ...current,
+                              day:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        isSaving
+                      }
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
+                    >
+                      {isSaving ? (
+                        <LoaderCircle
+                          size={16}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Plus
+                          size={16}
+                        />
+                      )}
+
+                      Spara
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </article>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Card
       title="Hantera familj"
-      icon={
-        <Users
-          size={28}
-        />
-      }
+      icon={<Users size={28} />}
       storageKey="family-manager"
     >
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -978,26 +1454,24 @@ export default function FamilyManagerWidget() {
           </p>
 
           <p className="mt-1 text-sm text-slate-400">
-            Lägg till och redigera personer, födelsedagar och namnsdagar.
+            Hantera personer,
+            födelsedagar, namnsdagar
+            och vilka som tillhör den
+            aktiva familjen.
           </p>
         </div>
 
         {!showAddMember &&
           !editingMemberId && (
-          <button
-            type="button"
-            onClick={
-              startAddMember
-            }
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400"
-          >
-            <UserPlus
-              size={17}
-            />
-
-            Lägg till person
-          </button>
-        )}
+            <button
+              type="button"
+              onClick={startAddMember}
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400"
+            >
+              <UserPlus size={17} />
+              Lägg till person
+            </button>
+          )}
       </div>
 
       {errorMessage && (
@@ -1014,9 +1488,7 @@ export default function FamilyManagerWidget() {
 
       {showAddMember && (
         <div className="mb-5">
-          <MemberForm
-            title="Ny familjemedlem"
-          />
+          <MemberForm title="Ny familjemedlem" />
         </div>
       )}
 
@@ -1031,360 +1503,183 @@ export default function FamilyManagerWidget() {
             Hämtar familjen…
           </p>
         </div>
-      ) : sortedMembers.length ===
-        0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-          <Users
-            size={34}
-            className="mx-auto text-blue-300"
-          />
-
-          <p className="mt-3 font-semibold text-white">
-            Familjen är tom
-          </p>
-
-          <p className="mt-1 text-sm text-slate-400">
-            Lägg till den första personen.
-          </p>
-        </div>
       ) : (
-        <div className="grid gap-4">
-          {sortedMembers.map(
-            (member) => (
-              <div
-                key={
-                  member.id
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-300/15 bg-emerald-400/[0.07] px-3 py-1.5 text-xs font-semibold text-emerald-300">
+              {activeMembers.length}{" "}
+              {activeMembers.length === 1
+                ? "aktiv person"
+                : "aktiva personer"}
+            </span>
+
+            {archivedMembers.length >
+              0 && (
+              <span className="rounded-full border border-slate-300/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-400">
+                {archivedMembers.length}{" "}
+                arkiverade
+              </span>
+            )}
+          </div>
+
+          {activeMembers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+              <Users
+                size={34}
+                className="mx-auto text-blue-300"
+              />
+
+              <p className="mt-3 font-semibold text-white">
+                Inga aktiva
+                familjemedlemmar
+              </p>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Lägg till en person
+                eller återaktivera en
+                arkiverad person.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {activeMembers.map(
+                (member, index) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    index={index}
+                  />
+                )
+              )}
+            </div>
+          )}
+
+          {archivedMembers.length >
+            0 && (
+            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+              <button
+                type="button"
+                onClick={() =>
+                  setShowArchivedMembers(
+                    (current) =>
+                      !current
+                  )
+                }
+                className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/[0.04]"
+                aria-expanded={
+                  showArchivedMembers
                 }
               >
-                {editingMemberId ===
-                member.id ? (
-                  <MemberForm
-                    title={`Redigera ${member.display_name}`}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400">
+                    <Archive
+                      size={18}
+                    />
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-white">
+                      Arkiverade
+                      familjemedlemmar
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {
+                        archivedMembers.length
+                      }{" "}
+                      arkiverade
+                    </p>
+                  </div>
+                </div>
+
+                {showArchivedMembers ? (
+                  <ChevronUp
+                    size={19}
+                    className="text-slate-400"
                   />
                 ) : (
-                  <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="text-4xl">
-                          {
-                            member.emoji
-                          }
-                        </div>
+                  <ChevronDown
+                    size={19}
+                    className="text-slate-400"
+                  />
+                )}
+              </button>
 
-                        <div>
-                          <p className="text-xl font-bold text-white">
+              {showArchivedMembers && (
+                <div className="grid gap-3 border-t border-white/10 p-4">
+                  {archivedMembers.map(
+                    (member) => (
+                      <article
+                        key={
+                          member.id
+                        }
+                        className="flex flex-col gap-4 rounded-xl border border-white/10 bg-slate-950/20 p-4 opacity-80 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-2xl">
                             {
-                              member.display_name
+                              member.emoji
                             }
-                          </p>
+                          </div>
 
-                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
-                            <span className="flex items-center gap-1.5">
-                              <CalendarDays
-                                size={15}
-                              />
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-white">
+                                {
+                                  member.display_name
+                                }
+                              </p>
 
+                              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                                {getMemberTypeLabel(
+                                  member.member_type
+                                )}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-xs text-slate-500">
                               {formatBirthday(
                                 member.birthday
                               )}
-                            </span>
-
-                            <span>
-                              Färg:{" "}
-                              {getAccentLabel(
-                                member.accent
-                              )}
-                            </span>
+                            </p>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            startEditMember(
-                              member
-                            )
-                          }
-                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                          aria-label={`Redigera ${member.display_name}`}
-                        >
-                          <Pencil
-                            size={17}
-                          />
-                        </button>
 
                         <button
                           type="button"
                           disabled={
-                            deletingId !==
+                            workingId !==
                             null
                           }
                           onClick={() =>
-                            void deleteMember(
+                            void restoreMember(
                               member
                             )
                           }
-                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-400/15 bg-red-400/[0.06] text-red-300 transition hover:bg-red-400/15 disabled:opacity-40"
-                          aria-label={`Ta bort ${member.display_name}`}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.07] px-4 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/15 disabled:opacity-40"
                         >
-                          {deletingId ===
+                          {workingId ===
                           member.id ? (
                             <LoaderCircle
-                              size={17}
+                              size={16}
                               className="animate-spin"
                             />
                           ) : (
-                            <Trash2
-                              size={17}
+                            <ArchiveRestore
+                              size={16}
                             />
                           )}
+
+                          Återaktivera
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 border-t border-white/10 pt-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-white">
-                          Namnsdagar
-                        </p>
-
-                        {nameDayMemberId !==
-                          member.id && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              startAddNameDay(
-                                member.id
-                              )
-                            }
-                            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-                          >
-                            <Plus
-                              size={14}
-                            />
-
-                            Lägg till
-                          </button>
-                        )}
-                      </div>
-
-                      {member.nameDays.length >
-                      0 ? (
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {member.nameDays.map(
-                            (
-                              nameDay
-                            ) => (
-                              <div
-                                key={
-                                  nameDay.id
-                                }
-                                className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/30 p-3"
-                              >
-                                <div>
-                                  <p className="text-sm font-semibold text-white">
-                                    {
-                                      nameDay.name
-                                    }
-                                  </p>
-
-                                  <p className="mt-0.5 text-xs text-slate-500">
-                                    {formatNameDay(
-                                      nameDay.month,
-                                      nameDay.day
-                                    )}
-                                  </p>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  disabled={
-                                    deletingId !==
-                                    null
-                                  }
-                                  onClick={() =>
-                                    void deleteNameDay(
-                                      nameDay
-                                    )
-                                  }
-                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-400/10 hover:text-red-300 disabled:opacity-40"
-                                  aria-label={`Ta bort namnsdag ${nameDay.name}`}
-                                >
-                                  {deletingId ===
-                                  nameDay.id ? (
-                                    <LoaderCircle
-                                      size={15}
-                                      className="animate-spin"
-                                    />
-                                  ) : (
-                                    <Trash2
-                                      size={15}
-                                    />
-                                  )}
-                                </button>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <p className="mt-3 text-sm text-slate-500">
-                          Inga namnsdagar registrerade.
-                        </p>
-                      )}
-
-                      {nameDayMemberId ===
-                        member.id && (
-                        <form
-                          onSubmit={
-                            addNameDay
-                          }
-                          className="mt-4 rounded-xl border border-amber-300/15 bg-amber-400/[0.05] p-4"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-white">
-                              Ny namnsdag
-                            </p>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setNameDayMemberId(
-                                  null
-                                )
-                              }
-                              className="text-slate-400 transition hover:text-white"
-                              aria-label="Stäng"
-                            >
-                              <X
-                                size={17}
-                              />
-                            </button>
-                          </div>
-
-                          <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_110px_110px_auto] sm:items-end">
-                            <label className="block">
-                              <span className="mb-1.5 block text-xs text-slate-400">
-                                Namn
-                              </span>
-
-                              <input
-                                value={
-                                  nameDayForm.name
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  setNameDayForm(
-                                    (
-                                      current
-                                    ) => ({
-                                      ...current,
-                                      name:
-                                        event
-                                          .target
-                                          .value,
-                                    })
-                                  )
-                                }
-                                className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
-                                placeholder="Namn"
-                              />
-                            </label>
-
-                            <label className="block">
-                              <span className="mb-1.5 block text-xs text-slate-400">
-                                Månad
-                              </span>
-
-                              <input
-                                type="number"
-                                min="1"
-                                max="12"
-                                value={
-                                  nameDayForm.month
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  setNameDayForm(
-                                    (
-                                      current
-                                    ) => ({
-                                      ...current,
-                                      month:
-                                        event
-                                          .target
-                                          .value,
-                                    })
-                                  )
-                                }
-                                className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
-                              />
-                            </label>
-
-                            <label className="block">
-                              <span className="mb-1.5 block text-xs text-slate-400">
-                                Dag
-                              </span>
-
-                              <input
-                                type="number"
-                                min="1"
-                                max="31"
-                                value={
-                                  nameDayForm.day
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  setNameDayForm(
-                                    (
-                                      current
-                                    ) => ({
-                                      ...current,
-                                      day:
-                                        event
-                                          .target
-                                          .value,
-                                    })
-                                  )
-                                }
-                                className="w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 text-white outline-none focus:border-amber-300/40"
-                              />
-                            </label>
-
-                            <button
-                              type="submit"
-                              disabled={
-                                isSaving
-                              }
-                              className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-40"
-                            >
-                              {isSaving ? (
-                                <LoaderCircle
-                                  size={16}
-                                  className="animate-spin"
-                                />
-                              ) : (
-                                <Plus
-                                  size={16}
-                                />
-                              )}
-
-                              Spara
-                            </button>
-                          </div>
-                        </form>
-                      )}
-                    </div>
-                  </article>
-                )}
-              </div>
-            )
+                      </article>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <div className="mt-5 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -1394,7 +1689,12 @@ export default function FamilyManagerWidget() {
         />
 
         <p className="text-xs leading-5 text-slate-500">
-          Ändringar sparas direkt i familjens Supabase-databas. Family Timeline kan uppdateras automatiskt när familjedata ändras.
+          Ändringar sparas direkt i
+          familjens Supabase-databas.
+          Arkivering behåller personens
+          data. I nästa etapp använder
+          Familjen-fliken de aktiva
+          personerna automatiskt.
         </p>
       </div>
     </Card>
