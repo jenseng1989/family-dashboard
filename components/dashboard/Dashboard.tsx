@@ -1,4 +1,4 @@
-import BathingWidget from "@/components/dashboard/BathingWidget";
+import AirQualityWidget from "@/components/dashboard/AirQualityWidget";
 import Countdown from "@/components/dashboard/Countdown";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import DynamicFamilySection from "@/components/dashboard/DynamicFamilySection";
@@ -32,10 +32,10 @@ export default function Dashboard() {
           content: <WeatherWidget />,
         },
         {
-          id: "bathing",
+          id: "gothenburg-air-quality",
           className:
             "col-span-12 min-w-0 xl:col-span-6",
-          content: <BathingWidget />,
+          content: <AirQualityWidget />,
         },
         {
           id: "pollen",

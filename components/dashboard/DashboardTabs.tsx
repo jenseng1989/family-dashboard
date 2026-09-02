@@ -72,7 +72,7 @@ const tabs: TabButton[] = [
   },
   {
     id: "weather",
-    label: "Väder & bad",
+    label: "Väder",
     shortLabel: "Väder",
     icon: <CloudSun size={20} />,
   },

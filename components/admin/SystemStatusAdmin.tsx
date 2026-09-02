@@ -33,6 +33,7 @@ import {
 type ServiceGroup =
   | "System"
   | "Vardagen"
+  | "Väder"
   | "Göteborg"
   | "Utforska";
 
@@ -113,6 +114,19 @@ const services: ServiceDefinition[] = [
   },
 
   /*
+   * VÄDER
+   */
+  {
+    id: "air-quality",
+    name: "Luftkvalitet",
+    description:
+      "Aktuell luftkvalitet i Göteborg.",
+    endpoint: "/api/air-quality",
+    group: "Väder",
+    icon: Wind,
+  },
+
+  /*
    * GÖTEBORG
    */
   {
@@ -123,15 +137,6 @@ const services: ServiceDefinition[] = [
     endpoint: "/api/vasttrafik",
     group: "Göteborg",
     icon: TramFront,
-  },
-  {
-    id: "air-quality",
-    name: "Luftkvalitet",
-    description:
-      "Aktuell luftkvalitet i Göteborg.",
-    endpoint: "/api/air-quality",
-    group: "Göteborg",
-    icon: Wind,
   },
   {
     id: "bathing",
@@ -606,6 +611,7 @@ export default function SystemStatusAdmin() {
   const groups: ServiceGroup[] = [
     "System",
     "Vardagen",
+    "Väder",
     "Göteborg",
     "Utforska",
   ];

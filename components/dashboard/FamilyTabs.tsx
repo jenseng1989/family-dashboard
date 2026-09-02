@@ -129,23 +129,18 @@ export default function FamilyTabs({
                     : "text-slate-300 hover:bg-white/10 hover:text-white",
                 ].join(" ")}
               >
-                <span className="text-lg leading-none">
-                  {tab.emoji}
-                </span>
+                <TypeIcon
+                  size={16}
+                  className={
+                    isActive
+                      ? "shrink-0 text-white/80"
+                      : "shrink-0 text-slate-500"
+                  }
+                />
 
                 <span className="truncate">
                   {tab.label}
                 </span>
-
-                <TypeIcon
-                  size={14}
-                  className={[
-                    "hidden lg:block",
-                    isActive
-                      ? "text-white/70"
-                      : "text-slate-500",
-                  ].join(" ")}
-                />
               </button>
             );
           })}

@@ -2,7 +2,9 @@
 
 import { MapPin } from "lucide-react";
 
-import AirQualityWidget from "@/components/dashboard/AirQualityWidget";
+import BathingWidget from "@/components/dashboard/BathingWidget";
+import GothenburgEventsWidget from "@/components/dashboard/GothenburgEventsWidget";
+import GothenburgTodayWidget from "@/components/dashboard/GothenburgTodayWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import VasttrafikWidget from "@/components/dashboard/VasttrafikWidget";
 import WidgetGate from "@/components/dashboard/WidgetGate";
@@ -10,16 +12,28 @@ import WidgetGate from "@/components/dashboard/WidgetGate";
 export default function GothenburgDashboard() {
   const gothenburgWidgets = [
     {
+      id: "gothenburg-today",
+      className:
+        "col-span-12 min-w-0",
+      content: <GothenburgTodayWidget />,
+    },
+    {
+      id: "gothenburg-events",
+      className:
+        "col-span-12 min-w-0",
+      content: <GothenburgEventsWidget />,
+    },
+    {
       id: "gothenburg-vasttrafik",
       className:
         "col-span-12 min-w-0 xl:col-span-6",
       content: <VasttrafikWidget />,
     },
     {
-      id: "gothenburg-air-quality",
+      id: "bathing",
       className:
         "col-span-12 min-w-0 xl:col-span-6",
-      content: <AirQualityWidget />,
+      content: <BathingWidget />,
     },
   ];
 
@@ -42,8 +56,8 @@ export default function GothenburgDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
-              Kollektivtrafik och luftkvalitet på ett
-              ställe.
+              Dagens Göteborg, evenemang,
+              kollektivtrafik och badtemperaturer.
             </p>
           </div>
         </div>

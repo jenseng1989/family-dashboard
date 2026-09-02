@@ -54,8 +54,8 @@ const tabOptions: {
   },
   {
     id: "weather",
-    label: "Väder & bad",
-    description: "Väderprognos och badtemperaturer.",
+    label: "Väder",
+    description: "Väderprognos, luftkvalitet och pollen.",
   },
   {
     id: "family",

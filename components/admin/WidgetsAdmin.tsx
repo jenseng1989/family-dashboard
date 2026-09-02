@@ -157,14 +157,6 @@ const groups: WidgetGroup[] = [
         defaultSize: "half",
       },
       {
-        id: "bathing",
-        name: "Badtemperaturer",
-        description:
-          "Badplatser och aktuella temperaturer.",
-        icon: Bath,
-        defaultSize: "half",
-      },
-      {
         id: "pollen",
         name: "Pollen",
         description:
@@ -306,6 +298,22 @@ const groups: WidgetGroup[] = [
     icon: MapPin,
     widgets: [
       {
+        id: "gothenburg-today",
+        name: "Göteborg idag",
+        description:
+          "Dagens utvalda evenemang och lokala tips i Göteborg.",
+        icon: Sparkles,
+        defaultSize: "full",
+      },
+      {
+        id: "gothenburg-events",
+        name: "Evenemang · 7 dagar",
+        description:
+          "Evenemang i Göteborg idag och sex dagar framåt.",
+        icon: CalendarClock,
+        defaultSize: "full",
+      },
+      {
         id: "gothenburg-vasttrafik",
         name: "Västtrafik",
         description:
@@ -314,11 +322,11 @@ const groups: WidgetGroup[] = [
         defaultSize: "half",
       },
       {
-        id: "gothenburg-air-quality",
-        name: "Luftkvalitet",
+        id: "bathing",
+        name: "Badtemperaturer",
         description:
-          "Aktuell luftkvalitet i Göteborg.",
-        icon: Wind,
+          "Badplatser och aktuella temperaturer.",
+        icon: Bath,
         defaultSize: "half",
       },
     ],
