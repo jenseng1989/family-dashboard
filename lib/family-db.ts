@@ -36,20 +36,26 @@ export type CreateFamilyMemberInput = {
   memberType: MemberType;
 };
 
+const FAMILY_CACHE_TTL_MS =
+  5 * 60 * 1000;
+
+let familyCache:
+  FamilyMember[] | null =
+  null;
+
+let familyCacheAt = 0;
+
+let familyInFlight:
+  Promise<FamilyMember[]> | null =
+  null;
+
 function isAccentColor(
   value: string
 ): value is AccentColor {
   return (
     value === "blue" ||
     value === "rose" ||
-    value === "amber" ||
-    value === "green" ||
-    value === "purple" ||
-    value === "cyan" ||
-    value === "orange" ||
-    value === "red" ||
-    value === "indigo" ||
-    value === "lime"
+    value === "amber"
   );
 }
 
@@ -69,9 +75,45 @@ function normalizeMemberType(
     : "adult";
 }
 
-export async function getFamilyMembersFromDatabase(): Promise<
-  FamilyMember[]
-> {
+function cloneFamilyMembers(
+  members: FamilyMember[]
+): FamilyMember[] {
+  return members.map(
+    (member) => ({
+      ...member,
+      names:
+        member.names.map(
+          (item) => ({
+            ...item,
+            nameDay:
+              item.nameDay
+                ? {
+                    ...item.nameDay,
+                  }
+                : undefined,
+          })
+        ),
+    })
+  );
+}
+
+function isFamilyCacheFresh() {
+  return (
+    familyCache !== null &&
+    Date.now() -
+      familyCacheAt <
+      FAMILY_CACHE_TTL_MS
+  );
+}
+
+export function clearFamilyMembersCache() {
+  familyCache = null;
+  familyCacheAt = 0;
+  familyInFlight = null;
+}
+
+async function fetchFamilyMembersFromDatabase():
+  Promise<FamilyMember[]> {
   const [
     membersResult,
     nameDaysResult,
@@ -79,7 +121,18 @@ export async function getFamilyMembersFromDatabase(): Promise<
     supabase
       .from("family_members")
       .select(
-        "id, display_name, emoji, birthday, accent, member_type, sort_order, is_active, created_at, updated_at"
+        [
+          "id",
+          "display_name",
+          "emoji",
+          "birthday",
+          "accent",
+          "member_type",
+          "sort_order",
+          "is_active",
+          "created_at",
+          "updated_at",
+        ].join(", ")
       )
       .order(
         "sort_order",
@@ -137,15 +190,13 @@ export async function getFamilyMembersFromDatabase(): Promise<
 
   const memberRows =
     (
-      membersResult.data ??
-      []
-    ) as unknown as FamilyMemberRow[];
+      membersResult.data ?? []
+    ) as FamilyMemberRow[];
 
   const nameDayRows =
     (
-      nameDaysResult.data ??
-      []
-    ) as unknown as FamilyNameDayRow[];
+      nameDaysResult.data ?? []
+    ) as FamilyNameDayRow[];
 
   const nameDaysByMember =
     new Map<
@@ -180,7 +231,8 @@ export async function getFamilyMembersFromDatabase(): Promise<
       id: row.id,
       displayName:
         row.display_name,
-      emoji: row.emoji,
+      emoji:
+        row.emoji,
       birthday:
         row.birthday,
       accent:
@@ -201,6 +253,51 @@ export async function getFamilyMembersFromDatabase(): Promise<
         row.is_active,
     })
   );
+}
+
+export async function getFamilyMembersFromDatabase(
+  forceRefresh = false
+): Promise<FamilyMember[]> {
+  if (
+    !forceRefresh &&
+    isFamilyCacheFresh() &&
+    familyCache
+  ) {
+    return cloneFamilyMembers(
+      familyCache
+    );
+  }
+
+  if (
+    !forceRefresh &&
+    familyInFlight
+  ) {
+    return cloneFamilyMembers(
+      await familyInFlight
+    );
+  }
+
+  familyInFlight =
+    fetchFamilyMembersFromDatabase();
+
+  try {
+    const members =
+      await familyInFlight;
+
+    familyCache =
+      cloneFamilyMembers(
+        members
+      );
+
+    familyCacheAt =
+      Date.now();
+
+    return cloneFamilyMembers(
+      members
+    );
+  } finally {
+    familyInFlight = null;
+  }
 }
 
 export async function createFamilyMemberInDatabase(
@@ -271,6 +368,8 @@ export async function createFamilyMemberInDatabase(
       "Kunde inte lägga till familjemedlemmen."
     );
   }
+
+  clearFamilyMembersCache();
 
   return insertResult.data.id;
 }
@@ -349,11 +448,9 @@ export async function updateFamilyMemberInDatabase(
           name:
             item.name.trim(),
           month:
-            item.nameDay!
-              .month,
+            item.nameDay!.month,
           day:
-            item.nameDay!
-              .day,
+            item.nameDay!.day,
         })
       );
 
@@ -382,6 +479,8 @@ export async function updateFamilyMemberInDatabase(
       );
     }
   }
+
+  clearFamilyMembersCache();
 }
 
 export async function setFamilyMemberActiveInDatabase(
@@ -414,6 +513,8 @@ export async function setFamilyMemberActiveInDatabase(
         : "Personen kunde inte arkiveras."
     );
   }
+
+  clearFamilyMembersCache();
 }
 
 export async function deleteFamilyMemberFromDatabase(
@@ -452,6 +553,8 @@ export async function deleteFamilyMemberFromDatabase(
       "Personen kunde inte tas bort. Endast arkiverade personer får raderas permanent."
     );
   }
+
+  clearFamilyMembersCache();
 }
 
 export async function moveFamilyMemberInDatabase(
@@ -526,4 +629,6 @@ export async function moveFamilyMemberInDatabase(
       "Ordningen kunde inte ändras."
     );
   }
+
+  clearFamilyMembersCache();
 }

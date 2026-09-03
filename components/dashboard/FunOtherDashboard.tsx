@@ -1,17 +1,11 @@
 "use client";
 
 import {
-  Activity,
   AlertTriangle,
   Clock3,
-  ExternalLink,
-  Flame,
   Globe2,
   LoaderCircle,
-  MapPin,
   RefreshCw,
-  Ruler,
-  Waves,
 } from "lucide-react";
 import {
   useCallback,
@@ -19,81 +13,19 @@ import {
   useMemo,
   useState,
 } from "react";
-import Card from "@/components/ui/Card";
+import dynamic from "next/dynamic";
+import LazyViewport from "@/components/dashboard/LazyViewport";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import WidgetGate from "@/components/dashboard/WidgetGate";
-
-type EarthquakeItem = {
-  id: string;
-  magnitude: number;
-  place: string;
-  time: string;
-  depthKm: number;
-  latitude: number;
-  longitude: number;
-  url: string;
-  tsunami: boolean;
-  alert: string | null;
-  significance: number | null;
-  feltReports: number | null;
-};
-
-type EarthData = {
-  generatedAt: string;
-  source: string;
-  periodHours: number;
-  summary: {
-    totalEarthquakes: number;
-    magnitude4: number;
-    magnitude5: number;
-    magnitude6: number;
-    largest: EarthquakeItem | null;
-    latestM4: EarthquakeItem | null;
-    activityLevel:
-      | "Lugn"
-      | "Normal"
-      | "Förhöjd"
-      | "Kraftig";
-  };
-  earthquakes: EarthquakeItem[];
-};
-
-type VolcanoItem = {
-  name: string;
-  country: string;
-  eruptionStart: string;
-  lastKnownActivity: string;
-  eruptionType: string;
-  url: string;
-  distanceKm: number;
-};
-
-type VolcanoData = {
-  generatedAt: string;
-  source: string;
-  sourceUrl: string;
-  statusDate: string | null;
-  total: number;
-  volcanoes: VolcanoItem[];
-};
+import type {
+  EarthData,
+  VolcanoData,
+} from "@/lib/earth-dashboard-types";
 
 function formatMagnitude(
   value: number
 ): string {
   return value.toFixed(1);
-}
-
-function formatEventTime(
-  value: string
-): string {
-  return new Date(
-    value
-  ).toLocaleString("sv-SE", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function getTimeAgo(
@@ -129,82 +61,6 @@ function getTimeAgo(
       ? "timme"
       : "timmar"
   } sedan`;
-}
-
-function getMagnitudeClasses(
-  magnitude: number
-): string {
-  if (magnitude >= 7) {
-    return "border-red-400/30 bg-red-400/15 text-red-200";
-  }
-
-  if (magnitude >= 6) {
-    return "border-orange-400/30 bg-orange-400/15 text-orange-200";
-  }
-
-  if (magnitude >= 5) {
-    return "border-amber-300/25 bg-amber-300/10 text-amber-200";
-  }
-
-  return "border-emerald-300/20 bg-emerald-400/10 text-emerald-200";
-}
-
-function getMagnitudeInterpretation(
-  magnitude: number
-) {
-  if (magnitude >= 8) {
-    return {
-      label:
-        "Mycket stor jordbävning",
-      description:
-        "Ett mycket kraftigt skalv som kan orsaka omfattande skador över stora områden nära epicentrum.",
-    };
-  }
-
-  if (magnitude >= 7) {
-    return {
-      label: "Stor jordbävning",
-      description:
-        "Ett kraftigt skalv som kan orsaka allvarliga skador, särskilt nära epicentrum.",
-    };
-  }
-
-  if (magnitude >= 6) {
-    return {
-      label:
-        "Kraftig jordbävning",
-      description:
-        "Kan orsaka betydande skakningar och lokala skador, beroende på bland annat djup och avstånd till bebyggelse.",
-    };
-  }
-
-  if (magnitude >= 5) {
-    return {
-      label: "Stark jordbävning",
-      description:
-        "Känns ofta tydligt och kan orsaka mindre till måttliga skador nära epicentrum.",
-    };
-  }
-
-  return {
-    label: "Måttlig jordbävning",
-    description:
-      "Kan kännas tydligt lokalt men orsakar vanligtvis begränsade skador.",
-  };
-}
-
-function getDepthInterpretation(
-  depthKm: number
-): string {
-  if (depthKm < 70) {
-    return "Grunt skalv";
-  }
-
-  if (depthKm < 300) {
-    return "Mellandjupt skalv";
-  }
-
-  return "Djupt skalv";
 }
 
 function getActivityClasses(
@@ -251,141 +107,52 @@ function SummaryStat({
   );
 }
 
-function EarthquakeCard({
-  earthquake,
+
+function EarthWidgetLoading({
+  label,
 }: {
-  earthquake: EarthquakeItem;
+  label: string;
 }) {
-  const interpretation =
-    getMagnitudeInterpretation(
-      earthquake.magnitude
-    );
-
-  const depthInterpretation =
-    getDepthInterpretation(
-      earthquake.depthKm
-    );
-
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
-      <div className="flex items-start gap-4">
-        <div
-          className={[
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-black",
-            getMagnitudeClasses(
-              earthquake.magnitude
-            ),
-          ].join(" ")}
-        >
-          {formatMagnitude(
-            earthquake.magnitude
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="font-semibold leading-6 text-white">
-                {earthquake.place}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                {getTimeAgo(
-                  earthquake.time
-                )}{" "}
-                ·{" "}
-                {formatEventTime(
-                  earthquake.time
-                )}
-              </p>
-            </div>
-
-            <a
-              href={earthquake.url}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`Öppna ${earthquake.place} hos USGS`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:border-emerald-300/20 hover:bg-emerald-400/10 hover:text-emerald-200"
-            >
-              <ExternalLink
-                size={16}
-              />
-            </a>
-          </div>
-
-          <div
-            className={[
-              "mt-4 rounded-xl border px-3 py-3",
-              getMagnitudeClasses(
-                earthquake.magnitude
-              ),
-            ].join(" ")}
-          >
-            <p className="text-sm font-bold">
-              {
-                interpretation.label
-              }
-            </p>
-
-            <p className="mt-1 text-xs leading-5 opacity-80">
-              {
-                interpretation.description
-              }
-            </p>
-          </div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <Ruler
-                size={14}
-                className="shrink-0 text-emerald-300"
-              />
-              {depthInterpretation} ·{" "}
-              {Math.round(
-                earthquake.depthKm
-              )}{" "}
-              km
-            </div>
-
-            <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <MapPin
-                size={14}
-                className="shrink-0 text-emerald-300"
-              />
-              {earthquake.latitude.toFixed(
-                1
-              )}
-              °,{" "}
-              {earthquake.longitude.toFixed(
-                1
-              )}
-              °
-            </div>
-
-            <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
-              <Activity
-                size={14}
-                className="shrink-0 text-emerald-300"
-              />
-              Signifikans{" "}
-              {earthquake.significance ??
-                "–"}
-            </div>
-          </div>
-
-          {earthquake.tsunami && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-300/20 bg-blue-400/10 px-3 py-2 text-xs font-semibold text-blue-200">
-              <Waves size={15} />
-              USGS-flödet har
-              tsunami-flagga för
-              händelsen
-            </div>
-          )}
-        </div>
+    <div className="flex min-h-52 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+      <div className="flex items-center gap-3 text-slate-400">
+        <LoaderCircle
+          size={20}
+          className="animate-spin text-emerald-300"
+        />
+        <span className="text-sm font-semibold">
+          Laddar {label}…
+        </span>
       </div>
-    </article>
+    </div>
   );
 }
+
+const EarthVolcanoesWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/EarthVolcanoesWidget"
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <EarthWidgetLoading label="vulkaner" />
+    ),
+  }
+);
+
+const EarthEarthquakesWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/EarthEarthquakesWidget"
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <EarthWidgetLoading label="jordbävningar" />
+    ),
+  }
+);
 
 export default function FunOtherDashboard() {
   const [data, setData] =
@@ -423,23 +190,42 @@ export default function FunOtherDashboard() {
     useState(0);
 
   const loadData =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-      setVolcanoError(null);
+    useCallback(
+      async (
+        showLoader = true,
+        forceRefresh = false
+      ) => {
+        if (showLoader) {
+          setIsLoading(true);
+        }
 
-      try {
-        const [
-          earthResponse,
-          volcanoResponse,
-        ] = await Promise.all([
-          fetch("/api/earth", {
-            cache: "no-store",
-          }),
-          fetch("/api/volcanoes", {
-            cache: "no-store",
-          }),
-        ]);
+        setErrorMessage(null);
+        setVolcanoError(null);
+
+        try {
+          const [
+            earthResponse,
+            volcanoResponse,
+          ] = await Promise.all([
+            fetch(
+              "/api/earth",
+              forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
+            ),
+            fetch(
+              "/api/volcanoes",
+              forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
+            ),
+          ]);
 
         if (!earthResponse.ok) {
           throw new Error(
@@ -475,17 +261,19 @@ export default function FunOtherDashboard() {
         setErrorMessage(
           "Jorddata kunde inte hämtas just nu."
         );
-      } finally {
-        setIsLoading(false);
-      }
-    }, []);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      []
+    );
 
   useEffect(() => {
     void loadData();
 
     const intervalId =
       window.setInterval(() => {
-        void loadData();
+        void loadData(false);
       }, 5 * 60 * 1000);
 
     return () =>
@@ -515,7 +303,7 @@ export default function FunOtherDashboard() {
       [data, clock]
     );
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <section className="relative overflow-hidden rounded-[2rem] border border-emerald-300/10 bg-gradient-to-br from-slate-950 via-emerald-950/45 to-slate-950 p-6 shadow-2xl shadow-emerald-950/20">
         <div className="flex min-h-[28rem] flex-col items-center justify-center gap-4">
@@ -532,7 +320,7 @@ export default function FunOtherDashboard() {
     );
   }
 
-  if (!data || errorMessage) {
+  if (!data) {
     return (
       <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-6">
         <div className="flex min-h-72 flex-col items-center justify-center text-center">
@@ -552,7 +340,10 @@ export default function FunOtherDashboard() {
           <button
             type="button"
             onClick={() =>
-              void loadData()
+              void loadData(
+                true,
+                true
+              )
             }
             className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white transition hover:bg-emerald-500"
           >
@@ -570,196 +361,16 @@ export default function FunOtherDashboard() {
       className:
         "col-span-12 min-w-0",
       content: (
-        <Card
-          title="Pågående vulkanutbrott"
-          icon={<Flame size={28} />}
-          className="h-full border-orange-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          storageKey="earth-volcanoes"
+        <LazyViewport
+          fallback={
+            <EarthWidgetLoading label="vulkaner" />
+          }
         >
-          {volcanoError ||
-          !volcanoData ? (
-            <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
-              <div className="flex items-start gap-3">
-                <AlertTriangle
-                  size={20}
-                  className="mt-0.5 shrink-0 text-amber-300"
-                />
-
-                <div>
-                  <p className="font-semibold text-amber-100">
-                    Vulkandata är
-                    tillfälligt
-                    otillgänglig
-                  </p>
-
-                  <p className="mt-1 text-sm text-amber-100/70">
-                    {volcanoError ??
-                      "Försök igen om en stund."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="mb-4 rounded-2xl border border-orange-300/10 bg-orange-400/[0.06] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-300">
-                      Fortsatta utbrott
-                    </p>
-
-                    <p className="mt-1 text-3xl font-bold text-white">
-                      {
-                        volcanoData.total
-                      }
-                    </p>
-
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Smithsonian
-                      använder
-                      "continuing
-                      eruption" för
-                      utbrott med
-                      åtminstone
-                      intermittent
-                      eruptiv aktivitet
-                      utan ett uppehåll
-                      på tre månader
-                      eller mer.
-                    </p>
-                  </div>
-
-                  <a
-                    href={
-                      volcanoData.sourceUrl
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-orange-300/15 bg-orange-400/10 px-3 py-2 text-sm font-semibold text-orange-200 transition hover:bg-orange-400/20"
-                  >
-                    Smithsonian GVP
-                    <ExternalLink
-                      size={15}
-                    />
-                  </a>
-                </div>
-
-                {volcanoData.statusDate && (
-                  <p className="mt-3 text-xs text-slate-500">
-                    Liststatus:{" "}
-                    {
-                      volcanoData.statusDate
-                    }
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-3 lg:grid-cols-2">
-                {volcanoData.volcanoes.map(
-                  (volcano) => (
-                    <article
-                      key={`${volcano.name}-${volcano.country}`}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-300/15 bg-orange-400/10 text-orange-300">
-                          <Flame
-                            size={22}
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <p className="font-semibold text-white">
-                                {
-                                  volcano.name
-                                }
-                              </p>
-
-                              <p className="mt-1 text-xs text-slate-500">
-                                {
-                                  volcano.country
-                                }{" "}
-                                ·{" "}
-                                {new Intl.NumberFormat(
-                                  "sv-SE"
-                                ).format(
-                                  volcano.distanceKm
-                                )}{" "}
-                                km från
-                                Göteborg
-                              </p>
-                            </div>
-
-                            <a
-                              href={
-                                volcano.url
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label={`Öppna ${volcano.name} hos Smithsonian GVP`}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:border-orange-300/20 hover:bg-orange-400/10 hover:text-orange-200"
-                            >
-                              <ExternalLink
-                                size={16}
-                              />
-                            </a>
-                          </div>
-
-                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            <div className="rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                                Start
-                              </p>
-
-                              <p className="mt-1 text-xs font-semibold text-slate-300">
-                                {
-                                  volcano.eruptionStart
-                                }
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
-                                Senast känd
-                                aktivitet
-                              </p>
-
-                              <p className="mt-1 text-xs font-semibold text-slate-300">
-                                {
-                                  volcano.lastKnownActivity
-                                }
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="mt-3 text-xs text-orange-200/80">
-                            {
-                              volcano.eruptionType
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </article>
-                  )
-                )}
-              </div>
-
-              <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
-                Smithsonian påpekar
-                att listan över
-                fortsatta utbrott
-                uppdateras i större
-                omgångar, medan Weekly
-                Volcanic Activity
-                Report innehåller
-                nyare aktivitet mellan
-                databasuppdateringarna.
-              </p>
-            </>
-          )}
-        </Card>
+          <EarthVolcanoesWidget
+            data={volcanoData}
+            error={volcanoError}
+          />
+        </LazyViewport>
       ),
     },
     {
@@ -767,74 +378,16 @@ export default function FunOtherDashboard() {
       className:
         "col-span-12 min-w-0",
       content: (
-        <Card
-          title="Jordbävningar"
-          icon={<Activity size={28} />}
-          className="h-full border-emerald-300/15 bg-slate-950/55 hover:bg-slate-950/70"
-          storageKey="earth-earthquakes"
+        <LazyViewport
+          fallback={
+            <EarthWidgetLoading label="jordbävningar" />
+          }
         >
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-semibold text-white">
-                De starkaste M4+
-                senaste 24 timmarna
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Listan sorteras efter
-                magnitud och uppdateras
-                automatiskt.
-              </p>
-            </div>
-
-            <p className="text-xs text-slate-500">
-              Källa: {data.source}
-            </p>
-          </div>
-
-          {earthquakes.length ===
-          0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-              <Globe2
-                size={32}
-                className="mx-auto text-emerald-300"
-              />
-
-              <p className="mt-3 font-semibold text-white">
-                Inga M4+ hittades
-              </p>
-
-              <p className="mt-1 text-sm text-slate-400">
-                Det finns inga sådana
-                händelser i det aktuella
-                dygnsflödet.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {earthquakes.map(
-                (earthquake) => (
-                  <EarthquakeCard
-                    key={
-                      earthquake.id
-                    }
-                    earthquake={
-                      earthquake
-                    }
-                  />
-                )
-              )}
-            </div>
-          )}
-
-          <p className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-500">
-            USGS realtidsflöden
-            uppdateras löpande.
-            Magnitud, plats och djup
-            kan justeras när fler
-            mätningar analyseras.
-          </p>
-        </Card>
+          <EarthEarthquakesWidget
+            data={data}
+            earthquakes={earthquakes}
+          />
+        </LazyViewport>
       ),
     },
   ];
@@ -871,7 +424,10 @@ export default function FunOtherDashboard() {
             <button
               type="button"
               onClick={() =>
-                void loadData()
+                void loadData(
+                  false,
+                  true
+                )
               }
               className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
             >
@@ -1007,6 +563,19 @@ export default function FunOtherDashboard() {
             )}
           </div>
         </div>
+
+        {errorMessage && (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
+            <AlertTriangle
+              size={18}
+              className="mt-0.5 shrink-0 text-amber-300"
+            />
+
+            <p className="text-sm text-amber-100/80">
+              Senaste uppdateringen av jordbävningsdata misslyckades. Visar senast hämtade data.
+            </p>
+          </div>
+        )}
 
         <OrderedWidgetGroup
           wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"

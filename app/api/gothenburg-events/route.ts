@@ -581,7 +581,9 @@ export async function GET() {
         "User-Agent":
           "FamilyDashboard/1.0 (+personal dashboard)",
       },
-      cache: "no-store",
+      next: {
+        revalidate: 15 * 60,
+      },
     });
 
     if (!response.ok) {

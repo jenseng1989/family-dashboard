@@ -3,17 +3,17 @@
 import {
   Baby,
   Cake,
-  CalendarDays,
+  FileText,
   LoaderCircle,
-  Sparkles,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
+import ChildDocumentationButton from "@/components/dashboard/ChildDocumentationButton";
+import Card from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
 type ChildOverviewProps = {
@@ -48,204 +48,6 @@ function parseLocalDate(
   );
 }
 
-function startOfDay(
-  date: Date
-): Date {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
-}
-
-function daysBetween(
-  start: Date,
-  end: Date
-): number {
-  const startUtc =
-    Date.UTC(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate()
-    );
-
-  const endUtc =
-    Date.UTC(
-      end.getFullYear(),
-      end.getMonth(),
-      end.getDate()
-    );
-
-  return Math.round(
-    (endUtc - startUtc) /
-      86_400_000
-  );
-}
-
-function addMonthsClamped(
-  date: Date,
-  months: number
-): Date {
-  const target =
-    new Date(
-      date.getFullYear(),
-      date.getMonth() +
-        months,
-      1
-    );
-
-  const lastDay =
-    new Date(
-      target.getFullYear(),
-      target.getMonth() +
-        1,
-      0
-    ).getDate();
-
-  target.setDate(
-    Math.min(
-      date.getDate(),
-      lastDay
-    )
-  );
-
-  return target;
-}
-
-function getCalendarAge(
-  birthdayString: string,
-  referenceDate:
-    Date = new Date()
-): {
-  years: number;
-  months: number;
-  days: number;
-  totalDays: number;
-} {
-  const birthday =
-    startOfDay(
-      parseLocalDate(
-        birthdayString
-      )
-    );
-
-  const today =
-    startOfDay(
-      referenceDate
-    );
-
-  if (
-    today <
-    birthday
-  ) {
-    return {
-      years: 0,
-      months: 0,
-      days: 0,
-      totalDays: 0,
-    };
-  }
-
-  let totalMonths =
-    (
-      today.getFullYear() -
-      birthday.getFullYear()
-    ) *
-      12 +
-    (
-      today.getMonth() -
-      birthday.getMonth()
-    );
-
-  let monthAnchor =
-    addMonthsClamped(
-      birthday,
-      totalMonths
-    );
-
-  if (
-    monthAnchor >
-    today
-  ) {
-    totalMonths -= 1;
-
-    monthAnchor =
-      addMonthsClamped(
-        birthday,
-        totalMonths
-      );
-  }
-
-  const years =
-    Math.floor(
-      totalMonths / 12
-    );
-
-  const months =
-    totalMonths % 12;
-
-  const days =
-    daysBetween(
-      monthAnchor,
-      today
-    );
-
-  return {
-    years,
-    months,
-    days,
-    totalDays:
-      daysBetween(
-        birthday,
-        today
-      ),
-  };
-}
-
-function getAgeTitle(
-  age: {
-    years: number;
-    months: number;
-    days: number;
-  }
-): string {
-  const parts: string[] =
-    [];
-
-  if (
-    age.years > 0
-  ) {
-    parts.push(
-      `${age.years} år`
-    );
-  }
-
-  if (
-    age.months > 0 ||
-    age.years === 0
-  ) {
-    parts.push(
-      `${age.months} ${
-        age.months === 1
-          ? "månad"
-          : "månader"
-      }`
-    );
-  }
-
-  parts.push(
-    `${age.days} ${
-      age.days === 1
-        ? "dag"
-        : "dagar"
-    }`
-  );
-
-  return parts.join(
-    " och "
-  );
-}
-
 function formatBirthday(
   dateString: string
 ): string {
@@ -254,11 +56,103 @@ function formatBirthday(
   ).toLocaleDateString(
     "sv-SE",
     {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+      day:
+        "numeric",
+      month:
+        "long",
+      year:
+        "numeric",
     }
   );
+}
+
+function getAge(
+  birthdayString: string
+): {
+  months: number;
+  days: number;
+} {
+  const birthday =
+    parseLocalDate(
+      birthdayString
+    );
+
+  const today =
+    new Date();
+
+  const currentDate =
+    new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+  let months =
+    (
+      currentDate.getFullYear() -
+      birthday.getFullYear()
+    ) *
+      12 +
+    currentDate.getMonth() -
+    birthday.getMonth();
+
+  let monthAnchor =
+    new Date(
+      birthday.getFullYear(),
+      birthday.getMonth() +
+        months,
+      birthday.getDate()
+    );
+
+  if (
+    monthAnchor >
+    currentDate
+  ) {
+    months -= 1;
+
+    monthAnchor =
+      new Date(
+        birthday.getFullYear(),
+        birthday.getMonth() +
+          months,
+        birthday.getDate()
+      );
+  }
+
+  const anchorUtc =
+    Date.UTC(
+      monthAnchor.getFullYear(),
+      monthAnchor.getMonth(),
+      monthAnchor.getDate()
+    );
+
+  const todayUtc =
+    Date.UTC(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      currentDate.getDate()
+    );
+
+  const days =
+    Math.max(
+      0,
+      Math.round(
+        (
+          todayUtc -
+          anchorUtc
+        ) /
+          86_400_000
+      )
+    );
+
+  return {
+    months:
+      Math.max(
+        0,
+        months
+      ),
+    days,
+  };
 }
 
 export default function ChildOverview({
@@ -288,255 +182,213 @@ export default function ChildOverview({
       string | null
     >(null);
 
-  const [
-    now,
-    setNow,
-  ] =
-    useState(
-      () => new Date()
-    );
-
   const loadChild =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "family_members"
-          )
-          .select(
-            "id, display_name, emoji, birthday"
-          )
-          .eq(
-            "id",
-            memberId
-          )
-          .single();
-
-      if (error) {
-        console.error(
-          `Kunde inte hämta ${displayName}:`,
-          error
+    useCallback(
+      async () => {
+        setIsLoading(
+          true
         );
 
         setErrorMessage(
-          "Barnets uppgifter kunde inte hämtas."
+          null
         );
 
-        setIsLoading(false);
-        return;
-      }
-
-      setChild(
-        data as ChildData
-      );
-
-      setIsLoading(false);
-    }, [
-      memberId,
-      displayName,
-    ]);
-
-  useEffect(() => {
-    void loadChild();
-
-    function handleFamilyDataChanged() {
-      void loadChild();
-    }
-
-    window.addEventListener(
-      "family-data-changed",
-      handleFamilyDataChanged
-    );
-
-    return () => {
-      window.removeEventListener(
-        "family-data-changed",
-        handleFamilyDataChanged
-      );
-    };
-  }, [loadChild]);
-
-  useEffect(() => {
-    const intervalId =
-      window.setInterval(
-        () => {
-          setNow(
-            new Date()
-          );
-        },
-        60 * 60 * 1000
-      );
-
-    return () => {
-      window.clearInterval(
-        intervalId
-      );
-    };
-  }, []);
-
-  const age =
-    useMemo(
-      () =>
-        child
-          ? getCalendarAge(
-              child.birthday,
-              now
+        const {
+          data,
+          error,
+        } =
+          await supabase
+            .from(
+              "family_members"
             )
-          : null,
+            .select(
+              "id, display_name, emoji, birthday"
+            )
+            .eq(
+              "id",
+              memberId
+            )
+            .single();
+
+        if (error) {
+          console.error(
+            `Kunde inte hämta ${displayName}:`,
+            error
+          );
+
+          setErrorMessage(
+            "Barnets uppgifter kunde inte hämtas."
+          );
+
+          setIsLoading(
+            false
+          );
+
+          return;
+        }
+
+        setChild(
+          data as ChildData
+        );
+
+        setIsLoading(
+          false
+        );
+      },
       [
-        child,
-        now,
+        memberId,
+        displayName,
       ]
     );
 
-  if (isLoading) {
-    return (
-      <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/20 p-6 shadow-2xl shadow-amber-950/20">
-        <div className="flex min-h-48 flex-col items-center justify-center gap-3">
-          <LoaderCircle
-            size={32}
-            className="animate-spin text-amber-300"
-          />
+  useEffect(() => {
+    void loadChild();
+  }, [
+    loadChild,
+  ]);
 
-          <p className="text-sm text-slate-400">
-            Hämtar {displayName}s uppgifter…
-          </p>
+  if (
+    isLoading
+  ) {
+    return (
+      <Card
+        title={
+          displayName
+        }
+        icon={
+          <Baby
+            size={28}
+          />
+        }
+        storageKey={`child-${memberId}-overview`}
+      >
+        <div className="flex min-h-36 items-center justify-center">
+          <LoaderCircle
+            size={28}
+            className="animate-spin text-blue-300"
+          />
         </div>
-      </section>
+      </Card>
     );
   }
 
   if (
     errorMessage ||
-    !child ||
-    !age
+    !child
   ) {
     return (
-      <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-6">
-        <div className="flex min-h-44 flex-col items-center justify-center text-center">
+      <Card
+        title={
+          displayName
+        }
+        icon={
           <Baby
-            size={36}
-            className="text-rose-300"
+            size={28}
           />
-
-          <p className="mt-4 font-semibold text-white">
-            {displayName} kunde inte laddas
-          </p>
-
-          <p className="mt-2 text-sm text-slate-400">
-            {errorMessage}
-          </p>
+        }
+        storageKey={`child-${memberId}-overview`}
+      >
+        <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">
+          {errorMessage ??
+            "Barnets uppgifter kunde inte hämtas."}
         </div>
-      </section>
+      </Card>
     );
   }
 
+  const age =
+    getAge(
+      child.birthday
+    );
+
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/25 p-5 shadow-2xl shadow-amber-950/20 sm:p-6">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+    <Card
+      title={
+        child.display_name
+      }
+      icon={
+        <span className="text-2xl">
+          {child.emoji ||
+            emoji}
+        </span>
+      }
+      storageKey={`child-${memberId}-overview`}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.06] p-4">
+          <div className="flex items-center gap-2 text-blue-300">
+            <Baby
+              size={18}
+            />
 
-        <div className="absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-rose-400/[0.08] blur-3xl" />
-      </div>
-
-      <div className="relative">
-        <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-amber-400/10 text-4xl shadow-lg shadow-amber-950/20">
-            {child.emoji ||
-              emoji}
+            <p className="text-xs font-semibold uppercase tracking-[0.14em]">
+              Ålder
+            </p>
           </div>
 
-          <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
-              <Sparkles
-                size={15}
-              />
+          <p className="mt-3 text-2xl font-black text-white">
+            {
+              age.months
+            }{" "}
+            mån
+            {age.days >
+            0
+              ? `, ${age.days} dagar`
+              : ""}
+          </p>
+        </div>
 
-              Familjen
+        <div className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.06] p-4">
+          <div className="flex items-center gap-2 text-rose-300">
+            <Cake
+              size={18}
+            />
+
+            <p className="text-xs font-semibold uppercase tracking-[0.14em]">
+              Född
             </p>
+          </div>
 
-            <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">
-              {
+          <p className="mt-3 text-lg font-bold capitalize text-white">
+            {formatBirthday(
+              child.birthday
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-blue-300/10 bg-gradient-to-br from-blue-400/[0.08] via-white/[0.03] to-violet-400/[0.06] p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-blue-300">
+              <FileText
+                size={20}
+              />
+            </div>
+
+            <div>
+              <p className="font-semibold text-white">
+                Barnets dokumentation
+              </p>
+
+              <p className="mt-1 max-w-xl text-sm leading-6 text-slate-400">
+                Skapa en PDF med tillväxt, vikt- och längdkurvor, tänder, vaccinationer och historik.
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <ChildDocumentationButton
+              memberId={
+                memberId
+              }
+              displayName={
                 child.display_name
               }
-            </h2>
-
-            <p className="mt-2 text-lg font-semibold text-amber-100">
-              {getAgeTitle(
-                age
-              )}
-            </p>
+            />
           </div>
         </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-            <div className="flex items-center gap-2 text-amber-300">
-              <CalendarDays
-                size={17}
-              />
-
-              <p className="text-xs font-semibold uppercase tracking-[0.14em]">
-                Dagar gammal
-              </p>
-            </div>
-
-            <p className="mt-2 text-2xl font-bold text-white">
-              {new Intl.NumberFormat(
-                "sv-SE"
-              ).format(
-                age.totalDays
-              )}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-            <div className="flex items-center gap-2 text-rose-300">
-              <Cake
-                size={17}
-              />
-
-              <p className="text-xs font-semibold uppercase tracking-[0.14em]">
-                Född
-              </p>
-            </div>
-
-            <p className="mt-2 text-lg font-bold capitalize text-white">
-              {formatBirthday(
-                child.birthday
-              )}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-            <div className="flex items-center gap-2 text-blue-300">
-              <Baby
-                size={17}
-              />
-
-              <p className="text-xs font-semibold uppercase tracking-[0.14em]">
-                Ålder
-              </p>
-            </div>
-
-            <p className="mt-2 text-lg font-bold text-white">
-              {getAgeTitle(
-                age
-              )}
-            </p>
-          </div>
-        </div>
-
-        <p className="mt-5 border-t border-white/10 pt-4 text-xs text-slate-500">
-          Födelsedatumet hämtas från familjedatabasen och uppdateras automatiskt om det ändras under Administrera personer.
-        </p>
       </div>
-    </section>
+    </Card>
   );
 }

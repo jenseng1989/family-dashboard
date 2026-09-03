@@ -2,11 +2,13 @@
 
 import {
   Home,
+  LoaderCircle,
   ShoppingCart,
   Sparkles,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import {
-  ReactNode,
+  type ReactNode,
   useState,
 } from "react";
 
@@ -17,8 +19,6 @@ type StartTabId =
 
 type StartTabsProps = {
   everydayContent: ReactNode;
-  homeContent: ReactNode;
-  shoppingContent: ReactNode;
 };
 
 const tabs: Array<{
@@ -43,28 +43,73 @@ const tabs: Array<{
   },
 ];
 
+function StartTabLoading({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <div className="flex min-h-52 w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03]">
+      <div className="flex items-center gap-3 text-slate-400">
+        <LoaderCircle
+          size={20}
+          className="animate-spin text-blue-300"
+        />
+
+        <span className="text-sm font-semibold">
+          Laddar {label}…
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const StartHomeTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/StartHomeTab"
+    ),
+  {
+    loading: () => (
+      <StartTabLoading label="Hemmet" />
+    ),
+  }
+);
+
+const StartShoppingTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/StartShoppingTab"
+    ),
+  {
+    loading: () => (
+      <StartTabLoading label="Inköp" />
+    ),
+  }
+);
+
 export default function StartTabs({
   everydayContent,
-  homeContent,
-  shoppingContent,
 }: StartTabsProps) {
   const [
     activeTab,
     setActiveTab,
-  ] = useState<StartTabId>(
-    "everyday"
-  );
+  ] =
+    useState<StartTabId>(
+      "everyday"
+    );
 
-  function getActiveContent(): ReactNode {
+  function getActiveContent():
+    ReactNode {
     switch (activeTab) {
       case "everyday":
         return everydayContent;
 
       case "home":
-        return homeContent;
+        return <StartHomeTab />;
 
       case "shopping":
-        return shoppingContent;
+        return <StartShoppingTab />;
 
       default:
         return everydayContent;

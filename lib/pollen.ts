@@ -35,25 +35,107 @@ export type PollenForecastDay = {
 export type PollenData = {
   location: string;
   updatedAt: string;
+  source: string;
+  sourceUrl: string;
+  forecastText: string | null;
   pollen: PollenItem[];
   forecast: PollenForecastDay[];
 };
 
-type OpenMeteoPollenResponse = {
-  timezone: string;
-  hourly: {
-    time: string[];
-    alder_pollen: Array<number | null>;
-    birch_pollen: Array<number | null>;
-    grass_pollen: Array<number | null>;
-    mugwort_pollen: Array<number | null>;
-    ragweed_pollen: Array<number | null>;
+type ApiListResponse<T> = {
+  items?: T[];
+  _meta?: {
+    count?: number;
+    totalRecords?: number;
   };
 };
 
-function safeValue(
+type Region = {
+  id: string;
+  name: string;
+};
+
+type PollenApiType = {
+  id: string;
+  name: string;
+};
+
+type ForecastLevel = {
+  level: number;
+  pollenId: string;
+  time: string;
+};
+
+type Forecast = {
+  id: string;
+  regionId: string;
+  startDate: string;
+  endDate: string;
+  text: string;
+  isEndOfSeason: boolean;
+  levelSeries: ForecastLevel[];
+};
+
+const API_BASE =
+  "https://api.pollenrapporten.se/v1";
+
+const SOURCE_URL =
+  "https://pollenrapporten.se/";
+
+const CACHE_SECONDS = 30 * 60;
+
+const TARGET_TYPES: Array<{
+  id: PollenType;
+  apiNames: string[];
+  displayName: string;
+  emoji: string;
+}> = [
+  {
+    id: "al",
+    apiNames: ["Al"],
+    displayName: "Al",
+    emoji: "🌳",
+  },
+  {
+    id: "bjork",
+    apiNames: ["Björk"],
+    displayName: "Björk",
+    emoji: "🌳",
+  },
+  {
+    id: "gras",
+    apiNames: ["Gräs"],
+    displayName: "Gräs",
+    emoji: "🌾",
+  },
+  {
+    id: "grabo",
+    apiNames: ["Gråbo"],
+    displayName: "Gråbo",
+    emoji: "🌿",
+  },
+  {
+    id: "ambrosia",
+    apiNames: [
+      "Malörtsambrosia",
+      "Ambrosia",
+    ],
+    displayName: "Malörtsambrosia",
+    emoji: "🌼",
+  },
+];
+
+function normalizeText(
+  value: string
+) {
+  return value
+    .toLocaleLowerCase("sv-SE")
+    .trim();
+}
+
+function clampLevel(
   value: number | null | undefined
-): number {
+) {
   if (
     typeof value !== "number" ||
     !Number.isFinite(value)
@@ -61,376 +143,465 @@ function safeValue(
     return 0;
   }
 
-  return Math.max(0, value);
+  return Math.max(
+    0,
+    Math.min(
+      4,
+      Math.round(value)
+    )
+  );
 }
 
 export function getPollenLevel(
   value: number
 ): PollenLevel {
-  if (value < 1) {
-    return "Ingen";
+  switch (clampLevel(value)) {
+    case 4:
+      return "Mycket hög";
+    case 3:
+      return "Hög";
+    case 2:
+      return "Måttlig";
+    case 1:
+      return "Låg";
+    case 0:
+    default:
+      return "Ingen";
   }
-
-  if (value < 10) {
-    return "Låg";
-  }
-
-  if (value < 50) {
-    return "Måttlig";
-  }
-
-  if (value < 100) {
-    return "Hög";
-  }
-
-  return "Mycket hög";
 }
 
-function getLocalHourString(): string {
-  const now = new Date();
-
-  const formatter =
-    new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "Europe/Stockholm",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      hourCycle: "h23",
-    });
-
-  const parts =
-    formatter.formatToParts(now);
-
-  const year =
-    parts.find(
-      (part) => part.type === "year"
-    )?.value ?? "";
-
-  const month =
-    parts.find(
-      (part) => part.type === "month"
-    )?.value ?? "";
-
-  const day =
-    parts.find(
-      (part) => part.type === "day"
-    )?.value ?? "";
-
-  const hour =
-    parts.find(
-      (part) => part.type === "hour"
-    )?.value ?? "";
-
-  return `${year}-${month}-${day}T${hour}:00`;
-}
-
-function getDateOnly(
-  dateTime: string
-): string {
-  return dateTime.slice(0, 10);
-}
-
-function getMaximumForDate(
-  times: string[],
-  values: Array<number | null>,
-  date: string
-): number {
-  let maximum = 0;
-
-  times.forEach((time, index) => {
-    if (getDateOnly(time) !== date) {
-      return;
-    }
-
-    maximum = Math.max(
-      maximum,
-      safeValue(values[index])
+async function fetchApi<T>(
+  path: string
+): Promise<T> {
+  const response =
+    await fetch(
+      `${API_BASE}${path}`,
+      {
+        headers: {
+          Accept:
+            "application/json",
+        },
+        next: {
+          revalidate:
+            CACHE_SECONDS,
+        },
+      }
     );
-  });
-
-  return maximum;
-}
-
-export async function getPollen(): Promise<PollenData> {
-  const latitude = 57.7089;
-  const longitude = 11.9746;
-
-  const url =
-    "https://air-quality-api.open-meteo.com/v1/air-quality" +
-    `?latitude=${latitude}` +
-    `&longitude=${longitude}` +
-    "&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,ragweed_pollen" +
-    "&timezone=Europe%2FStockholm" +
-    "&forecast_days=4";
-
-  const response = await fetch(url, {
-    next: {
-      revalidate: 1800,
-    },
-  });
 
   if (!response.ok) {
     throw new Error(
-      "Kunde inte hämta pollendata."
+      `Pollenrapporten svarade med HTTP ${response.status}`
     );
   }
 
-  const data =
-    (await response.json()) as OpenMeteoPollenResponse;
+  return (
+    await response.json()
+  ) as T;
+}
 
-  const currentHour =
-    getLocalHourString();
+function getDateOnly(
+  value: string
+) {
+  return value.slice(0, 10);
+}
 
-  let currentIndex =
-    data.hourly.time.indexOf(
-      currentHour
+function getTodayString() {
+  return new Intl.DateTimeFormat(
+    "sv-SE",
+    {
+      timeZone:
+        "Europe/Stockholm",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  ).format(new Date());
+}
+
+function addDays(
+  dateString: string,
+  days: number
+) {
+  const [
+    year,
+    month,
+    day,
+  ] =
+    dateString
+      .split("-")
+      .map(Number);
+
+  const date =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day + days
+      )
     );
 
-  if (currentIndex === -1) {
-    const currentTimestamp =
-      new Date(currentHour).getTime();
+  return date
+    .toISOString()
+    .slice(0, 10);
+}
 
-    let smallestDifference =
-      Infinity;
+function findPollenApiType(
+  pollenTypes:
+    PollenApiType[],
+  apiNames:
+    string[]
+) {
+  const wanted =
+    apiNames.map(
+      normalizeText
+    );
 
-    data.hourly.time.forEach(
-      (time, index) => {
-        const timestamp =
-          new Date(time).getTime();
+  return (
+    pollenTypes.find(
+      (item) =>
+        wanted.includes(
+          normalizeText(
+            item.name
+          )
+        )
+    ) ?? null
+  );
+}
 
-        const difference =
-          Math.abs(
-            timestamp -
-              currentTimestamp
-          );
+function levelForDate(
+  forecast:
+    Forecast,
+  pollenId:
+    string | null,
+  date:
+    string
+) {
+  if (!pollenId) {
+    return 0;
+  }
 
-        if (
-          Number.isFinite(
-            difference
-          ) &&
-          difference <
-            smallestDifference
-        ) {
-          smallestDifference =
-            difference;
+  const matches =
+    forecast.levelSeries.filter(
+      (item) =>
+        item.pollenId ===
+          pollenId &&
+        getDateOnly(
+          item.time
+        ) === date
+    );
 
-          currentIndex =
-            index;
-        }
-      }
+  if (
+    matches.length === 0
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    ...matches.map(
+      (item) =>
+        clampLevel(
+          item.level
+        )
+    )
+  );
+}
+
+export async function getPollen():
+  Promise<PollenData> {
+  const [
+    regionsResponse,
+    pollenTypesResponse,
+  ] =
+    await Promise.all([
+      fetchApi<
+        ApiListResponse<Region>
+      >(
+        "/regions?offset=0&limit=100"
+      ),
+      fetchApi<
+        ApiListResponse<PollenApiType>
+      >(
+        "/pollen-types?offset=0&limit=100"
+      ),
+    ]);
+
+  const regions =
+    regionsResponse.items ??
+    [];
+
+  const pollenTypes =
+    pollenTypesResponse.items ??
+    [];
+
+  const gothenburg =
+    regions.find(
+      (region) =>
+        normalizeText(
+          region.name
+        ) ===
+        "göteborg"
+    );
+
+  if (!gothenburg) {
+    throw new Error(
+      "Göteborg finns inte bland Pollenrapportens regioner."
     );
   }
 
-  if (currentIndex < 0) {
-    currentIndex = 0;
+  const forecastResponse =
+    await fetchApi<
+      ApiListResponse<Forecast>
+    >(
+      `/forecasts?region_id=${encodeURIComponent(
+        gothenburg.id
+      )}&current=true&offset=0&limit=100`
+    );
+
+  const forecasts =
+    forecastResponse.items ??
+    [];
+
+  if (
+    forecasts.length === 0
+  ) {
+    throw new Error(
+      "Pollenrapporten returnerade ingen aktuell prognos för Göteborg."
+    );
+  }
+
+  /*
+   * Om API:t skulle returnera fler än en aktuell
+   * prognos väljer vi den med senaste startdatum.
+   */
+  const forecast =
+    [...forecasts].sort(
+      (a, b) =>
+        b.startDate.localeCompare(
+          a.startDate
+        )
+    )[0];
+
+  const typeIds =
+    new Map<
+      PollenType,
+      string | null
+    >();
+
+  for (
+    const target of
+    TARGET_TYPES
+  ) {
+    const apiType =
+      findPollenApiType(
+        pollenTypes,
+        target.apiNames
+      );
+
+    typeIds.set(
+      target.id,
+      apiType?.id ?? null
+    );
   }
 
   const today =
-    getDateOnly(
-      data.hourly.time[
-        currentIndex
-      ]
-    );
+    getTodayString();
 
-  const pollenBase: PollenItem[] = [
-    {
-      id: "al",
-      name: "Al",
-      emoji: "🌳",
-      current: safeValue(
-        data.hourly.alder_pollen[
-          currentIndex
-        ]
-      ),
-      todayMax:
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.alder_pollen,
-          today
-        ),
-      level: "Ingen",
-    },
-    {
-      id: "bjork",
-      name: "Björk",
-      emoji: "🌳",
-      current: safeValue(
-        data.hourly.birch_pollen[
-          currentIndex
-        ]
-      ),
-      todayMax:
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.birch_pollen,
-          today
-        ),
-      level: "Ingen",
-    },
-    {
-      id: "gras",
-      name: "Gräs",
-      emoji: "🌾",
-      current: safeValue(
-        data.hourly.grass_pollen[
-          currentIndex
-        ]
-      ),
-      todayMax:
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.grass_pollen,
-          today
-        ),
-      level: "Ingen",
-    },
-    {
-      id: "grabo",
-      name: "Gråbo",
-      emoji: "🌿",
-      current: safeValue(
-        data.hourly.mugwort_pollen[
-          currentIndex
-        ]
-      ),
-      todayMax:
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.mugwort_pollen,
-          today
-        ),
-      level: "Ingen",
-    },
-    {
-      id: "ambrosia",
-      name: "Ambrosia",
-      emoji: "🌼",
-      current: safeValue(
-        data.hourly.ragweed_pollen[
-          currentIndex
-        ]
-      ),
-      todayMax:
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.ragweed_pollen,
-          today
-        ),
-      level: "Ingen",
-    },
-  ];
-
-  const pollen: PollenItem[] =
-    pollenBase.map((item) => ({
-      ...item,
-      level: getPollenLevel(
-        item.todayMax
-      ),
-    }));
-
-  const dates = Array.from(
-    new Set(
-      data.hourly.time.map(
-        getDateOnly
+  const forecastDates =
+    Array.from(
+      new Set(
+        forecast.levelSeries.map(
+          (item) =>
+            getDateOnly(
+              item.time
+            )
+        )
       )
     )
-  ).slice(0, 4);
+      .filter(
+        (date) =>
+          date >= today
+      )
+      .sort()
+      .slice(0, 4);
 
-  const forecast: PollenForecastDay[] =
-    dates.map((date) => {
-      const alder =
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.alder_pollen,
-          date
-        );
+  /*
+   * Om nivåserien inte innehåller fyra datum
+   * fyller vi på med kalenderdagar för ett stabilt UI.
+   */
+  while (
+    forecastDates.length <
+    4
+  ) {
+    const next =
+      addDays(
+        today,
+        forecastDates.length
+      );
 
-      const birch =
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.birch_pollen,
-          date
-        );
+    if (
+      !forecastDates.includes(
+        next
+      )
+    ) {
+      forecastDates.push(
+        next
+      );
+    } else {
+      break;
+    }
+  }
 
-      const grass =
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.grass_pollen,
-          date
-        );
+  const currentDate =
+    forecastDates[0] ??
+    today;
 
-      const mugwort =
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.mugwort_pollen,
-          date
-        );
+  const pollen:
+    PollenItem[] =
+    TARGET_TYPES.map(
+      (target) => {
+        const value =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              target.id
+            ) ?? null,
+            currentDate
+          );
 
-      const ragweed =
-        getMaximumForDate(
-          data.hourly.time,
-          data.hourly.ragweed_pollen,
-          date
-        );
+        return {
+          id: target.id,
+          name:
+            target.displayName,
+          emoji:
+            target.emoji,
+          current:
+            value,
+          todayMax:
+            value,
+          level:
+            getPollenLevel(
+              value
+            ),
+        };
+      }
+    );
 
-      const candidates = [
-        {
-          name: "Al",
-          value: alder,
-        },
-        {
-          name: "Björk",
-          value: birch,
-        },
-        {
-          name: "Gräs",
-          value: grass,
-        },
-        {
-          name: "Gråbo",
-          value: mugwort,
-        },
-        {
-          name: "Ambrosia",
-          value: ragweed,
-        },
-      ];
+  const forecastDays:
+    PollenForecastDay[] =
+    forecastDates.map(
+      (date) => {
+        const alder =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              "al"
+            ) ?? null,
+            date
+          );
 
-      const highest =
-        candidates.reduce(
-          (
-            currentHighest,
-            candidate
-          ) =>
-            candidate.value >
-            currentHighest.value
-              ? candidate
-              : currentHighest,
-          candidates[0]
-        );
+        const birch =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              "bjork"
+            ) ?? null,
+            date
+          );
 
-      return {
-        date,
-        alder,
-        birch,
-        grass,
-        mugwort,
-        ragweed,
-        highestValue:
-          highest.value,
-        highestName:
-          highest.name,
-      };
-    });
+        const grass =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              "gras"
+            ) ?? null,
+            date
+          );
+
+        const mugwort =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              "grabo"
+            ) ?? null,
+            date
+          );
+
+        const ragweed =
+          levelForDate(
+            forecast,
+            typeIds.get(
+              "ambrosia"
+            ) ?? null,
+            date
+          );
+
+        const candidates =
+          [
+            {
+              name: "Al",
+              value: alder,
+            },
+            {
+              name: "Björk",
+              value: birch,
+            },
+            {
+              name: "Gräs",
+              value: grass,
+            },
+            {
+              name: "Gråbo",
+              value: mugwort,
+            },
+            {
+              name:
+                "Malörtsambrosia",
+              value: ragweed,
+            },
+          ];
+
+        const highest =
+          candidates.reduce(
+            (
+              currentHighest,
+              candidate
+            ) =>
+              candidate.value >
+              currentHighest.value
+                ? candidate
+                : currentHighest,
+            candidates[0]
+          );
+
+        return {
+          date,
+          alder,
+          birch,
+          grass,
+          mugwort,
+          ragweed,
+          highestValue:
+            highest.value,
+          highestName:
+            highest.name,
+        };
+      }
+    );
 
   return {
-    location: "Göteborg",
+    location:
+      gothenburg.name,
     updatedAt:
-      data.hourly.time[
-        currentIndex
-      ],
+      forecast.startDate,
+    source:
+      "Pollenrapporten / Naturhistoriska riksmuseet",
+    sourceUrl:
+      SOURCE_URL,
+    forecastText:
+      forecast.text ||
+      null,
     pollen,
-    forecast,
+    forecast:
+      forecastDays,
   };
 }

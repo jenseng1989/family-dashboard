@@ -28,64 +28,9 @@ export type WeatherData = {
   };
 };
 
-export async function getWeather(): Promise<WeatherData> {
-  const latitude = 57.7089;
-  const longitude = 11.9746;
-
-  const url =
-    "https://api.open-meteo.com/v1/forecast" +
-    `?latitude=${latitude}` +
-    `&longitude=${longitude}` +
-    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day" +
-    "&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m" +
-    "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum" +
-    "&timezone=auto";
-
-  const response = await fetch(url, {
-    next: {
-      revalidate: 900,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Kunde inte hämta väderdata");
-  }
-
-  const data = await response.json();
-
-  return {
-    location: "Göteborg",
-    temperature: data.current.temperature_2m,
-    apparentTemperature: data.current.apparent_temperature,
-    windSpeed: data.current.wind_speed_10m,
-    humidity: data.current.relative_humidity_2m,
-    precipitation: data.current.precipitation,
-    weatherCode: data.current.weather_code,
-    isDay: data.current.is_day === 1,
-    sunrise: data.daily.sunrise[0],
-    sunset: data.daily.sunset[0],
-    uvIndex: data.daily.uv_index_max[0],
-    daily: {
-      time: data.daily.time,
-      temperatureMax: data.daily.temperature_2m_max,
-      temperatureMin: data.daily.temperature_2m_min,
-      weatherCode: data.daily.weather_code,
-      uvIndexMax: data.daily.uv_index_max,
-      precipitationSum: data.daily.precipitation_sum,
-    },
-    hourly: {
-      time: data.hourly.time,
-      temperature: data.hourly.temperature_2m,
-      apparentTemperature: data.hourly.apparent_temperature,
-      precipitationProbability:
-        data.hourly.precipitation_probability,
-      weatherCode: data.hourly.weather_code,
-      windSpeed: data.hourly.wind_speed_10m,
-    },
-  };
-}
-
-export function getWeatherDescription(code: number): string {
+export function getWeatherDescription(
+  code: number
+): string {
   const descriptions: Record<number, string> = {
     0: "Klart",
     1: "Mestadels klart",
@@ -120,9 +65,14 @@ export function getWeatherDescription(code: number): string {
   return descriptions[code] ?? "Okänt väder";
 }
 
-export function formatWeatherTime(dateString: string): string {
-  return new Date(dateString).toLocaleTimeString("sv-SE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+export function formatWeatherTime(
+  dateString: string
+): string {
+  return new Date(dateString).toLocaleTimeString(
+    "sv-SE",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
 }

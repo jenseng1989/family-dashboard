@@ -92,46 +92,58 @@ export default function SatellitesWidget() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch("/api/satellites", {
-        cache: "no-store",
-      });
-
-      const result =
-        (await response.json()) as SatellitesResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ?? `API-fel ${response.status}`
-        );
+  const loadData = useCallback(
+    async (
+      showLoader = true,
+      forceRefresh = false
+    ) => {
+      if (showLoader) {
+        setIsLoading(true);
       }
 
-      setData(result);
-    } catch (error) {
-      console.error(
-        "Kunde inte hämta satellitpassager:",
-        error
-      );
+      setErrorMessage(null);
 
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Satellitdata kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      try {
+        const response = await fetch(
+          "/api/satellites",
+          forceRefresh
+            ? { cache: "reload" }
+            : undefined
+        );
+
+        const result =
+          (await response.json()) as SatellitesResponse;
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ?? `API-fel ${response.status}`
+          );
+        }
+
+        setData(result);
+      } catch (error) {
+        console.error(
+          "Kunde inte hämta satellitpassager:",
+          error
+        );
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Satellitdata kunde inte hämtas."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     void loadData();
 
     const intervalId = window.setInterval(
-      () => void loadData(),
+      () => void loadData(false),
       30 * 60 * 1000
     );
 
@@ -145,7 +157,7 @@ export default function SatellitesWidget() {
       className="border-cyan-300/15 bg-slate-950/55 hover:bg-slate-950/70"
       storageKey="space-satellites"
     >
-      {isLoading ? (
+      {isLoading && !data ? (
         <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03]">
           <LoaderCircle
             size={30}
@@ -155,21 +167,21 @@ export default function SatellitesWidget() {
             Söker efter nästa satellitpassager…
           </p>
         </div>
-      ) : errorMessage || !data ? (
+      ) : errorMessage && !data ? (
         <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-5">
           <p className="font-semibold text-red-200">
-            {errorMessage ?? "Satellitdata saknas."}
+            {errorMessage}
           </p>
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() => void loadData(true, true)}
             className="mt-4 flex items-center gap-2 rounded-xl border border-red-300/20 bg-red-300/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-300/20"
           >
             <RefreshCw size={16} />
             Försök igen
           </button>
         </div>
-      ) : (
+      ) : data ? (
         <>
           <div className="mb-4 rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.06] p-4">
             <div className="flex items-start gap-3">
@@ -299,8 +311,14 @@ export default function SatellitesWidget() {
               </article>
             ))}
           </div>
+
+          {errorMessage && (
+            <p className="mt-3 text-xs text-amber-300">
+              Senaste uppdateringen misslyckades. Visar senast hämtade data.
+            </p>
+          )}
         </>
-      )}
+      ) : null}
     </Card>
   );
 }

@@ -16,13 +16,79 @@ import {
   useEffect,
   useState,
 } from "react";
+import dynamic from "next/dynamic";
 import Card from "@/components/ui/Card";
-import MeteorShowersWidget from "@/components/dashboard/MeteorShowersWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
-import SatellitesWidget from "@/components/dashboard/SatellitesWidget";
-import SolarActivityWidget from "@/components/dashboard/SolarActivityWidget";
-import TonightGothenburgWidget from "@/components/dashboard/TonightGothenburgWidget";
 import WidgetGate from "@/components/dashboard/WidgetGate";
+
+
+function SpaceWidgetLoading({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <div className="flex min-h-48 w-full items-center justify-center rounded-2xl border border-violet-300/10 bg-slate-950/35">
+      <div className="flex items-center gap-3 text-slate-400">
+        <LoaderCircle
+          size={20}
+          className="animate-spin text-violet-300"
+        />
+        <span className="text-sm font-semibold">
+          Laddar {label}…
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const TonightGothenburgWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/TonightGothenburgWidget"
+    ),
+  {
+    loading: () => (
+      <SpaceWidgetLoading label="Ikväll i Göteborg" />
+    ),
+  }
+);
+
+const SolarActivityWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/SolarActivityWidget"
+    ),
+  {
+    loading: () => (
+      <SpaceWidgetLoading label="Solaktivitet" />
+    ),
+  }
+);
+
+const MeteorShowersWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/MeteorShowersWidget"
+    ),
+  {
+    loading: () => (
+      <SpaceWidgetLoading label="Meteorregn" />
+    ),
+  }
+);
+
+const SatellitesWidget = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/SatellitesWidget"
+    ),
+  {
+    loading: () => (
+      <SpaceWidgetLoading label="Satelliter" />
+    ),
+  }
+);
 
 type FunData = {
   generatedAt: string;

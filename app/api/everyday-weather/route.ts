@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  getWeather,
   getWeatherDescription,
 } from "@/lib/weather";
+import {
+  getWeather,
+} from "@/lib/weather-server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +22,10 @@ function scoreOutdoorHour(
 ): number {
   let score = 100;
 
-  score -=
-    Math.min(
-      70,
-      hour.precipitationProbability * 0.7
-    );
+  score -= Math.min(
+    70,
+    hour.precipitationProbability * 0.7
+  );
 
   if (hour.temperature < 5) {
     score -=
@@ -97,9 +98,13 @@ function getOutdoorReason(
   } else if (
     averageRain <= 40
   ) {
-    parts.push("relativt låg regnrisk");
+    parts.push(
+      "relativt låg regnrisk"
+    );
   } else {
-    parts.push("viss risk för regn");
+    parts.push(
+      "viss risk för regn"
+    );
   }
 
   if (averageWind <= 5) {
@@ -114,7 +119,9 @@ function getOutdoorReason(
     averageTemperature >= 12 &&
     averageTemperature <= 24
   ) {
-    parts.push("behaglig temperatur");
+    parts.push(
+      "behaglig temperatur"
+    );
   }
 
   if (parts.length === 0) {
@@ -126,7 +133,11 @@ function getOutdoorReason(
       .slice(0, -1)
       .join(", ") +
     (parts.length > 1
-      ? ` och ${parts[parts.length - 1]}`
+      ? ` och ${
+          parts[
+            parts.length - 1
+          ]
+        }`
       : parts[0]) +
     "."
   );
@@ -159,20 +170,28 @@ function findBestOutdoorWindow(
     const window =
       hours.slice(
         index,
-        index + windowLength
+        index +
+          windowLength
       );
 
     const score =
       window.reduce(
         (sum, hour) =>
           sum +
-          scoreOutdoorHour(hour),
+          scoreOutdoorHour(
+            hour
+          ),
         0
       ) / window.length;
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestStart = index;
+    if (
+      score >
+      bestScore
+    ) {
+      bestScore =
+        score;
+      bestStart =
+        index;
     }
   }
 
@@ -191,7 +210,8 @@ function findBestOutdoorWindow(
   const end =
     new Date(
       bestHours[
-        bestHours.length - 1
+        bestHours.length -
+          1
       ].time
     );
 
@@ -212,9 +232,13 @@ function findBestOutdoorWindow(
 
   return {
     start:
-      formatHour(start),
+      formatHour(
+        start
+      ),
     end:
-      formatHour(end),
+      formatHour(
+        end
+      ),
     reason:
       getOutdoorReason(
         bestHours
@@ -250,63 +274,77 @@ export async function GET() {
       OutdoorHour[] =
       weather.hourly.time
         .map(
-          (time, index) => ({
+          (
+            time,
+            index
+          ) => ({
             time,
             temperature:
-              weather.hourly.temperature[
+              weather
+                .hourly
+                .temperature[
                 index
               ],
             apparentTemperature:
-              weather.hourly
+              weather
+                .hourly
                 .apparentTemperature[
                 index
               ],
             precipitationProbability:
-              weather.hourly
+              weather
+                .hourly
                 .precipitationProbability[
                 index
               ] ?? 0,
             weatherCode:
-              weather.hourly.weatherCode[
+              weather
+                .hourly
+                .weatherCode[
                 index
               ],
             windSpeed:
-              weather.hourly.windSpeed[
+              weather
+                .hourly
+                .windSpeed[
                 index
               ],
           })
         )
-        .filter((hour) => {
-          const date =
-            new Date(
-              hour.time
+        .filter(
+          (hour) => {
+            const date =
+              new Date(
+                hour.time
+              );
+
+            const dateString =
+              `${date.getFullYear()}-${String(
+                date.getMonth() +
+                  1
+              ).padStart(
+                2,
+                "0"
+              )}-${String(
+                date.getDate()
+              ).padStart(
+                2,
+                "0"
+              )}`;
+
+            return (
+              dateString ===
+                today &&
+              date.getHours() >=
+                Math.max(
+                  7,
+                  currentHour
+                ) &&
+              date.getHours() <=
+                21
             );
-
-          const dateString =
-            `${date.getFullYear()}-${String(
-              date.getMonth() + 1
-            ).padStart(
-              2,
-              "0"
-            )}-${String(
-              date.getDate()
-            ).padStart(
-              2,
-              "0"
-            )}`;
-
-          return (
-            dateString ===
-              today &&
-            date.getHours() >=
-              Math.max(
-                7,
-                currentHour
-              ) &&
-            date.getHours() <=
-              21
-          );
-        });
+          }
+        );
 
     const outdoor =
       findBestOutdoorWindow(

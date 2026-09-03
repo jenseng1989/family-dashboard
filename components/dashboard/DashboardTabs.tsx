@@ -9,12 +9,9 @@ import {
   Settings,
   Users,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import {
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 type TabId =
   | "home"
@@ -26,9 +23,6 @@ type TabId =
 type DashboardTabsProps = {
   startContent: ReactNode;
   weatherContent: ReactNode;
-  familyContent: ReactNode;
-  gothenburgContent: ReactNode;
-  funContent: ReactNode;
 };
 
 type TabButton = {
@@ -63,6 +57,71 @@ const VALID_TABS: TabId[] = [
   "fun",
 ];
 
+function TabLoading({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <div className="flex min-h-[220px] w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03]">
+      <div className="flex items-center gap-3 text-slate-400">
+        <LoaderCircle
+          size={21}
+          className="animate-spin text-blue-300"
+        />
+
+        <span className="text-sm font-semibold">
+          Laddar {label}…
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/*
+ * Dessa tre flikar innehåller klientkompatibla
+ * moduler och kan därför lazy-loadas säkert.
+ *
+ * Väder skickas däremot in som server-renderat
+ * innehåll från Dashboard.tsx eftersom WeatherWidget
+ * är en async Server Component.
+ */
+const FamilyDashboardTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/FamilyDashboardTab"
+    ),
+  {
+    loading: () => (
+      <TabLoading label="familjen" />
+    ),
+  }
+);
+
+const GothenburgDashboardTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/GothenburgDashboardTab"
+    ),
+  {
+    loading: () => (
+      <TabLoading label="Göteborg" />
+    ),
+  }
+);
+
+const ExploreDashboardTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/ExploreDashboardTab"
+    ),
+  {
+    loading: () => (
+      <TabLoading label="Utforska" />
+    ),
+  }
+);
+
 const tabs: TabButton[] = [
   {
     id: "home",
@@ -96,25 +155,28 @@ const tabs: TabButton[] = [
   },
 ];
 
-function isValidTab(value: unknown): value is TabId {
+function isValidTab(
+  value: unknown
+): value is TabId {
   return (
     typeof value === "string" &&
-    VALID_TABS.includes(value as TabId)
+    VALID_TABS.includes(
+      value as TabId
+    )
   );
 }
 
 export default function DashboardTabs({
   startContent,
   weatherContent,
-  familyContent,
-  gothenburgContent,
-  funContent,
 }: DashboardTabsProps) {
   const [activeTab, setActiveTab] =
     useState<TabId>("home");
 
   const [appSettings, setAppSettings] =
-    useState<AppSettings>(DEFAULT_SETTINGS);
+    useState<AppSettings>(
+      DEFAULT_SETTINGS
+    );
 
   const [settingsLoaded, setSettingsLoaded] =
     useState(false);
@@ -124,16 +186,18 @@ export default function DashboardTabs({
 
     async function loadAppSettings() {
       try {
-        const response = await fetch(
-          "/api/admin/app-settings",
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
+        const response =
+          await fetch(
+            "/api/admin/app-settings",
+            {
+              method: "GET",
+              cache: "no-store",
+            }
+          );
 
         const result =
-          (await response.json()) as AppSettingsResponse;
+          (await response.json()) as
+            AppSettingsResponse;
 
         if (!response.ok) {
           throw new Error(
@@ -152,33 +216,42 @@ export default function DashboardTabs({
           return;
         }
 
-        const defaultTab = isValidTab(
-          result.settings.defaultTab
-        )
-          ? result.settings.defaultTab
-          : DEFAULT_SETTINGS.defaultTab;
+        const defaultTab =
+          isValidTab(
+            result.settings.defaultTab
+          )
+            ? result.settings.defaultTab
+            : DEFAULT_SETTINGS.defaultTab;
 
         const showAdminButton =
-          typeof result.settings.showAdminButton ===
+          typeof result.settings
+            .showAdminButton ===
           "boolean"
-            ? result.settings.showAdminButton
+            ? result.settings
+                .showAdminButton
             : DEFAULT_SETTINGS.showAdminButton;
 
         const dashboardName =
-          typeof result.settings.dashboardName ===
+          typeof result.settings
+            .dashboardName ===
             "string" &&
           result.settings.dashboardName.trim()
             ? result.settings.dashboardName.trim()
             : DEFAULT_SETTINGS.dashboardName;
 
-        const loadedSettings: AppSettings = {
+        const loadedSettings:
+          AppSettings = {
           defaultTab,
           showAdminButton,
           dashboardName,
         };
 
-        setAppSettings(loadedSettings);
-        setActiveTab(loadedSettings.defaultTab);
+        setAppSettings(
+          loadedSettings
+        );
+        setActiveTab(
+          loadedSettings.defaultTab
+        );
 
         document.title =
           loadedSettings.dashboardName;
@@ -189,7 +262,9 @@ export default function DashboardTabs({
         );
 
         if (!cancelled) {
-          setAppSettings(DEFAULT_SETTINGS);
+          setAppSettings(
+            DEFAULT_SETTINGS
+          );
           setActiveTab(
             DEFAULT_SETTINGS.defaultTab
           );
@@ -199,7 +274,9 @@ export default function DashboardTabs({
         }
       } finally {
         if (!cancelled) {
-          setSettingsLoaded(true);
+          setSettingsLoaded(
+            true
+          );
         }
       }
     }
@@ -211,7 +288,8 @@ export default function DashboardTabs({
     };
   }, []);
 
-  function getActiveContent(): ReactNode {
+  function getActiveContent():
+    ReactNode {
     switch (activeTab) {
       case "home":
         return startContent;
@@ -220,13 +298,19 @@ export default function DashboardTabs({
         return weatherContent;
 
       case "family":
-        return familyContent;
+        return (
+          <FamilyDashboardTab />
+        );
 
       case "gothenburg":
-        return gothenburgContent;
+        return (
+          <GothenburgDashboardTab />
+        );
 
       case "fun":
-        return funContent;
+        return (
+          <ExploreDashboardTab />
+        );
 
       default:
         return startContent;
@@ -261,53 +345,64 @@ export default function DashboardTabs({
             className="grid w-full grid-cols-5 gap-2"
             role="tablist"
           >
-            {tabs.map((tab) => {
-              const isActive =
-                activeTab === tab.id;
+            {tabs.map(
+              (tab) => {
+                const isActive =
+                  activeTab ===
+                  tab.id;
 
-              const isExploreTab =
-                tab.id === "fun";
+                const isExploreTab =
+                  tab.id ===
+                  "fun";
 
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() =>
-                    setActiveTab(tab.id)
-                  }
-                  className={[
-                    "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
-                    "text-xs font-semibold transition duration-300 sm:text-sm",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                    isActive && isExploreTab
-                      ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
-                      : isActive
-                        ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
-                        : "text-slate-300 hover:bg-white/10 hover:text-white",
-                  ].join(" ")}
-                >
-                  <span
-                    className={
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={
                       isActive
-                        ? "shrink-0 text-white"
-                        : "shrink-0 text-slate-400"
                     }
+                    onClick={() =>
+                      setActiveTab(
+                        tab.id
+                      )
+                    }
+                    className={[
+                      "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
+                      "text-xs font-semibold transition duration-300 sm:text-sm",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
+                      isActive &&
+                      isExploreTab
+                        ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
+                        : isActive
+                          ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
+                          : "text-slate-300 hover:bg-white/10 hover:text-white",
+                    ].join(
+                      " "
+                    )}
                   >
-                    {tab.icon}
-                  </span>
+                    <span
+                      className={
+                        isActive
+                          ? "shrink-0 text-white"
+                          : "shrink-0 text-slate-400"
+                      }
+                    >
+                      {tab.icon}
+                    </span>
 
-                  <span className="hidden min-w-0 truncate md:inline">
-                    {tab.label}
-                  </span>
+                    <span className="hidden min-w-0 truncate md:inline">
+                      {tab.label}
+                    </span>
 
-                  <span className="min-w-0 truncate md:hidden">
-                    {tab.shortLabel}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className="min-w-0 truncate md:hidden">
+                      {tab.shortLabel}
+                    </span>
+                  </button>
+                );
+              }
+            )}
           </div>
         </nav>
 

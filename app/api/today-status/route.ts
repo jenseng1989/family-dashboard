@@ -6,6 +6,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const RESPONSE_CACHE_SECONDS = 5 * 60;
+
 export type TodayNoticeType =
   | "weather"
   | "birthday"
@@ -329,5 +331,13 @@ export async function GET() {
     partialError,
   };
 
-  return NextResponse.json(response);
+  return NextResponse.json(
+    response,
+    {
+      headers: {
+        "Cache-Control":
+          `public, s-maxage=${RESPONSE_CACHE_SECONDS}, stale-while-revalidate=${RESPONSE_CACHE_SECONDS}`,
+      },
+    }
+  );
 }

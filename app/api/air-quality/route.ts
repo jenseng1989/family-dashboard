@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-
 const AQICN_BASE = "https://api.waqi.info";
 
 type IaqiValue = {
@@ -49,7 +47,8 @@ function getAqiLevel(aqi: number | null) {
     return {
       key: "unknown",
       label: "Ingen bedömning",
-      summary: "Det finns inte tillräckligt med data för en samlad bedömning just nu.",
+      summary:
+        "Det finns inte tillräckligt med data för en samlad bedömning just nu.",
     };
   }
 
@@ -73,7 +72,8 @@ function getAqiLevel(aqi: number | null) {
     return {
       key: "sensitive",
       label: "Förhöjd",
-      summary: "Luftkvaliteten är förhöjd och kan påverka känsliga personer.",
+      summary:
+        "Luftkvaliteten är förhöjd och kan påverka känsliga personer.",
     };
   }
 
@@ -107,9 +107,11 @@ async function aqicnFetch(
   const response = await fetch(
     `${AQICN_BASE}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`,
     {
-      cache: "no-store",
       headers: {
         Accept: "application/json",
+      },
+      next: {
+        revalidate: 5 * 60,
       },
     }
   );
@@ -124,7 +126,11 @@ async function aqicnFetch(
 
   const result = (await response.json()) as AqicnResponse;
 
-  if (result.status !== "ok" || !result.data || typeof result.data === "string") {
+  if (
+    result.status !== "ok" ||
+    !result.data ||
+    typeof result.data === "string"
+  ) {
     throw new Error(
       typeof result.data === "string"
         ? `AQICN: ${result.data}`
@@ -135,9 +141,9 @@ async function aqicnFetch(
   return result.data;
 }
 
-async function getGothenburgAirQuality(token: string): Promise<AqicnData> {
-  // Försök först med Femman som namngiven station/stadsfeed.
-  // Om AQICN inte matchar den feeden används Göteborg som stabil fallback.
+async function getGothenburgAirQuality(
+  token: string
+): Promise<AqicnData> {
   const candidates = [
     "/feed/sweden/goteborg-femman/",
     "/feed/gothenburg/",
@@ -150,7 +156,10 @@ async function getGothenburgAirQuality(token: string): Promise<AqicnData> {
     try {
       const data = await aqicnFetch(path, token);
 
-      if (data.city?.name || typeof data.aqi === "number") {
+      if (
+        data.city?.name ||
+        typeof data.aqi === "number"
+      ) {
         return data;
       }
     } catch (error) {
@@ -160,17 +169,21 @@ async function getGothenburgAirQuality(token: string): Promise<AqicnData> {
 
   throw lastError instanceof Error
     ? lastError
-    : new Error("Ingen AQICN-feed för Göteborg kunde hämtas.");
+    : new Error(
+        "Ingen AQICN-feed för Göteborg kunde hämtas."
+      );
 }
 
 export async function GET() {
   try {
-    const token = process.env.AQICN_API_TOKEN?.trim();
+    const token =
+      process.env.AQICN_API_TOKEN?.trim();
 
     if (!token) {
       return NextResponse.json(
         {
-          error: "AQICN_API_TOKEN saknas i serverns miljövariabler.",
+          error:
+            "AQICN_API_TOKEN saknas i serverns miljövariabler.",
         },
         {
           status: 500,
@@ -178,23 +191,32 @@ export async function GET() {
       );
     }
 
-    const data = await getGothenburgAirQuality(token);
+    const data =
+      await getGothenburgAirQuality(token);
 
     const aqi =
       typeof data.aqi === "number"
         ? data.aqi
-        : typeof data.aqi === "string" && data.aqi !== "-"
+        : typeof data.aqi === "string" &&
+            data.aqi !== "-"
           ? Number(data.aqi)
           : null;
 
     const normalizedAqi =
-      typeof aqi === "number" && Number.isFinite(aqi) ? aqi : null;
+      typeof aqi === "number" &&
+      Number.isFinite(aqi)
+        ? aqi
+        : null;
 
-    const level = getAqiLevel(normalizedAqi);
+    const level =
+      getAqiLevel(normalizedAqi);
 
-    const pm25 = getNumber(data.iaqi?.pm25?.v);
-    const pm10 = getNumber(data.iaqi?.pm10?.v);
-    const no2 = getNumber(data.iaqi?.no2?.v);
+    const pm25 =
+      getNumber(data.iaqi?.pm25?.v);
+    const pm10 =
+      getNumber(data.iaqi?.pm10?.v);
+    const no2 =
+      getNumber(data.iaqi?.no2?.v);
 
     const measuredAt =
       data.time?.iso ??
@@ -203,7 +225,9 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        station: data.city?.name ?? "Göteborg",
+        station:
+          data.city?.name ??
+          "Göteborg",
         aqi: normalizedAqi,
         level,
         pollutants: {
@@ -211,21 +235,28 @@ export async function GET() {
           pm10,
           no2,
         },
-        dominantPollutant: data.dominentpol ?? null,
+        dominantPollutant:
+          data.dominentpol ?? null,
         measuredAt,
-        updatedAt: new Date().toISOString(),
-        source: "World Air Quality Index Project",
+        updatedAt:
+          new Date().toISOString(),
+        source:
+          "World Air Quality Index Project",
         note:
           "PM2.5, PM10 och NO₂ visas som individuella AQI-värden från AQICN, inte som rå koncentration i µg/m³.",
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=300",
+          "Cache-Control":
+            "public, s-maxage=300, stale-while-revalidate=300",
         },
       }
     );
   } catch (error) {
-    console.error("Kunde inte hämta luftkvalitet:", error);
+    console.error(
+      "Kunde inte hämta luftkvalitet:",
+      error
+    );
 
     return NextResponse.json(
       {

@@ -30,6 +30,10 @@ import {
 import {
   getFamilyMembersFromDatabase,
 } from "@/lib/family-db";
+import {
+  getTodayStatus,
+  type TodayStatusApiResponse,
+} from "@/lib/today-status-client";
 
 type DayPlan = {
   id: string;
@@ -66,11 +70,6 @@ type TodayNotice = {
   startsAt?: string | null;
   endsAt?: string | null;
   url?: string;
-};
-
-type TodayStatusResponse = {
-  notices?: TodayNotice[];
-  partialError?: boolean;
 };
 
 type EverydayWeather = {
@@ -384,9 +383,16 @@ export default function EverydayOverview() {
     useState(false);
 
   const loadData =
-    useCallback(async () => {
-      setIsLoading(true);
-      setHasPartialError(false);
+    useCallback(
+      async (
+        showLoader = true,
+        forceRefresh = false
+      ) => {
+        if (showLoader) {
+          setIsLoading(true);
+        }
+
+        setHasPartialError(false);
 
       try {
         const [
@@ -438,20 +444,18 @@ export default function EverydayOverview() {
 
             getFamilyMembersFromDatabase(),
 
-            fetch(
-              "/api/today-status",
-              {
-                cache:
-                  "no-store",
-              }
+            getTodayStatus(
+              forceRefresh
             ),
 
             fetch(
               "/api/everyday-weather",
-              {
-                cache:
-                  "no-store",
-              }
+              forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
             ),
           ]);
 
@@ -498,11 +502,9 @@ export default function EverydayOverview() {
           )
         );
 
-        if (
-          todayStatusResponse.ok
-        ) {
+        {
           const status =
-            (await todayStatusResponse.json()) as TodayStatusResponse;
+            todayStatusResponse as TodayStatusApiResponse;
 
           setNotices(
             status.notices ??
@@ -516,11 +518,6 @@ export default function EverydayOverview() {
               true
             );
           }
-        } else {
-          setNotices([]);
-          setHasPartialError(
-            true
-          );
         }
 
         if (
@@ -550,7 +547,9 @@ export default function EverydayOverview() {
       } finally {
         setIsLoading(false);
       }
-    }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     void loadData();
@@ -558,7 +557,7 @@ export default function EverydayOverview() {
     const refreshId =
       window.setInterval(
         () => {
-          void loadData();
+          void loadData(false);
         },
         15 * 60 * 1000
       );
@@ -680,7 +679,10 @@ export default function EverydayOverview() {
             <button
               type="button"
               onClick={() =>
-                void loadData()
+                void loadData(
+                  true,
+                  true
+                )
               }
               disabled={
                 isLoading

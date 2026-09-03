@@ -311,43 +311,54 @@ export default function SolarActivityWidget() {
     );
 
   const loadData =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const response =
-          await fetch(
-            "/api/space-weather",
-            {
-              cache:
-                "no-store",
-            }
-          );
-
-        if (!response.ok) {
-          throw new Error(
-            `API-fel ${response.status}`
-          );
+    useCallback(
+      async (
+        showLoader = true,
+        forceRefresh = false
+      ) => {
+        if (showLoader) {
+          setIsLoading(true);
         }
 
-        const result =
-          (await response.json()) as SpaceWeatherData;
+        setErrorMessage(null);
 
-        setData(result);
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta rymdväder:",
-          error
-        );
+        try {
+          const response =
+            await fetch(
+              "/api/space-weather",
+              forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
+            );
 
-        setErrorMessage(
-          "Rymdväderdata kunde inte hämtas."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }, []);
+          if (!response.ok) {
+            throw new Error(
+              `API-fel ${response.status}`
+            );
+          }
+
+          const result =
+            (await response.json()) as SpaceWeatherData;
+
+          setData(result);
+        } catch (error) {
+          console.error(
+            "Kunde inte hämta rymdväder:",
+            error
+          );
+
+          setErrorMessage(
+            "Rymdväderdata kunde inte hämtas."
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      []
+    );
 
   useEffect(() => {
     void loadData();
@@ -355,7 +366,7 @@ export default function SolarActivityWidget() {
     const intervalId =
       window.setInterval(
         () => {
-          void loadData();
+          void loadData(false);
         },
         10 * 60 * 1000
       );
@@ -379,7 +390,8 @@ export default function SolarActivityWidget() {
       className="border-orange-300/15 bg-slate-950/55 hover:bg-slate-950/70"
       storageKey="solar-activity"
     >
-      {isLoading ? (
+      {isLoading &&
+      !data ? (
         <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03]">
           <LoaderCircle
             size={30}
@@ -408,7 +420,10 @@ export default function SolarActivityWidget() {
               <button
                 type="button"
                 onClick={() =>
-                  void loadData()
+                  void loadData(
+                    true,
+                    true
+                  )
                 }
                 className="mt-4 flex items-center gap-2 rounded-xl border border-red-300/20 bg-red-300/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-300/20"
               >
@@ -769,6 +784,12 @@ export default function SolarActivityWidget() {
               </p>
             </div>
           </div>
+
+          {errorMessage && (
+            <p className="mt-3 text-xs text-amber-300">
+              Senaste uppdateringen misslyckades. Visar senast hämtade data.
+            </p>
+          )}
 
           <div className="mt-4 flex flex-col gap-1 border-t border-white/10 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <span>

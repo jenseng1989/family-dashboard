@@ -4,6 +4,7 @@ import {
   Leaf,
   MapPin,
 } from "lucide-react";
+
 import Card from "@/components/ui/Card";
 import {
   getPollen,
@@ -36,52 +37,52 @@ function getLevelClasses(
 function getBarWidth(
   value: number
 ): string {
-  if (value <= 0) {
-    return "0%";
-  }
-
-  return `${Math.min(
-    100,
-    Math.max(4, value)
-  )}%`;
-}
-
-function formatPollenValue(
-  value: number
-): string {
-  if (value < 0.1) {
-    return "0";
-  }
-
-  if (value < 10) {
-    return value.toFixed(1);
-  }
-
-  return Math.round(value).toString();
+  return `${
+    Math.max(
+      0,
+      Math.min(
+        100,
+        value * 25
+      )
+    )
+  }%`;
 }
 
 function formatForecastDate(
   dateString: string
 ): string {
-  const [year, month, day] =
-    dateString.split("-").map(Number);
+  const [
+    year,
+    month,
+    day,
+  ] =
+    dateString
+      .split("-")
+      .map(Number);
 
   return new Date(
     year,
     month - 1,
     day
-  ).toLocaleDateString("sv-SE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  ).toLocaleDateString(
+    "sv-SE",
+    {
+      weekday:
+        "short",
+      day:
+        "numeric",
+      month:
+        "short",
+    }
+  );
 }
 
 export default async function PollenWidget() {
   let pollenData;
 
   try {
-    pollenData = await getPollen();
+    pollenData =
+      await getPollen();
   } catch (error) {
     console.error(
       "Kunde inte hämta pollen:",
@@ -91,7 +92,11 @@ export default async function PollenWidget() {
     return (
       <Card
         title="Pollennivå"
-        icon={<Flower2 size={28} />}
+        icon={
+          <Flower2
+            size={28}
+          />
+        }
       >
         <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-5">
           <p className="font-semibold text-red-200">
@@ -99,20 +104,24 @@ export default async function PollenWidget() {
           </p>
 
           <p className="mt-1 text-sm text-red-100/70">
-            Försök igen om en stund.
+            Pollenrapportens API svarade inte just nu. Försök igen om en stund.
           </p>
         </div>
       </Card>
     );
   }
 
-  const sortedPollen = [
-    ...pollenData.pollen,
-  ].sort(
-    (first, second) =>
-      second.todayMax -
-      first.todayMax
-  );
+  const sortedPollen =
+    [
+      ...pollenData.pollen,
+    ].sort(
+      (
+        first,
+        second
+      ) =>
+        second.todayMax -
+        first.todayMax
+    );
 
   const highest =
     sortedPollen[0];
@@ -120,15 +129,23 @@ export default async function PollenWidget() {
   return (
     <Card
       title="Pollennivå"
-      icon={<Flower2 size={28} />}
+      icon={
+        <Flower2
+          size={28}
+        />
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
         <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/10 via-white/[0.04] to-blue-400/10 p-5">
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <MapPin size={16} />
+            <MapPin
+              size={16}
+            />
 
             <span>
-              {pollenData.location}
+              {
+                pollenData.location
+              }
             </span>
           </div>
 
@@ -137,23 +154,28 @@ export default async function PollenWidget() {
           </p>
 
           {highest &&
-          highest.todayMax > 0 ? (
+          highest.todayMax >
+            0 ? (
             <>
               <div className="mt-3 flex items-center gap-3">
                 <span className="text-4xl">
-                  {highest.emoji}
+                  {
+                    highest.emoji
+                  }
                 </span>
 
                 <div>
                   <p className="text-2xl font-bold text-white">
-                    {highest.name}
+                    {
+                      highest.name
+                    }
                   </p>
 
                   <p className="text-sm text-slate-400">
-                    {formatPollenValue(
-                      highest.todayMax
-                    )}{" "}
-                    pollenkorn/m³
+                    {
+                      highest.level
+                    }{" "}
+                    nivå
                   </p>
                 </div>
               </div>
@@ -164,20 +186,23 @@ export default async function PollenWidget() {
                   getLevelClasses(
                     highest.level
                   ),
-                ].join(" ")}
+                ].join(
+                  " "
+                )}
               >
-                {highest.level} nivå
+                {
+                  highest.level
+                }
               </div>
             </>
           ) : (
             <div className="mt-3">
               <p className="text-2xl font-bold text-white">
-                Ingen pollenaktivitet
+                Inga halter
               </p>
 
               <p className="mt-1 text-sm text-slate-400">
-                Prognosen visar mycket låga
-                koncentrationer just nu.
+                Prognosen visar inga halter för de valda pollentyperna idag.
               </p>
             </div>
           )}
@@ -189,8 +214,7 @@ export default async function PollenWidget() {
             />
 
             <p className="text-xs leading-5 text-slate-400">
-              Visar prognostiserad
-              pollenkoncentration för Göteborg.
+              Officiell pollenprognos för Göteborg från Pollenrapporten.
             </p>
           </div>
         </section>
@@ -200,17 +224,23 @@ export default async function PollenWidget() {
             {sortedPollen.map(
               (pollen) => (
                 <article
-                  key={pollen.id}
+                  key={
+                    pollen.id
+                  }
                   className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <span className="text-2xl">
-                        {pollen.emoji}
+                        {
+                          pollen.emoji
+                        }
                       </span>
 
                       <p className="mt-2 font-semibold text-white">
-                        {pollen.name}
+                        {
+                          pollen.name
+                        }
                       </p>
                     </div>
 
@@ -220,29 +250,34 @@ export default async function PollenWidget() {
                         getLevelClasses(
                           pollen.level
                         ),
-                      ].join(" ")}
+                      ].join(
+                        " "
+                      )}
                     >
-                      {pollen.level}
+                      {
+                        pollen.level
+                      }
                     </span>
                   </div>
 
                   <p className="mt-4 text-2xl font-bold text-white">
-                    {formatPollenValue(
-                      pollen.todayMax
-                    )}
+                    {
+                      pollen.level
+                    }
                   </p>
 
                   <p className="text-xs text-slate-500">
-                    pollenkorn/m³ max idag
+                    officiell prognosnivå
                   </p>
 
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
                     <div
                       className="h-full rounded-full bg-emerald-400"
                       style={{
-                        width: getBarWidth(
-                          pollen.todayMax
-                        ),
+                        width:
+                          getBarWidth(
+                            pollen.todayMax
+                          ),
                       }}
                     />
                   </div>
@@ -252,6 +287,20 @@ export default async function PollenWidget() {
           </div>
         </section>
       </div>
+
+      {pollenData.forecastText && (
+        <div className="mt-5 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.05] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+            Pollenrapportens prognos
+          </p>
+
+          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-300">
+            {
+              pollenData.forecastText
+            }
+          </p>
+        </div>
+      )}
 
       <div className="mt-6">
         <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
@@ -268,7 +317,9 @@ export default async function PollenWidget() {
 
               return (
                 <article
-                  key={day.date}
+                  key={
+                    day.date
+                  }
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
                 >
                   <p className="font-semibold capitalize text-white">
@@ -277,28 +328,37 @@ export default async function PollenWidget() {
                     )}
                   </p>
 
-                  {day.highestValue > 0 ? (
+                  {day.highestValue >
+                  0 ? (
                     <>
                       <p className="mt-3 text-sm text-slate-400">
                         Högst:
                       </p>
 
                       <p className="mt-1 text-lg font-bold text-white">
-                        {day.highestName}
+                        {
+                          day.highestName
+                        }
                       </p>
 
                       <div
                         className={[
                           "mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold",
-                          getLevelClasses(level),
-                        ].join(" ")}
+                          getLevelClasses(
+                            level
+                          ),
+                        ].join(
+                          " "
+                        )}
                       >
-                        {level}
+                        {
+                          level
+                        }
                       </div>
                     </>
                   ) : (
                     <p className="mt-3 text-sm text-slate-400">
-                      Ingen tydlig pollenaktivitet
+                      Inga halter
                     </p>
                   )}
                 </article>
@@ -315,13 +375,7 @@ export default async function PollenWidget() {
         />
 
         <p className="text-xs leading-5 text-slate-400">
-          Data: Open-Meteo / Copernicus
-          Atmosphere Monitoring Service
-          (CAMS). Nivåorden i dashboarden
-          är en förenklad visualisering av
-          koncentrationen och ska inte
-          förväxlas med Pollenrapportens
-          officiella svenska nivåskala.
+          Data: {pollenData.source}. Widgeten visar Pollenrapportens officiella prognosnivåer: inga, låga, måttliga, höga och mycket höga halter.
         </p>
       </div>
     </Card>

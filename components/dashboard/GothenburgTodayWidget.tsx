@@ -17,30 +17,10 @@ import {
 } from "react";
 
 import Card from "@/components/ui/Card";
-
-type EventItem = {
-  id: string;
-  title: string;
-  subtitle: string | null;
-  place: string | null;
-  dateText: string | null;
-  url: string;
-  imageUrl: string | null;
-  isFree: boolean;
-  isFamily: boolean;
-  dates: string[];
-};
-
-type EventsResponse = {
-  source: string;
-  todayCount: number;
-  today: {
-    date: string;
-    events: EventItem[];
-  };
-  updatedAt: string;
-  error?: string;
-};
+import {
+  getGothenburgEvents,
+  type GothenburgEventsResponse,
+} from "@/lib/gothenburg-events-client";
 
 function formatToday(date: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString(
@@ -55,30 +35,19 @@ function formatToday(date: string) {
 
 export default function GothenburgTodayWidget() {
   const [data, setData] =
-    useState<EventsResponse | null>(null);
+    useState<GothenburgEventsResponse | null>(null);
   const [isLoading, setIsLoading] =
     useState(true);
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(
-        "/api/gothenburg-events",
-        { cache: "no-store" }
-      );
-
       const result =
-        (await response.json()) as EventsResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ?? `API-fel ${response.status}`
-        );
-      }
+        await getGothenburgEvents(forceRefresh);
 
       setData(result);
     } catch (fetchError) {
@@ -150,7 +119,7 @@ export default function GothenburgTodayWidget() {
           </p>
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() => void loadData(true)}
             className="mt-4 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
           >
             Försök igen

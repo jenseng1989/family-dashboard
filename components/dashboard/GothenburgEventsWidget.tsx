@@ -15,34 +15,10 @@ import {
 } from "react";
 
 import Card from "@/components/ui/Card";
-
-type EventItem = {
-  id: string;
-  title: string;
-  subtitle: string | null;
-  place: string | null;
-  dateText: string | null;
-  url: string;
-  imageUrl: string | null;
-  isFree: boolean;
-  isFamily: boolean;
-  dates: string[];
-};
-
-type DayGroup = {
-  date: string;
-  events: EventItem[];
-};
-
-type EventsResponse = {
-  source: string;
-  sourceUrl: string;
-  upcomingStartDate: string | null;
-  upcomingEndDate: string | null;
-  upcomingDays: DayGroup[];
-  updatedAt: string;
-  error?: string;
-};
+import {
+  getGothenburgEvents,
+  type GothenburgEventsResponse,
+} from "@/lib/gothenburg-events-client";
 
 function formatDay(date: string, index: number) {
   if (index === 0) {
@@ -70,14 +46,17 @@ function formatDate(date: string) {
 
 export default function GothenburgEventsWidget() {
   const [data, setData] =
-    useState<EventsResponse | null>(null);
+    useState<GothenburgEventsResponse | null>(null);
   const [isLoading, setIsLoading] =
     useState(true);
   const [error, setError] =
     useState<string | null>(null);
 
   const loadData = useCallback(
-    async (showLoader = true) => {
+    async (
+      showLoader = true,
+      forceRefresh = false
+    ) => {
       if (showLoader) {
         setIsLoading(true);
       }
@@ -85,19 +64,8 @@ export default function GothenburgEventsWidget() {
       setError(null);
 
       try {
-        const response = await fetch(
-          "/api/gothenburg-events",
-          { cache: "no-store" }
-        );
-
         const result =
-          (await response.json()) as EventsResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ?? `API-fel ${response.status}`
-          );
-        }
+          await getGothenburgEvents(forceRefresh);
 
         setData(result);
       } catch (fetchError) {
@@ -156,7 +124,7 @@ export default function GothenburgEventsWidget() {
           </p>
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() => void loadData(true, true)}
             className="mt-4 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
           >
             Försök igen

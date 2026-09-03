@@ -10,6 +10,7 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import Card from "@/components/ui/Card";
 
 type AirQualityResponse = {
@@ -32,29 +33,43 @@ type AirQualityResponse = {
   note: string;
 };
 
-function formatTime(value: string | null): string {
+function formatTime(
+  value: string | null
+): string {
   if (!value) {
     return "–";
   }
 
   const normalized =
-    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(
+      value
+    )
       ? value.replace(" ", "T")
       : value;
 
-  const date = new Date(normalized);
+  const date =
+    new Date(normalized);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return value;
   }
 
-  return date.toLocaleTimeString("sv-SE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return date.toLocaleTimeString(
+    "sv-SE",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
 }
 
-function getLevelClasses(key: string): string {
+function getLevelClasses(
+  key: string
+): string {
   switch (key) {
     case "good":
       return "border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-200";
@@ -101,67 +116,109 @@ function PollutantCard({
 
 export default function AirQualityWidget() {
   const [data, setData] =
-    useState<AirQualityResponse | null>(null);
-  const [isLoading, setIsLoading] =
+    useState<AirQualityResponse | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
     useState(true);
+
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
-  const loadData = useCallback(
-    async (showLoader = true) => {
-      if (showLoader) {
-        setIsLoading(true);
-      }
-
-      setError(null);
-
-      try {
-        const response = await fetch("/api/air-quality", {
-          cache: "no-store",
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ?? `API-fel ${response.status}`
-          );
+  const loadData =
+    useCallback(
+      async (
+        showLoader = true,
+        forceRefresh = false
+      ) => {
+        if (showLoader) {
+          setIsLoading(true);
         }
 
-        setData(result as AirQualityResponse);
-      } catch (fetchError) {
-        console.error(
-          "Kunde inte hämta luftkvalitet:",
-          fetchError
-        );
+        setError(null);
 
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Luftkvaliteten kunde inte hämtas."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+        try {
+          const response =
+            await fetch(
+              "/api/air-quality",
+              forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
+            );
+
+          const result =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result.error ??
+                `API-fel ${response.status}`
+            );
+          }
+
+          setData(
+            result as AirQualityResponse
+          );
+        } catch (
+          fetchError
+        ) {
+          console.error(
+            "Kunde inte hämta luftkvalitet:",
+            fetchError
+          );
+
+          setError(
+            fetchError instanceof
+              Error
+              ? fetchError.message
+              : "Luftkvaliteten kunde inte hämtas."
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      []
+    );
 
   useEffect(() => {
     void loadData();
 
-    const intervalId = window.setInterval(() => {
-      void loadData(false);
-    }, 5 * 60_000);
+    const intervalId =
+      window.setInterval(
+        () =>
+          void loadData(
+            false
+          ),
+        5 * 60_000
+      );
 
     return () => {
-      window.clearInterval(intervalId);
+      window.clearInterval(
+        intervalId
+      );
     };
   }, [loadData]);
 
   return (
-    <Card title="Luftkvalitet" icon={<Wind size={28} />}>
-      {isLoading && !data ? (
+    <Card
+      title="Luften"
+      icon={
+        <Wind
+          size={28}
+        />
+      }
+    >
+      {isLoading &&
+      !data ? (
         <div className="flex min-h-52 flex-col items-center justify-center gap-3">
           <RefreshCw
             size={28}
@@ -172,7 +229,8 @@ export default function AirQualityWidget() {
             Hämtar luftkvaliteten i Göteborg…
           </p>
         </div>
-      ) : error && !data ? (
+      ) : error &&
+        !data ? (
         <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-5">
           <div className="flex items-start gap-3">
             <AlertTriangle
@@ -191,7 +249,12 @@ export default function AirQualityWidget() {
 
               <button
                 type="button"
-                onClick={() => void loadData()}
+                onClick={() =>
+                  void loadData(
+                    true,
+                    true
+                  )
+                }
                 className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
               >
                 Försök igen
@@ -213,7 +276,10 @@ export default function AirQualityWidget() {
                 </p>
 
                 <p className="mt-1 text-2xl font-bold">
-                  {data.level.label}
+                  {
+                    data.level
+                      .label
+                  }
                 </p>
               </div>
 
@@ -223,7 +289,8 @@ export default function AirQualityWidget() {
                 </p>
 
                 <p className="text-3xl font-black">
-                  {data.aqi ?? "–"}
+                  {data.aqi ??
+                    "–"}
                 </p>
               </div>
             </div>
@@ -232,17 +299,29 @@ export default function AirQualityWidget() {
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <PollutantCard
               label="PM2,5"
-              value={data.pollutants.pm25}
+              value={
+                data
+                  .pollutants
+                  .pm25
+              }
             />
 
             <PollutantCard
               label="PM10"
-              value={data.pollutants.pm10}
+              value={
+                data
+                  .pollutants
+                  .pm10
+              }
             />
 
             <PollutantCard
               label="NO₂"
-              value={data.pollutants.no2}
+              value={
+                data
+                  .pollutants
+                  .no2
+              }
             />
           </div>
 
@@ -252,28 +331,42 @@ export default function AirQualityWidget() {
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              {data.level.summary}
+              {
+                data.level
+                  .summary
+              }
             </p>
           </div>
 
           <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Mätstation: {data.station}
+              Mätstation:{" "}
+              {
+                data.station
+              }
             </span>
 
             <span>
-              Mättid: {formatTime(data.measuredAt)}
+              Mättid:{" "}
+              {formatTime(
+                data.measuredAt
+              )}
             </span>
           </div>
 
           <p className="mt-2 text-[11px] leading-5 text-slate-600">
-            PM2,5, PM10 och NO₂ visas som individuella AQI-värden.
-            Källa: {data.source}.
+            PM2,5, PM10 och
+            NO₂ visas som
+            individuella
+            AQI-värden. Källa:{" "}
+            {data.source}.
           </p>
 
           {error && (
             <p className="mt-3 text-xs text-amber-300">
-              Senaste uppdateringen misslyckades. Visar senast hämtade data.
+              Senaste uppdateringen
+              misslyckades. Visar
+              senast hämtade data.
             </p>
           )}
         </>

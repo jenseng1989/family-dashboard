@@ -179,10 +179,18 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({
-    location: "Göteborg",
-    predictionDays: PREDICTION_DAYS,
-    generatedAt: new Date().toISOString(),
-    satellites,
-  });
+  return NextResponse.json(
+    {
+      location: "Göteborg",
+      predictionDays: PREDICTION_DAYS,
+      generatedAt: new Date().toISOString(),
+      satellites,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "public, s-maxage=1800, stale-while-revalidate=1800",
+      },
+    }
+  );
 }
