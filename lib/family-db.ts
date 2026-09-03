@@ -191,12 +191,12 @@ async function fetchFamilyMembersFromDatabase():
   const memberRows =
     (
       membersResult.data ?? []
-    ) as FamilyMemberRow[];
+    ) as unknown as FamilyMemberRow[];
 
   const nameDayRows =
     (
       nameDaysResult.data ?? []
-    ) as FamilyNameDayRow[];
+    ) as unknown as FamilyNameDayRow[];
 
   const nameDaysByMember =
     new Map<

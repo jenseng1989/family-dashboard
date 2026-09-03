@@ -17,33 +17,30 @@ export function buildDashboardWidgets(
   group: WidgetGroup,
   contentMap: WidgetContentMap
 ): DashboardWidgetItem[] {
-  return group.widgets
-    .map((widget) => {
-      const content =
-        contentMap[widget.id];
+  const widgets: DashboardWidgetItem[] = [];
 
-      if (content === undefined) {
-        console.warn(
-          `Saknar dashboard-innehåll för widget "${widget.id}" i grupp "${group.key}".`
-        );
+  for (const widget of group.widgets) {
+    const content =
+      contentMap[widget.id];
 
-        return null;
-      }
+    if (content === undefined) {
+      console.warn(
+        `Saknar dashboard-innehåll för widget "${widget.id}" i grupp "${group.key}".`
+      );
 
-      return {
-        id: widget.id,
-        className:
-          widget.dashboardClassName ??
-          "col-span-12 min-w-0",
-        content,
-      };
-    })
-    .filter(
-      (
-        item
-      ): item is DashboardWidgetItem =>
-        item !== null
-    );
+      continue;
+    }
+
+    widgets.push({
+      id: widget.id,
+      className:
+        widget.dashboardClassName ??
+        "col-span-12 min-w-0",
+      content,
+    });
+  }
+
+  return widgets;
 }
 
 export function buildDynamicFamilyWidgets(
@@ -51,30 +48,28 @@ export function buildDynamicFamilyWidgets(
   prefix: string,
   contentMap: WidgetContentMap
 ): DashboardWidgetItem[] {
-  return templates
-    .map((template) => {
-      const content =
-        contentMap[template.suffix];
+  const widgets: DashboardWidgetItem[] = [];
 
-      if (content === undefined) {
-        console.warn(
-          `Saknar familjeinnehåll för widget "${prefix}-${template.suffix}".`
-        );
+  for (const template of templates) {
+    const content =
+      contentMap[template.suffix];
 
-        return null;
-      }
+    if (content === undefined) {
+      console.warn(
+        `Saknar familjeinnehåll för widget "${prefix}-${template.suffix}".`
+      );
 
-      return {
-        id: `${prefix}-${template.suffix}`,
-        className:
-          template.dashboardClassName,
-        content,
-      };
-    })
-    .filter(
-      (
-        item
-      ): item is DashboardWidgetItem =>
-        item !== null
-    );
+      continue;
+    }
+
+    widgets.push({
+      id: `${prefix}-${template.suffix}`,
+      className:
+        template.dashboardClassName ??
+        "col-span-12 min-w-0",
+      content,
+    });
+  }
+
+  return widgets;
 }

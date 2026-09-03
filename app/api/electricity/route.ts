@@ -1,6 +1,6 @@
 import { getElectricityPrices } from "@/lib/electricity";
 
-export const revalidate = 15 * 60;
+export const revalidate = 900;
 
 type ElectricityPayload = Awaited<
   ReturnType<typeof getElectricityPrices>

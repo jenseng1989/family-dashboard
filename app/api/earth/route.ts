@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const revalidate = 5 * 60;
+export const revalidate = 300;
 
 type UsgsFeature = {
   id: string;

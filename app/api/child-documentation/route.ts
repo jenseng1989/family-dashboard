@@ -1675,8 +1675,13 @@ export async function GET(
         data.child.displayName
       )}-dokumentation-${date}.pdf`;
 
+    const pdfBuffer =
+      Buffer.from(
+        pdfBytes
+      );
+
     return new Response(
-      pdfBytes,
+      pdfBuffer,
       {
         headers: {
           "Content-Type":
