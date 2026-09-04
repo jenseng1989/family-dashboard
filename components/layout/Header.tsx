@@ -2,53 +2,39 @@
 
 import { useEffect, useState } from "react";
 
-type AppSettingsResponse = {
-  settings?: {
-    dashboardName?: string;
-  };
-};
-
-const DEFAULT_DASHBOARD_NAME = "Family Dashboard";
+import {
+  DEFAULT_APP_SETTINGS,
+  getAppSettings,
+} from "@/lib/app-settings-client";
 
 export default function Header() {
-  const [dashboardName, setDashboardName] = useState(
-    DEFAULT_DASHBOARD_NAME
-  );
+  const [dashboardName, setDashboardName] =
+    useState(
+      DEFAULT_APP_SETTINGS.dashboardName
+    );
 
-  const date = new Date().toLocaleDateString("sv-SE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const date = new Date().toLocaleDateString(
+    "sv-SE",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadDashboardName() {
       try {
-        const response = await fetch(
-          "/api/admin/app-settings",
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
+        const settings =
+          await getAppSettings();
 
-        if (!response.ok) {
-          throw new Error(
-            `API-fel ${response.status}`
+        if (!cancelled) {
+          setDashboardName(
+            settings.dashboardName
           );
-        }
-
-        const result =
-          (await response.json()) as AppSettingsResponse;
-
-        const name =
-          result.settings?.dashboardName?.trim();
-
-        if (!cancelled && name) {
-          setDashboardName(name);
         }
       } catch (error) {
         console.error(
@@ -58,7 +44,7 @@ export default function Header() {
 
         if (!cancelled) {
           setDashboardName(
-            DEFAULT_DASHBOARD_NAME
+            DEFAULT_APP_SETTINGS.dashboardName
           );
         }
       }

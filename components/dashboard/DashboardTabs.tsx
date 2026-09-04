@@ -11,14 +11,20 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { type ReactNode, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
-type TabId =
-  | "home"
-  | "weather"
-  | "family"
-  | "gothenburg"
-  | "fun";
+import {
+  DEFAULT_APP_SETTINGS,
+  getAppSettings,
+  type AppSettings,
+  type AppTabId,
+} from "@/lib/app-settings-client";
+
+type TabId = AppTabId;
 
 type DashboardTabsProps = {
   startContent: ReactNode;
@@ -31,31 +37,6 @@ type TabButton = {
   shortLabel: string;
   icon: ReactNode;
 };
-
-type AppSettings = {
-  defaultTab: TabId;
-  showAdminButton: boolean;
-  dashboardName: string;
-};
-
-type AppSettingsResponse = {
-  settings?: AppSettings;
-  error?: string;
-};
-
-const DEFAULT_SETTINGS: AppSettings = {
-  defaultTab: "home",
-  showAdminButton: true,
-  dashboardName: "Family Dashboard",
-};
-
-const VALID_TABS: TabId[] = [
-  "home",
-  "weather",
-  "family",
-  "gothenburg",
-  "fun",
-];
 
 function TabLoading({
   label,
@@ -155,17 +136,6 @@ const tabs: TabButton[] = [
   },
 ];
 
-function isValidTab(
-  value: unknown
-): value is TabId {
-  return (
-    typeof value === "string" &&
-    VALID_TABS.includes(
-      value as TabId
-    )
-  );
-}
-
 export default function DashboardTabs({
   startContent,
   weatherContent,
@@ -175,7 +145,7 @@ export default function DashboardTabs({
 
   const [appSettings, setAppSettings] =
     useState<AppSettings>(
-      DEFAULT_SETTINGS
+      DEFAULT_APP_SETTINGS
     );
 
   const [settingsLoaded, setSettingsLoaded] =
@@ -186,65 +156,12 @@ export default function DashboardTabs({
 
     async function loadAppSettings() {
       try {
-        const response =
-          await fetch(
-            "/api/admin/app-settings",
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            AppSettingsResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              `API-fel ${response.status}`
-          );
-        }
-
-        if (!result.settings) {
-          throw new Error(
-            "API:t returnerade inga appinställningar."
-          );
-        }
+        const loadedSettings =
+          await getAppSettings();
 
         if (cancelled) {
           return;
         }
-
-        const defaultTab =
-          isValidTab(
-            result.settings.defaultTab
-          )
-            ? result.settings.defaultTab
-            : DEFAULT_SETTINGS.defaultTab;
-
-        const showAdminButton =
-          typeof result.settings
-            .showAdminButton ===
-          "boolean"
-            ? result.settings
-                .showAdminButton
-            : DEFAULT_SETTINGS.showAdminButton;
-
-        const dashboardName =
-          typeof result.settings
-            .dashboardName ===
-            "string" &&
-          result.settings.dashboardName.trim()
-            ? result.settings.dashboardName.trim()
-            : DEFAULT_SETTINGS.dashboardName;
-
-        const loadedSettings:
-          AppSettings = {
-          defaultTab,
-          showAdminButton,
-          dashboardName,
-        };
 
         setAppSettings(
           loadedSettings
@@ -263,14 +180,14 @@ export default function DashboardTabs({
 
         if (!cancelled) {
           setAppSettings(
-            DEFAULT_SETTINGS
+            DEFAULT_APP_SETTINGS
           );
           setActiveTab(
-            DEFAULT_SETTINGS.defaultTab
+            DEFAULT_APP_SETTINGS.defaultTab
           );
 
           document.title =
-            DEFAULT_SETTINGS.dashboardName;
+            DEFAULT_APP_SETTINGS.dashboardName;
         }
       } finally {
         if (!cancelled) {
