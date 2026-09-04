@@ -31,6 +31,7 @@ import {
   YAxis,
 } from "recharts";
 
+import ChildDocumentationButton from "@/components/dashboard/ChildDocumentationButton";
 import Card from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
@@ -939,20 +940,29 @@ export default function ChildGrowth({
             </div>
           ) : measurements.length === 0 ? (
             <>
-              <div className="flex items-center gap-3 px-5 py-4">
-                <CalendarDays
-                  size={20}
-                  className="text-blue-300"
-                />
+              <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <CalendarDays
+                    size={20}
+                    className="text-blue-300"
+                  />
 
-                <div>
-                  <p className="font-semibold text-white">
-                    Mäthistorik
-                  </p>
+                  <div>
+                    <p className="font-semibold text-white">
+                      Mäthistorik
+                    </p>
 
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    0 sparade mätningar
-                  </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      0 sparade mätningar
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  <ChildDocumentationButton
+                    memberId={memberId}
+                    displayName={displayName}
+                  />
                 </div>
               </div>
 
@@ -966,42 +976,51 @@ export default function ChildGrowth({
             </>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() =>
-                  setHistoryOpen((current) => !current)
-                }
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <CalendarDays
-                    size={20}
-                    className="text-blue-300"
-                  />
+              <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setHistoryOpen((current) => !current)
+                  }
+                  className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <CalendarDays
+                      size={20}
+                      className="shrink-0 text-blue-300"
+                    />
 
-                  <div>
-                    <p className="font-semibold text-white">
-                      Mäthistorik
-                    </p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">
+                        Mäthistorik
+                      </p>
 
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {measurements.length} sparade mätningar
-                    </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {measurements.length} sparade mätningar
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {historyOpen ? (
-                  <ChevronUp
-                    size={19}
-                    className="text-slate-400"
+                  {historyOpen ? (
+                    <ChevronUp
+                      size={19}
+                      className="shrink-0 text-slate-400"
+                    />
+                  ) : (
+                    <ChevronDown
+                      size={19}
+                      className="shrink-0 text-slate-400"
+                    />
+                  )}
+                </button>
+
+                <div className="shrink-0">
+                  <ChildDocumentationButton
+                    memberId={memberId}
+                    displayName={displayName}
                   />
-                ) : (
-                  <ChevronDown
-                    size={19}
-                    className="text-slate-400"
-                  />
-                )}
-              </button>
+                </div>
+              </div>
 
               {historyOpen && (
                 <div className="border-t border-white/10 p-4">
