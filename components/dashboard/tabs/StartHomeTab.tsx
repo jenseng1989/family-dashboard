@@ -2,20 +2,17 @@
 
 import Countdown from "@/components/dashboard/Countdown";
 import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
+import GoogleCalendarWidget from "@/components/dashboard/GoogleCalendarWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import VacationPlan from "@/components/dashboard/VacationPlan";
 import WidgetGate from "@/components/dashboard/WidgetGate";
-import {
-  getWidgetGroup,
-} from "@/config/widgets";
-import {
-  buildDashboardWidgets,
-} from "@/lib/dashboard-widgets";
+import { getWidgetGroup } from "@/config/widgets";
+import { buildDashboardWidgets } from "@/lib/dashboard-widgets";
 
-const startHomeConfig =
-  getWidgetGroup("start-home");
+const startHomeConfig = getWidgetGroup("start-home");
 
 const startHomeContentMap = {
+  "google-calendar": <GoogleCalendarWidget />,
   "vacation-plan": <VacationPlan />,
   countdown: <Countdown />,
   electricity: <ElectricityWidget />,

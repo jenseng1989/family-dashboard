@@ -2,6 +2,7 @@ import {
   Activity,
   Bath,
   CalendarClock,
+  CalendarDays,
   CloudSun,
   Coins,
   Gauge,
@@ -65,6 +66,14 @@ export const widgetGroups: WidgetGroup[] = [
     title: "Start · Hemmet",
     icon: Home,
     widgets: [
+      {
+        id: "google-calendar",
+        name: "Google Kalender",
+        description: "Kommande händelser från familjens valda Google-kalender.",
+        icon: CalendarDays,
+        defaultSize: "full",
+        dashboardClassName: "col-span-12 min-w-0",
+      },
       {
         id: "vacation-plan",
         name: "Dagsplanering",
