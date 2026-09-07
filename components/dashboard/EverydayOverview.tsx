@@ -3,18 +3,14 @@
 import {
   CalendarClock,
   CalendarDays,
-  CheckCircle2,
   CloudSun,
   Clock3,
-  ExternalLink,
-  Gift,
   Home,
   LoaderCircle,
   PartyPopper,
   RefreshCw,
-  MapPin,
-  Sparkles,
   TriangleAlert,
+  Zap,
 } from "lucide-react";
 import {
   useCallback,
@@ -24,26 +20,32 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import {
+  ElectricityData,
+  formatHour,
+  formatPrice,
+} from "@/lib/electricity";
+import {
   createUpcomingFamilyEvents,
   type FamilyEvent,
 } from "@/lib/family";
 import {
   getFamilyMembersFromDatabase,
 } from "@/lib/family-db";
-import {
-  getTodayStatus,
-  type TodayStatusApiResponse,
-} from "@/lib/today-status-client";
 
-type DayPlan = {
+type GoogleCalendarEvent = {
   id: string;
-  plan_date: string;
-  day_name: string | null;
+  title: string;
+  startTime: string | null;
+  endTime: string | null;
   location: string | null;
-  travel: string | null;
-  accommodation: string | null;
-  activity: string | null;
-  information: string | null;
+  allDay: boolean;
+  htmlLink: string | null;
+};
+
+type GoogleCalendarResponse = {
+  connected?: boolean;
+  events?: GoogleCalendarEvent[];
+  error?: string;
 };
 
 type CountdownRow = {
@@ -51,25 +53,6 @@ type CountdownRow = {
   title: string;
   event_date: string;
   created_at: string;
-};
-
-type TodayNotice = {
-  id: string;
-  type:
-    | "weather"
-    | "birthday"
-    | "nameDay"
-    | "countdown";
-  title: string;
-  description: string;
-  severity?:
-    | "yellow"
-    | "orange"
-    | "red"
-    | "unknown";
-  startsAt?: string | null;
-  endsAt?: string | null;
-  url?: string;
 };
 
 type EverydayWeather = {
@@ -93,6 +76,60 @@ type EverydayWeather = {
   updatedAt: string;
 };
 
+function getStockholmDateKey(
+  dateString: string
+): string {
+  const parts =
+    new Intl.DateTimeFormat(
+      "sv-SE",
+      {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        timeZone:
+          "Europe/Stockholm",
+      }
+    ).formatToParts(
+      new Date(dateString)
+    );
+
+  const year =
+    parts.find(
+      (part) =>
+        part.type === "year"
+    )?.value ?? "";
+
+  const month =
+    parts.find(
+      (part) =>
+        part.type === "month"
+    )?.value ?? "";
+
+  const day =
+    parts.find(
+      (part) =>
+        part.type === "day"
+    )?.value ?? "";
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatCalendarTime(
+  dateString: string
+): string {
+  return new Intl.DateTimeFormat(
+    "sv-SE",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone:
+        "Europe/Stockholm",
+    }
+  ).format(
+    new Date(dateString)
+  );
+}
+
 function getGreeting(
   hour: number
 ): string {
@@ -105,6 +142,30 @@ function getGreeting(
   }
 
   return "God kväll";
+}
+
+function getDayPhase(hour: number) {
+  if (hour < 10) {
+    return {
+      message: "En ny dag har börjat – här är läget just nu.",
+      accent: "text-amber-200",
+      glow: "bg-amber-300/[0.08]",
+    };
+  }
+
+  if (hour < 17) {
+    return {
+      message: "Här är det viktigaste för resten av dagen.",
+      accent: "text-blue-200",
+      glow: "bg-blue-400/10",
+    };
+  }
+
+  return {
+    message: "Dagen börjar gå mot sitt slut – här är kvällens läge.",
+    accent: "text-violet-200",
+    glow: "bg-violet-400/[0.10]",
+  };
 }
 
 function getTodayDateString(): string {
@@ -231,54 +292,6 @@ function getCountdownLabel(
   )} dagar sedan`;
 }
 
-function getNoticeClasses(
-  notice: TodayNotice
-): string {
-  if (
-    notice.type !==
-    "weather"
-  ) {
-    return "border-blue-300/15 bg-blue-400/[0.06]";
-  }
-
-  switch (
-    notice.severity
-  ) {
-    case "red":
-      return "border-red-300/20 bg-red-400/[0.08]";
-
-    case "orange":
-      return "border-orange-300/20 bg-orange-400/[0.08]";
-
-    case "yellow":
-      return "border-yellow-300/20 bg-yellow-400/[0.08]";
-
-    default:
-      return "border-slate-300/15 bg-white/[0.04]";
-  }
-}
-
-function getNoticeIcon(
-  notice: TodayNotice
-) {
-  switch (
-    notice.type
-  ) {
-    case "birthday":
-      return Gift;
-
-    case "nameDay":
-      return Sparkles;
-
-    case "countdown":
-      return PartyPopper;
-
-    case "weather":
-    default:
-      return TriangleAlert;
-  }
-}
-
 function InfoCard({
   icon,
   eyebrow,
@@ -295,7 +308,7 @@ function InfoCard({
     React.ReactNode;
 }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+    <article className="h-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/25 text-blue-300">
           {icon}
@@ -306,11 +319,11 @@ function InfoCard({
             {eyebrow}
           </p>
 
-          <p className="mt-1 text-lg font-bold text-white">
+          <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
             {title}
           </p>
 
-          <p className="mt-1 text-sm leading-6 text-slate-400">
+          <p className="mt-1 text-sm leading-5 text-slate-400 sm:leading-6">
             {description}
           </p>
 
@@ -331,12 +344,12 @@ export default function EverydayOverview() {
     );
 
   const [
-    todayPlan,
-    setTodayPlan,
+    calendarEvents,
+    setCalendarEvents,
   ] =
     useState<
-      DayPlan | null
-    >(null);
+      GoogleCalendarEvent[]
+    >([]);
 
   const [
     countdowns,
@@ -355,19 +368,19 @@ export default function EverydayOverview() {
     >([]);
 
   const [
-    notices,
-    setNotices,
-  ] =
-    useState<
-      TodayNotice[]
-    >([]);
-
-  const [
     weather,
     setWeather,
   ] =
     useState<
       EverydayWeather | null
+    >(null);
+
+  const [
+    electricity,
+    setElectricity,
+  ] =
+    useState<
+      ElectricityData | null
     >(null);
 
   const [
@@ -396,25 +409,20 @@ export default function EverydayOverview() {
 
       try {
         const [
-          dayPlanResult,
+          calendarResponse,
           countdownResult,
           familyMembers,
-          todayStatusResponse,
           weatherResponse,
+          electricityResponse,
         ] =
           await Promise.all([
-            supabase
-              .from(
-                "vacation_plan"
-              )
-              .select(
-                "id, plan_date, day_name, location, travel, accommodation, activity, information"
-              )
-              .eq(
-                "plan_date",
-                getTodayDateString()
-              )
-              .maybeSingle(),
+            fetch(
+              "/api/google-calendar",
+              {
+                cache:
+                  "no-store",
+              }
+            ),
 
             supabase
               .from(
@@ -444,12 +452,18 @@ export default function EverydayOverview() {
 
             getFamilyMembersFromDatabase(),
 
-            getTodayStatus(
+            fetch(
+              "/api/everyday-weather",
               forceRefresh
+                ? {
+                    cache:
+                      "reload",
+                  }
+                : undefined
             ),
 
             fetch(
-              "/api/everyday-weather",
+              "/api/electricity",
               forceRefresh
                 ? {
                     cache:
@@ -460,20 +474,40 @@ export default function EverydayOverview() {
           ]);
 
         if (
-          dayPlanResult.error
+          calendarResponse.ok
         ) {
+          const calendarData =
+            (await calendarResponse.json()) as GoogleCalendarResponse;
+
+          if (
+            calendarData.connected ===
+            true
+          ) {
+            setCalendarEvents(
+              calendarData.events ??
+                []
+            );
+          } else {
+            console.error(
+              "Vardagen: Google Kalender är inte ansluten:",
+              calendarData.error
+            );
+            setCalendarEvents(
+              []
+            );
+            setHasPartialError(
+              true
+            );
+          }
+        } else {
           console.error(
-            "Vardagen: kunde inte hämta dagens dagsplanering:",
-            dayPlanResult.error
+            "Vardagen: kunde inte hämta Google Kalender."
           );
-          setTodayPlan(null);
+          setCalendarEvents(
+            []
+          );
           setHasPartialError(
             true
-          );
-        } else {
-          setTodayPlan(
-            (dayPlanResult.data as DayPlan | null) ??
-              null
           );
         }
 
@@ -502,24 +536,6 @@ export default function EverydayOverview() {
           )
         );
 
-        {
-          const status =
-            todayStatusResponse as TodayStatusApiResponse;
-
-          setNotices(
-            status.notices ??
-            []
-          );
-
-          if (
-            status.partialError
-          ) {
-            setHasPartialError(
-              true
-            );
-          }
-        }
-
         if (
           weatherResponse.ok
         ) {
@@ -531,6 +547,37 @@ export default function EverydayOverview() {
           );
         } else {
           setWeather(null);
+          setHasPartialError(
+            true
+          );
+        }
+
+        if (
+          electricityResponse.ok
+        ) {
+          const electricityData =
+            (await electricityResponse.json()) as ElectricityData;
+
+          if (
+            Array.isArray(
+              electricityData.prices
+            )
+          ) {
+            setElectricity(
+              electricityData
+            );
+          } else {
+            setElectricity(
+              null
+            );
+            setHasPartialError(
+              true
+            );
+          }
+        } else {
+          setElectricity(
+            null
+          );
           setHasPartialError(
             true
           );
@@ -607,10 +654,104 @@ export default function EverydayOverview() {
     countdowns[0] ??
     null;
 
+  const todaysCalendarEvents =
+    useMemo(() => {
+      const today =
+        getStockholmDateKey(
+          new Date().toISOString()
+        );
+
+      return calendarEvents
+        .filter(
+          (event) =>
+            event.startTime &&
+            getStockholmDateKey(
+              event.startTime
+            ) === today
+        )
+        .sort(
+          (
+            first,
+            second
+          ) => {
+            if (
+              first.allDay !==
+              second.allDay
+            ) {
+              return first.allDay
+                ? -1
+                : 1;
+            }
+
+            if (
+              !first.startTime ||
+              !second.startTime
+            ) {
+              return 0;
+            }
+
+            return (
+              new Date(
+                first.startTime
+              ).getTime() -
+              new Date(
+                second.startTime
+              ).getTime()
+            );
+          }
+        );
+    }, [calendarEvents]);
+
+  const nextCalendarEvent =
+    todaysCalendarEvents[0] ??
+    null;
+
+  const calendarDescription =
+    nextCalendarEvent
+      ? nextCalendarEvent.allDay
+        ? "Hela dagen"
+        : nextCalendarEvent.startTime
+          ? `Kl. ${formatCalendarTime(
+              nextCalendarEvent.startTime
+            )}${
+              nextCalendarEvent.location
+                ? ` · ${nextCalendarEvent.location}`
+                : ""
+            }`
+          : nextCalendarEvent.location ??
+            "Kommande händelse idag."
+      : "Inga händelser kvar i Google Kalender idag.";
+
+  const cheapestElectricityTime =
+    electricity
+      ? formatHour(
+          electricity.minPrice.time_start
+        )
+      : null;
+
+  const cheapestElectricityPrice =
+    electricity
+      ? formatPrice(
+          electricity.minPrice.SEK_per_kWh
+        )
+      : null;
+
+  const dayPhase =
+    now
+      ? getDayPhase(
+          now.getHours()
+        )
+      : null;
+
   return (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-      <section className="relative col-span-12 overflow-hidden rounded-[2rem] border border-blue-300/15 bg-gradient-to-br from-slate-950 via-blue-950/35 to-violet-950/25 p-6 shadow-2xl shadow-blue-950/20 sm:p-7">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl" />
+      <section className="relative col-span-12 overflow-hidden rounded-[2rem] border border-blue-300/15 bg-gradient-to-br from-slate-950 via-blue-950/35 to-violet-950/25 p-5 shadow-2xl shadow-blue-950/20 sm:p-6 lg:p-7">
+        <div
+          className={[
+            "pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl transition-colors duration-700",
+            dayPhase?.glow ?? "bg-blue-400/10",
+          ].join(" ")}
+        />
 
         <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-violet-400/[0.08] blur-3xl" />
 
@@ -634,6 +775,17 @@ export default function EverydayOverview() {
                     )
                   : "Hej"} 👋
               </h2>
+
+              {dayPhase && (
+                <p
+                  className={[
+                    "mt-2 text-sm font-medium sm:text-base",
+                    dayPhase.accent,
+                  ].join(" ")}
+                >
+                  {dayPhase.message}
+                </p>
+              )}
 
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400">
                 <span className="flex items-center gap-2 capitalize">
@@ -687,7 +839,7 @@ export default function EverydayOverview() {
               disabled={
                 isLoading
               }
-              className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-400/20 disabled:opacity-50"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-400/20 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw
                 size={16}
@@ -716,7 +868,7 @@ export default function EverydayOverview() {
           )}
 
           {weather && (
-            <div className="mt-6 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.09] via-blue-400/[0.05] to-transparent p-5 sm:p-6">
+            <div className="mt-6 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.09] via-blue-400/[0.05] to-transparent p-4 sm:p-5 lg:p-6">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex items-start gap-4">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-400/10 text-sky-300">
@@ -763,9 +915,9 @@ export default function EverydayOverview() {
                   </div>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[28rem]">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
-                    <p className="text-xs text-slate-500">
+                <div className="grid grid-cols-3 gap-2 xl:min-w-[28rem]">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
+                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
                       🌧 Regnrisk
                     </p>
 
@@ -777,8 +929,8 @@ export default function EverydayOverview() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
-                    <p className="text-xs text-slate-500">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
+                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
                       🌬 Vind
                     </p>
 
@@ -790,8 +942,8 @@ export default function EverydayOverview() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-4 py-3">
-                    <p className="text-xs text-slate-500">
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
+                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
                       ☀️ UV
                     </p>
 
@@ -806,18 +958,24 @@ export default function EverydayOverview() {
 
               <div className="mt-4 border-t border-white/10 pt-4">
                 {weather.outdoor ? (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-300">
-                        Bästa tiden att vara ute
-                      </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/[0.08] text-lg">
+                        🌿
+                      </div>
 
-                      <p className="mt-1 text-lg font-bold text-white">
-                        {weather.outdoor.start}–{weather.outdoor.end}
-                      </p>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-300">
+                          Bästa tiden att vara ute
+                        </p>
+
+                        <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
+                          {weather.outdoor.start}–{weather.outdoor.end}
+                        </p>
+                      </div>
                     </div>
 
-                    <p className="max-w-2xl text-sm leading-6 text-slate-400 sm:text-right">
+                    <p className="max-w-2xl text-sm leading-5 text-slate-400 sm:text-right sm:leading-6">
                       {weather.outdoor.reason}
                     </p>
                   </div>
@@ -827,10 +985,38 @@ export default function EverydayOverview() {
                   </p>
                 )}
               </div>
+
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-300">
+                      <Zap size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-300">
+                        Billigaste elen idag
+                      </p>
+
+                      <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
+                        {cheapestElectricityTime ??
+                          "Ingen prisdata"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm leading-6 text-slate-400 sm:text-right">
+                    {cheapestElectricityPrice !==
+                    null
+                      ? `${cheapestElectricityPrice} kr/kWh`
+                      : "Elpriset kunde inte hämtas just nu."}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
             <InfoCard
               icon={
                 <CalendarDays
@@ -839,32 +1025,45 @@ export default function EverydayOverview() {
               }
               eyebrow="Dagsplanering"
               title={
-                todayPlan?.activity ??
-                todayPlan?.location ??
-                "Inget planerat idag"
+                nextCalendarEvent
+                  ? nextCalendarEvent.title
+                  : "Inget planerat idag"
               }
               description={
-                todayPlan
-                  ? [
-                      todayPlan.location &&
-                      todayPlan.activity
-                        ? todayPlan.location
-                        : null,
-                      todayPlan.travel
-                        ? `Resa: ${todayPlan.travel}`
-                        : null,
-                      todayPlan.information,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") ||
-                    "Det finns en planering registrerad för idag."
-                  : "Lägg till dagens planer under Hemmet."
+                calendarDescription
               }
             >
-              {todayPlan?.accommodation && (
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-300">
-                  <MapPin size={14} />
-                  Boende: {todayPlan.accommodation}
+              {todaysCalendarEvents.length >
+                1 && (
+                <div className="mt-3 divide-y divide-white/10 border-t border-white/10 pt-1">
+                  {todaysCalendarEvents
+                    .slice(1)
+                    .map(
+                      (event) => (
+                        <div
+                          key={
+                            event.id
+                          }
+                          className="flex items-start justify-between gap-3 py-2 text-sm"
+                        >
+                          <p className="min-w-0 flex-1 break-words font-semibold leading-5 text-slate-200">
+                            {
+                              event.title
+                            }
+                          </p>
+
+                          <p className="shrink-0 text-xs text-slate-400">
+                            {event.allDay
+                              ? "Hela dagen"
+                              : event.startTime
+                                ? formatCalendarTime(
+                                    event.startTime
+                                  )
+                                : ""}
+                          </p>
+                        </div>
+                      )
+                    )}
                 </div>
               )}
             </InfoCard>
@@ -917,122 +1116,11 @@ export default function EverydayOverview() {
               }
             />
 
-            <InfoCard
-              icon={
-                notices.length >
-                0 ? (
-                  <TriangleAlert
-                    size={21}
-                  />
-                ) : (
-                  <CheckCircle2
-                    size={21}
-                  />
-                )
-              }
-              eyebrow="Idag"
-              title={
-                notices.length >
-                0
-                  ? `${notices.length} ${
-                      notices.length ===
-                      1
-                        ? "händelse"
-                        : "händelser"
-                    }`
-                  : "Lugnt idag"
-              }
-              description={
-                notices.length >
-                0
-                  ? notices[0]
-                      .title
-                  : "Inga särskilda händelser eller varningar just nu."
-              }
-            />
+
           </div>
         </div>
       </section>
 
-      {notices.length >
-        0 && (
-        <section className="col-span-12 rounded-[2rem] border border-white/10 bg-white/[0.035] p-5 sm:p-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
-              Viktigt idag
-            </p>
-
-            <h3 className="mt-1 text-xl font-bold text-white">
-              Dagens händelser
-            </h3>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {notices.map(
-              (notice) => {
-                const Icon =
-                  getNoticeIcon(
-                    notice
-                  );
-
-                return (
-                  <article
-                    key={
-                      notice.id
-                    }
-                    className={[
-                      "rounded-2xl border p-4",
-                      getNoticeClasses(
-                        notice
-                      ),
-                    ].join(
-                      " "
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Icon
-                        size={20}
-                        className="mt-0.5 shrink-0 text-amber-300"
-                      />
-
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-white">
-                          {
-                            notice.title
-                          }
-                        </p>
-
-                        <p className="mt-1 text-sm leading-6 text-slate-400">
-                          {
-                            notice.description
-                          }
-                        </p>
-
-                        {notice.type === "weather" &&
-                          notice.url && (
-                            <a
-                              href={
-                                notice.url
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-amber-200 transition hover:text-amber-100"
-                            >
-                              Läs mer hos SMHI
-                              <ExternalLink
-                                size={15}
-                              />
-                            </a>
-                          )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              }
-            )}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

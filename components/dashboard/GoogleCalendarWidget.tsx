@@ -134,29 +134,29 @@ export default function GoogleCalendarWidget() {
           {events.map((event) => (
             <div
               key={event.id}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"
+              className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-sm shadow-black/10 backdrop-blur-sm transition hover:bg-white/[0.09]"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900 dark:text-white">
+                  <p className="font-semibold text-white">
                     {event.title}
                   </p>
 
                   {event.startTime ? (
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 text-sm font-medium text-slate-400">
                       {formatDate(event.startTime)}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
+                <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-sm font-semibold text-slate-300">
                   <Clock3 size={15} />
                   {eventTime(event)}
                 </div>
               </div>
 
               {event.location ? (
-                <div className="mt-3 flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <div className="mt-3 flex items-start gap-2 border-t border-white/[0.07] pt-3 text-sm text-slate-400">
                   <MapPin size={15} className="mt-0.5 shrink-0" />
                   <span>{event.location}</span>
                 </div>

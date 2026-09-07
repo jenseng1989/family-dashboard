@@ -305,13 +305,6 @@ export const widgetGroups: WidgetGroup[] = [
       },
     ],
   },
-  {
-    key: "explore-sky",
-    title: "Utforska · Himlen",
-    subtitle: "Underfliken finns, men innehåller inga widgets ännu.",
-    icon: CloudSun,
-    widgets: [],
-  },
 ];
 
 export function getWidgetGroup(key: string) {
@@ -375,5 +368,4 @@ export const childFamilyWidgetTemplates: DynamicFamilyWidgetTemplate[] = [
 export const exploreTabWidgetIds = {
   space: "fun-space",
   earth: "fun-other",
-  sky: "fun-sky",
 } as const;

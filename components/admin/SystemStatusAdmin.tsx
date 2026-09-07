@@ -104,11 +104,11 @@ const services: ServiceDefinition[] = [
     icon: ShieldAlert,
   },
   {
-    id: "calendar",
-    name: "Kalender",
+    id: "google-calendar",
+    name: "Google Kalender",
     description:
-      "Kontroll av kalenderns ICS-källa.",
-    endpoint: "/api/calendar",
+      "Kontrollerar anslutningen till den valda Google-kalendern.",
+    endpoint: "/api/google-calendar",
     group: "Vardagen",
     icon: CalendarDays,
   },
@@ -277,23 +277,29 @@ function evaluateSuccessfulResponse(
   }
 
   /*
-   * KALENDER
+   * GOOGLE KALENDER
    */
-  if (service.id === "calendar") {
-    if (typeof data.error === "string") {
+  if (service.id === "google-calendar") {
+    if (data.connected !== true) {
       return {
-        status: "warning",
-        message: data.error,
+        status: "error",
+        message:
+          typeof data.error === "string"
+            ? data.error
+            : "Google Kalender är inte ansluten.",
       };
     }
 
-    if (data.hasUrl !== true) {
-      return {
-        status: "warning",
-        message:
-          "Kalendern svarar men ingen verifierad ICS-källa rapporterades.",
-      };
-    }
+    const events = Array.isArray(data.events)
+      ? data.events.length
+      : 0;
+
+    return {
+      status: "healthy",
+      message: `Google Kalender svarar. ${events} kommande händelse${
+        events === 1 ? "" : "r"
+      } hämtades från den valda kalendern.`,
+    };
   }
 
   /*
