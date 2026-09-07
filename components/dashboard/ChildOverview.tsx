@@ -5,202 +5,279 @@ import {
   Cake,
   CalendarDays,
   LoaderCircle,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
+import {
+  getFamilyMembersFromDatabase,
+} from "@/lib/family-db";
+import type {
+  FamilyMember,
+} from "@/lib/family";
 
-import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
-
-type ChildOverviewProps = {
-  memberId: string;
-  displayName: string;
-  emoji?: string;
-};
-
-type ChildData = {
-  id: string;
-  display_name: string;
-  emoji: string;
-  birthday: string;
-};
-
-type AgeDetails = {
-  years: number;
-  months: number;
-  days: number;
-  totalDays: number;
-  nextAge: number;
-  daysUntilBirthday: number;
-  nextBirthday: Date;
-};
-
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString
-    .split("-")
-    .map(Number);
-
-  return new Date(year, month - 1, day);
-}
-
-function startOfToday(): Date {
-  const now = new Date();
+function parseLocalDate(
+  dateString: string
+): Date {
+  const [
+    year,
+    month,
+    day,
+  ] =
+    dateString
+      .split("-")
+      .map(Number);
 
   return new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
+    year,
+    month - 1,
+    day
+  );
+}
+
+function startOfDay(
+  date: Date
+): Date {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
   );
 }
 
 function daysBetween(
-  firstDate: Date,
-  secondDate: Date
+  start: Date,
+  end: Date
 ): number {
-  const firstUtc = Date.UTC(
-    firstDate.getFullYear(),
-    firstDate.getMonth(),
-    firstDate.getDate()
-  );
+  const startUtc =
+    Date.UTC(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate()
+    );
 
-  const secondUtc = Date.UTC(
-    secondDate.getFullYear(),
-    secondDate.getMonth(),
-    secondDate.getDate()
-  );
+  const endUtc =
+    Date.UTC(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate()
+    );
 
-  return Math.max(
-    0,
-    Math.round(
-      (secondUtc - firstUtc) / 86_400_000
+  return Math.round(
+    (
+      endUtc -
+      startUtc
+    ) /
+      86_400_000
+  );
+}
+
+function addMonthsClamped(
+  date: Date,
+  months: number
+): Date {
+  const target =
+    new Date(
+      date.getFullYear(),
+      date.getMonth() +
+        months,
+      1
+    );
+
+  const lastDay =
+    new Date(
+      target.getFullYear(),
+      target.getMonth() +
+        1,
+      0
+    ).getDate();
+
+  target.setDate(
+    Math.min(
+      date.getDate(),
+      lastDay
     )
   );
+
+  return target;
 }
 
-function formatBirthday(dateString: string): string {
-  return parseLocalDate(
-    dateString
-  ).toLocaleDateString("sv-SE", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatNextBirthday(date: Date): string {
-  return date.toLocaleDateString("sv-SE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function getAgeDetails(
-  birthdayString: string
-): AgeDetails {
-  const birthday = parseLocalDate(
-    birthdayString
-  );
-  const today = startOfToday();
-
-  let years =
-    today.getFullYear() -
-    birthday.getFullYear();
-
-  let yearAnchor = new Date(
-    birthday.getFullYear() + years,
-    birthday.getMonth(),
-    birthday.getDate()
-  );
-
-  if (yearAnchor > today) {
-    years -= 1;
-    yearAnchor = new Date(
-      birthday.getFullYear() + years,
-      birthday.getMonth(),
-      birthday.getDate()
+function getCalendarAge(
+  birthdayString: string,
+  referenceDate:
+    Date = new Date()
+): {
+  years: number;
+  months: number;
+  days: number;
+  totalDays: number;
+} {
+  const birthday =
+    startOfDay(
+      parseLocalDate(
+        birthdayString
+      )
     );
+
+  const today =
+    startOfDay(
+      referenceDate
+    );
+
+  if (
+    today <
+    birthday
+  ) {
+    return {
+      years: 0,
+      months: 0,
+      days: 0,
+      totalDays: 0,
+    };
   }
 
-  let months =
-    (today.getFullYear() -
-      yearAnchor.getFullYear()) *
+  let totalMonths =
+    (
+      today.getFullYear() -
+      birthday.getFullYear()
+    ) *
       12 +
-    today.getMonth() -
-    yearAnchor.getMonth();
-
-  let monthAnchor = new Date(
-    yearAnchor.getFullYear(),
-    yearAnchor.getMonth() + months,
-    yearAnchor.getDate()
-  );
-
-  if (monthAnchor > today) {
-    months -= 1;
-    monthAnchor = new Date(
-      yearAnchor.getFullYear(),
-      yearAnchor.getMonth() + months,
-      yearAnchor.getDate()
+    (
+      today.getMonth() -
+      birthday.getMonth()
     );
-  }
 
-  const days = daysBetween(
-    monthAnchor,
+  let monthAnchor =
+    addMonthsClamped(
+      birthday,
+      totalMonths
+    );
+
+  if (
+    monthAnchor >
     today
-  );
+  ) {
+    totalMonths -= 1;
 
-  let nextBirthday = new Date(
-    today.getFullYear(),
-    birthday.getMonth(),
-    birthday.getDate()
-  );
-
-  if (nextBirthday < today) {
-    nextBirthday = new Date(
-      today.getFullYear() + 1,
-      birthday.getMonth(),
-      birthday.getDate()
-    );
+    monthAnchor =
+      addMonthsClamped(
+        birthday,
+        totalMonths
+      );
   }
 
-  const daysUntilBirthday = daysBetween(
-    today,
-    nextBirthday
-  );
+  const years =
+    Math.floor(
+      totalMonths / 12
+    );
+
+  const months =
+    totalMonths % 12;
+
+  const days =
+    daysBetween(
+      monthAnchor,
+      today
+    );
 
   return {
-    years: Math.max(0, years),
-    months: Math.max(0, months),
+    years,
+    months,
     days,
-    totalDays: daysBetween(
-      birthday,
-      today
-    ),
-    nextAge:
-      nextBirthday.getFullYear() -
-      birthday.getFullYear(),
-    daysUntilBirthday,
-    nextBirthday,
+    totalDays:
+      daysBetween(
+        birthday,
+        today
+      ),
   };
 }
 
-function formatAge(age: AgeDetails): string {
-  const parts: string[] = [];
+function getNextBirthday(
+  birthdayString: string,
+  referenceDate:
+    Date = new Date()
+): {
+  date: Date;
+  nextAge: number;
+  daysUntil: number;
+} {
+  const birthday =
+    parseLocalDate(
+      birthdayString
+    );
 
-  if (age.years > 0) {
+  const today =
+    startOfDay(
+      referenceDate
+    );
+
+  let nextBirthday =
+    new Date(
+      today.getFullYear(),
+      birthday.getMonth(),
+      birthday.getDate()
+    );
+
+  if (
+    nextBirthday <
+    today
+  ) {
+    nextBirthday =
+      new Date(
+        today.getFullYear() +
+          1,
+        birthday.getMonth(),
+        birthday.getDate()
+      );
+  }
+
+  const nextAge =
+    nextBirthday.getFullYear() -
+    birthday.getFullYear();
+
+  return {
+    date:
+      nextBirthday,
+    nextAge,
+    daysUntil:
+      daysBetween(
+        today,
+        nextBirthday
+      ),
+  };
+}
+
+function getAgeTitle(
+  age: {
+    years: number;
+    months: number;
+    days: number;
+  }
+): string {
+  const parts:
+    string[] = [];
+
+  if (
+    age.years > 0
+  ) {
     parts.push(
       `${age.years} ${
-        age.years === 1 ? "år" : "år"
+        age.years === 1
+          ? "år"
+          : "år"
       }`
     );
   }
 
-  if (age.months > 0) {
+  if (
+    age.months > 0 ||
+    age.years === 0
+  ) {
     parts.push(
       `${age.months} ${
         age.months === 1
@@ -210,200 +287,384 @@ function formatAge(age: AgeDetails): string {
     );
   }
 
+  parts.push(
+    `${age.days} ${
+      age.days === 1
+        ? "dag"
+        : "dagar"
+    }`
+  );
+
+  return parts.join(
+    " och "
+  );
+}
+
+function getBirthdayCountdownText(
+  displayName: string,
+  nextAge: number,
+  daysUntil: number
+): string {
   if (
-    age.days > 0 ||
-    parts.length === 0
+    daysUntil === 0
   ) {
-    parts.push(
-      `${age.days} ${
-        age.days === 1 ? "dag" : "dagar"
-      }`
-    );
+    return `Idag fyller ${displayName} ${nextAge} år! 🎉`;
   }
 
-  return parts.join(" och ");
+  if (
+    daysUntil === 1
+  ) {
+    return `Imorgon fyller ${displayName} ${nextAge} år`;
+  }
+
+  return `${daysUntil} dagar till ${nextAge}-årsdagen`;
 }
+
+type ChildOverviewProps = {
+  memberId: string;
+  displayName: string;
+  emoji?: string;
+};
 
 export default function ChildOverview({
   memberId,
   displayName,
   emoji = "👶",
 }: ChildOverviewProps) {
-  const [child, setChild] =
-    useState<ChildData | null>(null);
-  const [isLoading, setIsLoading] =
+  const [
+    person,
+    setPerson,
+  ] =
+    useState<
+      FamilyMember | null
+    >(null);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
     useState(true);
-  const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
 
-  const loadChild = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
 
-    const { data, error } = await supabase
-      .from("family_members")
-      .select(
-        "id, display_name, emoji, birthday"
-      )
-      .eq("id", memberId)
-      .single();
+  const [
+    now,
+    setNow,
+  ] =
+    useState(
+      () => new Date()
+    );
 
-    if (error) {
-      console.error(
-        `Kunde inte hämta ${displayName}:`,
-        error
-      );
+  const loadPerson =
+    useCallback(async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-      setErrorMessage(
-        "Barnets uppgifter kunde inte hämtas."
-      );
-      setIsLoading(false);
-      return;
-    }
+      try {
+        const members =
+          await getFamilyMembersFromDatabase();
 
-    setChild(data as ChildData);
-    setIsLoading(false);
-  }, [memberId, displayName]);
+        const result =
+          members.find(
+            (member) =>
+              member.id ===
+              memberId
+          ) ??
+          null;
+
+        if (!result) {
+          throw new Error(
+            `${displayName} kunde inte hittas bland familjemedlemmarna.`
+          );
+        }
+
+        setPerson(
+          result
+        );
+      } catch (error) {
+        console.error(
+          `Kunde inte hämta ${displayName}s uppgifter:`,
+          error
+        );
+
+        setErrorMessage(
+          `${displayName}s uppgifter kunde inte hämtas.`
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }, [
+      memberId,
+      displayName,
+    ]);
 
   useEffect(() => {
-    void loadChild();
-  }, [loadChild]);
+    void loadPerson();
+
+    function handleFamilyDataChanged() {
+      void loadPerson();
+    }
+
+    window.addEventListener(
+      "family-data-changed",
+      handleFamilyDataChanged
+    );
+
+    return () => {
+      window.removeEventListener(
+        "family-data-changed",
+        handleFamilyDataChanged
+      );
+    };
+  }, [loadPerson]);
+
+  useEffect(() => {
+    const intervalId =
+      window.setInterval(
+        () => {
+          setNow(
+            new Date()
+          );
+        },
+        60 * 60 * 1000
+      );
+
+    return () => {
+      window.clearInterval(
+        intervalId
+      );
+    };
+  }, []);
+
+  const age =
+    useMemo(
+      () =>
+        person
+          ? getCalendarAge(
+              person.birthday,
+              now
+            )
+          : null,
+      [
+        person,
+        now,
+      ]
+    );
+
+  const nextBirthday =
+    useMemo(
+      () =>
+        person
+          ? getNextBirthday(
+              person.birthday,
+              now
+            )
+          : null,
+      [
+        person,
+        now,
+      ]
+    );
 
   if (isLoading) {
     return (
-      <Card
-        title={displayName}
-        icon={<Baby size={28} />}
-        storageKey={`child-${memberId}-overview`}
-      >
-        <div className="flex min-h-56 items-center justify-center">
+      <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/20 p-6 shadow-2xl shadow-amber-950/20">
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3">
           <LoaderCircle
-            size={28}
-            className="animate-spin text-blue-300"
+            size={32}
+            className="animate-spin text-amber-300"
           />
+
+          <p className="text-sm text-slate-400">
+            Hämtar {displayName}s uppgifter…
+          </p>
         </div>
-      </Card>
+      </section>
     );
   }
 
-  if (errorMessage || !child) {
+  if (
+    errorMessage ||
+    !person ||
+    !age ||
+    !nextBirthday
+  ) {
     return (
-      <Card
-        title={displayName}
-        icon={<Baby size={28} />}
-        storageKey={`child-${memberId}-overview`}
-      >
-        <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-200">
-          {errorMessage ??
-            "Barnets uppgifter kunde inte hämtas."}
+      <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-6">
+        <div className="flex min-h-44 flex-col items-center justify-center text-center">
+          <Baby
+            size={36}
+            className="text-rose-300"
+          />
+
+          <p className="mt-4 font-semibold text-white">
+            {displayName} kunde inte laddas
+          </p>
+
+          <p className="mt-2 text-sm text-slate-400">
+            {errorMessage}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              void loadPerson()
+            }
+            className="mt-5 flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-400"
+          >
+            <RefreshCw
+              size={16}
+            />
+
+            Försök igen
+          </button>
         </div>
-      </Card>
+      </section>
     );
   }
-
-  const age = getAgeDetails(
-    child.birthday
-  );
 
   return (
-    <Card
-      title={child.display_name}
-      icon={
-        <span className="text-2xl">
-          {child.emoji || emoji}
-        </span>
-      }
-      storageKey={`child-${memberId}-overview`}
-    >
-      <div className="grid gap-5">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-amber-300">
-              <Sparkles size={16} />
+    <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/25 p-5 shadow-2xl shadow-amber-950/20 sm:p-6">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-rose-400/[0.08] blur-3xl" />
+      </div>
 
-              <p className="text-xs font-bold uppercase tracking-[0.18em]">
-                Familjen
-              </p>
+      <div className="relative">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-amber-400/10 text-4xl shadow-lg shadow-amber-950/20">
+              {person.emoji || emoji}
             </div>
 
-            <p className="mt-3 text-xl font-bold text-amber-100 sm:text-2xl">
-              {formatAge(age)}
-            </p>
+            <div>
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+                <Sparkles
+                  size={15}
+                />
+
+                Familjen
+              </p>
+
+              <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">
+                {displayName}
+              </h2>
+
+              <p className="mt-2 text-lg font-semibold text-amber-100">
+                {getAgeTitle(
+                  age
+                )}
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-rose-300/20 bg-rose-400/[0.08] p-4 lg:min-w-[255px]">
+          <div className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.06] px-4 py-3 lg:min-w-64">
             <div className="flex items-center gap-2 text-rose-300">
-              <Cake size={17} />
+              <Cake
+                size={18}
+              />
 
-              <p className="text-xs font-bold uppercase tracking-[0.14em]">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em]">
                 Nästa födelsedag
               </p>
             </div>
 
-            <p className="mt-3 text-lg font-bold text-white">
-              {age.daysUntilBirthday === 0
-                ? `Fyller ${age.nextAge} år idag`
-                : `${age.daysUntilBirthday} dagar till ${age.nextAge}-årsdagen`}
+            <p className="mt-2 font-bold text-white">
+              {getBirthdayCountdownText(
+                displayName,
+                nextBirthday.nextAge,
+                nextBirthday.daysUntil
+              )}
             </p>
 
-            <p className="mt-1 text-sm capitalize text-slate-400">
-              {formatNextBirthday(
-                age.nextBirthday
+            <p className="mt-1 text-xs capitalize text-slate-500">
+              {nextBirthday.date.toLocaleDateString(
+                "sv-SE",
+                {
+                  weekday:
+                    "long",
+                  day:
+                    "numeric",
+                  month:
+                    "long",
+                  year:
+                    "numeric",
+                }
               )}
             </p>
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.05] p-4">
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
             <div className="flex items-center gap-2 text-amber-300">
-              <CalendarDays size={17} />
+              <CalendarDays
+                size={17}
+              />
 
-              <p className="text-xs font-bold uppercase tracking-[0.14em]">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]">
                 Dagar gammal
               </p>
             </div>
 
-            <p className="mt-3 text-2xl font-black text-white">
-              {age.totalDays.toLocaleString(
+            <p className="mt-2 text-2xl font-bold text-white">
+              {new Intl.NumberFormat(
                 "sv-SE"
+              ).format(
+                age.totalDays
               )}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.05] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-300">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-300">
               Född
             </p>
 
-            <p className="mt-3 text-lg font-bold capitalize text-white">
-              {formatBirthday(
-                child.birthday
+            <p className="mt-2 text-lg font-bold capitalize text-white">
+              {parseLocalDate(
+                person.birthday
+              ).toLocaleDateString(
+                "sv-SE",
+                {
+                  day:
+                    "numeric",
+                  month:
+                    "long",
+                  year:
+                    "numeric",
+                }
               )}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-violet-300/15 bg-violet-400/[0.05] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-violet-300">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-300">
               Nästa ålder
             </p>
 
-            <p className="mt-3 text-2xl font-black text-white">
-              {age.nextAge} år
+            <p className="mt-2 text-2xl font-bold text-white">
+              {nextBirthday.nextAge} år
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">
-              {age.daysUntilBirthday === 0
-                ? "idag"
-                : `om ${age.daysUntilBirthday} dagar`}
+            <p className="mt-1 text-xs text-slate-500">
+              om{" "}
+              {nextBirthday.daysUntil}{" "}
+              dagar
             </p>
           </div>
         </div>
 
-        <p className="border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
+        <p className="mt-5 border-t border-white/10 pt-4 text-xs text-slate-500">
           Födelsedatumet hämtas från familjedatabasen och uppdateras automatiskt om det ändras under Administrera personer.
         </p>
       </div>
-    </Card>
+    </section>
   );
 }

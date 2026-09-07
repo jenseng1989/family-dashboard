@@ -118,20 +118,6 @@ function ChildContent({
     `child-${member.id}`;
 
   const contentMap = {
-    overview: (
-      <ChildOverview
-        memberId={
-          member.id
-        }
-        displayName={
-          member.displayName
-        }
-        emoji={
-          member.emoji
-        }
-      />
-    ),
-
     growth: (
       <ChildGrowth
         memberId={
@@ -211,15 +197,29 @@ function ChildContent({
     );
 
   return (
-    <OrderedWidgetGroup
-      wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
-      itemComponent={
-        WidgetGate
-      }
-      widgets={
-        widgets
-      }
-    />
+    <div className="w-full min-w-0 space-y-5">
+      <ChildOverview
+        memberId={
+          member.id
+        }
+        displayName={
+          member.displayName
+        }
+        emoji={
+          member.emoji
+        }
+      />
+
+      <OrderedWidgetGroup
+        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+        itemComponent={
+          WidgetGate
+        }
+        widgets={
+          widgets
+        }
+      />
+    </div>
   );
 }
 

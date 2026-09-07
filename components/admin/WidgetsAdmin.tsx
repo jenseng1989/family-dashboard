@@ -7,8 +7,11 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Activity,
   CloudSun,
+  Gauge,
   LoaderCircle,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -19,9 +22,20 @@ import {
 } from "react";
 
 import {
+  adultFamilyWidgetTemplates,
+  childFamilyWidgetTemplates,
   widgetGroups as groups,
+  type DynamicFamilyWidgetTemplate,
   type WidgetGroup,
+  type WidgetItem,
 } from "@/config/widgets";
+
+import {
+  getFamilyMembersFromDatabase,
+} from "@/lib/family-db";
+import type {
+  FamilyMember,
+} from "@/lib/family";
 
 import {
   getWidgetSettings,
@@ -33,6 +47,163 @@ import {
 
 const COLLAPSED_STORAGE_KEY =
   "admin-widgets-collapsed-groups";
+
+const FAMILY_WIDGET_META: Record<
+  string,
+  Pick<
+    WidgetItem,
+    "name" | "description" | "icon"
+  >
+> = {
+  "personal-center": {
+    name: "Personligt center",
+    description:
+      "Personliga uppgifter och innehåll för familjemedlemmen.",
+    icon: Gauge,
+  },
+  growth: {
+    name: "Tillväxt",
+    description:
+      "Samlad översikt över barnets tillväxt.",
+    icon: Activity,
+  },
+  weight: {
+    name: "Vikt",
+    description:
+      "Barnets vikt och viktutveckling.",
+    icon: Activity,
+  },
+  height: {
+    name: "Längd",
+    description:
+      "Barnets längd och längdutveckling.",
+    icon: Activity,
+  },
+  teeth: {
+    name: "Tänder",
+    description:
+      "Barnets tandutveckling.",
+    icon: Activity,
+  },
+  vaccinations: {
+    name: "Vaccinationer",
+    description:
+      "Barnets vaccinationer och vaccinationsöversikt.",
+    icon: Activity,
+  },
+  history: {
+    name: "Mäthistorik",
+    description:
+      "Historik över barnets registrerade mätningar.",
+    icon: Activity,
+  },
+};
+
+function getDefaultSize(
+  template: DynamicFamilyWidgetTemplate
+): WidgetSize {
+  return template.dashboardClassName.includes(
+    "xl:col-span-6"
+  )
+    ? "half"
+    : "full";
+}
+
+function buildFamilyWidgets(
+  member: FamilyMember
+): WidgetItem[] {
+  const isChild =
+    member.memberType === "child";
+
+  const prefix = `${
+    isChild ? "child" : "adult"
+  }-${member.id}`;
+
+  const templates = isChild
+    ? childFamilyWidgetTemplates
+    : adultFamilyWidgetTemplates;
+
+  return templates
+    .filter(
+      (template) =>
+        template.suffix !== "overview"
+    )
+    .map((template) => {
+      const meta =
+        FAMILY_WIDGET_META[
+          template.suffix
+        ];
+
+      return {
+        id: `${prefix}-${template.suffix}`,
+        name:
+          meta?.name ??
+          template.suffix,
+        description:
+          meta?.description ??
+          "Dynamisk familjewidget.",
+        icon:
+          meta?.icon ??
+          Users,
+        defaultSize:
+          getDefaultSize(
+            template
+          ),
+        dashboardClassName:
+          template.dashboardClassName,
+      };
+    });
+}
+
+function buildFamilyAdminGroups(
+  members: FamilyMember[]
+): WidgetGroup[] {
+  return [...members]
+    .sort(
+      (a, b) =>
+        a.sortOrder -
+        b.sortOrder
+    )
+    .map((member) => ({
+      key: `family-member-${member.id}`,
+      title: `Familjen · ${member.displayName}`,
+      subtitle: [
+        member.memberType === "child"
+          ? "Barn"
+          : "Vuxen",
+        member.isActive
+          ? "Aktiv"
+          : "Inaktiv",
+      ].join(" · "),
+      icon: Users,
+      widgets:
+        buildFamilyWidgets(
+          member
+        ),
+    }));
+}
+
+function mergeFamilyGroups(
+  familyGroups: WidgetGroup[]
+): WidgetGroup[] {
+  const result: WidgetGroup[] =
+    [];
+
+  for (const group of groups) {
+    result.push(group);
+
+    if (
+      group.key ===
+      "family-shared"
+    ) {
+      result.push(
+        ...familyGroups
+      );
+    }
+  }
+
+  return result;
+}
 
 export default function WidgetsAdmin() {
   const [visibility, setVisibility] =
@@ -50,6 +221,9 @@ export default function WidgetsAdmin() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
+  const [availableGroups, setAvailableGroups] =
+    useState<WidgetGroup[]>(groups);
+
   const [orderedGroups, setOrderedGroups] =
     useState<WidgetGroup[]>(groups);
 
@@ -61,21 +235,27 @@ export default function WidgetsAdmin() {
 
   const totalWidgets = useMemo(
     () =>
-      groups.reduce(
+      availableGroups.reduce(
         (sum, group) =>
-          sum + group.widgets.length,
+          sum +
+          group.widgets.length,
         0
       ),
-    []
+    [availableGroups]
   );
 
   const allCollapsed = useMemo(
     () =>
-      groups.every(
+      availableGroups.every(
         (group) =>
-          collapsedGroups[group.title] === true
+          collapsedGroups[
+            group.title
+          ] === true
       ),
-    [collapsedGroups]
+    [
+      availableGroups,
+      collapsedGroups,
+    ]
   );
 
   useEffect(() => {
@@ -128,8 +308,23 @@ export default function WidgetsAdmin() {
       setErrorMessage(null);
 
       try {
-        const settings =
-          await getWidgetSettings();
+        const [
+          settings,
+          familyMembers,
+        ] = await Promise.all([
+          getWidgetSettings(),
+          getFamilyMembersFromDatabase(),
+        ]);
+
+        const familyGroups =
+          buildFamilyAdminGroups(
+            familyMembers
+          );
+
+        const nextGroups =
+          mergeFamilyGroups(
+            familyGroups
+          );
 
         const nextVisibility:
           Record<string, boolean> = {};
@@ -137,7 +332,7 @@ export default function WidgetsAdmin() {
         const nextSizes:
           Record<string, WidgetSize> = {};
 
-        for (const group of groups) {
+        for (const group of nextGroups) {
           for (const widget of group.widgets) {
             const setting =
               settings.find(
@@ -156,6 +351,9 @@ export default function WidgetsAdmin() {
 
         setVisibility(nextVisibility);
         setSizes(nextSizes);
+        setAvailableGroups(
+          nextGroups
+        );
 
         const orderMap = new Map(
           settings.map((item) => [
@@ -165,7 +363,7 @@ export default function WidgetsAdmin() {
         );
 
         setOrderedGroups(
-          groups.map((group) => ({
+          nextGroups.map((group) => ({
             ...group,
             widgets: [
               ...group.widgets,
@@ -210,8 +408,10 @@ export default function WidgetsAdmin() {
     const nextState:
       Record<string, boolean> = {};
 
-    for (const group of groups) {
-      nextState[group.title] = true;
+    for (const group of availableGroups) {
+      nextState[
+        group.title
+      ] = true;
     }
 
     setCollapsedGroups(nextState);
@@ -440,9 +640,10 @@ export default function WidgetsAdmin() {
             />
 
             <p className="text-sm leading-6 text-slate-300">
-              Göteborg, Rymden och Jorden visas med
-              sina riktiga widgets. Underfliken Himlen
-              innehåller ännu inga widgets.
+              Alla familjemedlemmar från familjedatabasen
+              visas som egna grupper här. Personöversikterna
+              för vuxna och barn är fasta på dashboarden och
+              kan därför inte döljas, flyttas eller ändra storlek.
             </p>
           </div>
         </div>

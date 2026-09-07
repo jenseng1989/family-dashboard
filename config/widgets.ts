@@ -336,10 +336,6 @@ export const adultFamilyWidgetTemplates: DynamicFamilyWidgetTemplate[] = [
 
 export const childFamilyWidgetTemplates: DynamicFamilyWidgetTemplate[] = [
   {
-    suffix: "overview",
-    dashboardClassName: "col-span-12 min-w-0",
-  },
-  {
     suffix: "growth",
     dashboardClassName: "col-span-12 min-w-0",
   },
