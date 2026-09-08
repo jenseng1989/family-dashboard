@@ -47,14 +47,14 @@ export type WidgetGroup = {
 export const widgetGroups: WidgetGroup[] = [
   {
     key: "start-everyday",
-    title: "Start · Vardagen",
+    title: "Start · Idag",
     subtitle: "Innehållet kommer från EverydayOverview.",
     icon: Home,
     widgets: [
       {
         id: "everyday-overview",
-        name: "Vardagsöversikt",
-        description: "Samlad översikt för vardagen.",
+        name: "Idag-översikt",
+        description: "Samlad översikt för idag.",
         icon: Gauge,
         defaultSize: "full",
         dashboardClassName: "col-span-12 min-w-0",
@@ -125,7 +125,7 @@ export const widgetGroups: WidgetGroup[] = [
   },
   {
     key: "weather",
-    title: "Väder & bad",
+    title: "Väder",
     icon: CloudSun,
     widgets: [
       {

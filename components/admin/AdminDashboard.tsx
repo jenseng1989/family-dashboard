@@ -33,16 +33,6 @@ const sections = [
     href: "/admin/widgets",
   },
   {
-    title: "Göteborg",
-    description:
-      "Inställningar för Västtrafik, Luftkvalitet och framtida lokala funktioner.",
-    icon: MapPin,
-    accent:
-      "border-blue-300/15 bg-blue-400/[0.06] text-blue-200",
-    status: "Planerad",
-    href: null,
-  },
-  {
     title: "Systemstatus",
     description:
       "Kontrollera att appens externa datakällor och API:er svarar som de ska.",
