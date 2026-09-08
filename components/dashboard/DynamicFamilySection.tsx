@@ -232,19 +232,7 @@ function AdultContent({
     `adult-${member.id}`;
 
   const contentMap = {
-    overview: (
-      <PersonOverview
-        displayName={
-          member.displayName
-        }
-        fallbackEmoji={
-          member.emoji ||
-          "👤"
-        }
-      />
-    ),
-
-    "personal-center": (
+    todos: (
       <PersonalCenter
         memberId={
           member.id
@@ -252,6 +240,19 @@ function AdultContent({
         displayName={
           member.displayName
         }
+        section="todos"
+      />
+    ),
+
+    notes: (
+      <PersonalCenter
+        memberId={
+          member.id
+        }
+        displayName={
+          member.displayName
+        }
+        section="notes"
       />
     ),
   };
@@ -264,15 +265,27 @@ function AdultContent({
     );
 
   return (
-    <OrderedWidgetGroup
-      wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
-      itemComponent={
-        WidgetGate
-      }
-      widgets={
-        widgets
-      }
-    />
+    <div className="w-full min-w-0 space-y-5">
+      <PersonOverview
+        displayName={
+          member.displayName
+        }
+        fallbackEmoji={
+          member.emoji ||
+          "👤"
+        }
+      />
+
+      <OrderedWidgetGroup
+        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+        itemComponent={
+          WidgetGate
+        }
+        widgets={
+          widgets
+        }
+      />
+    </div>
   );
 }
 

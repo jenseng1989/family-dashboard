@@ -55,10 +55,16 @@ const FAMILY_WIDGET_META: Record<
     "name" | "description" | "icon"
   >
 > = {
-  "personal-center": {
-    name: "Personligt center",
+  todos: {
+    name: "Personlig att göra-lista",
     description:
-      "Personliga uppgifter och innehåll för familjemedlemmen.",
+      "Personliga uppgifter som familjemedlemmen behöver göra.",
+    icon: Gauge,
+  },
+  notes: {
+    name: "Personliga anteckningar",
+    description:
+      "Personliga anteckningar för familjemedlemmen.",
     icon: Gauge,
   },
   growth: {

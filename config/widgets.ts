@@ -325,11 +325,11 @@ export type DynamicFamilyWidgetTemplate = {
 
 export const adultFamilyWidgetTemplates: DynamicFamilyWidgetTemplate[] = [
   {
-    suffix: "overview",
+    suffix: "todos",
     dashboardClassName: "col-span-12 min-w-0",
   },
   {
-    suffix: "personal-center",
+    suffix: "notes",
     dashboardClassName: "col-span-12 min-w-0",
   },
 ];

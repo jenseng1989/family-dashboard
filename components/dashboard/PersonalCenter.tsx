@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase";
 type PersonalCenterProps = {
   memberId: string;
   displayName: string;
+  section?: "all" | "todos" | "notes";
 };
 
 type PersonalTodo = {
@@ -65,6 +66,7 @@ function formatDate(dateString: string): string {
 export default function PersonalCenter({
   memberId,
   displayName,
+  section = "all",
 }: PersonalCenterProps) {
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [notes, setNotes] = useState<PersonalNote[]>([]);
@@ -449,6 +451,14 @@ export default function PersonalCenter({
     setDeletingNoteId(null);
   }
 
+  const showTodos =
+    section === "all" ||
+    section === "todos";
+
+  const showNotes =
+    section === "all" ||
+    section === "notes";
+
   if (isLoading) {
     return (
       <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04]">
@@ -485,10 +495,11 @@ export default function PersonalCenter({
         </div>
       )}
 
-      <Card
-        title="Personlig att göra-lista"
-        icon={<CheckSquare2 size={28} />}
-      >
+      {showTodos && (
+        <Card
+          title="Personlig att göra-lista"
+          icon={<CheckSquare2 size={28} />}
+        >
         <form
           onSubmit={addTodo}
           className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -600,12 +611,14 @@ export default function PersonalCenter({
           Bocka i en uppgift när den är klar. Då tas den
           bort från listan.
         </p>
-      </Card>
+        </Card>
+      )}
 
-      <Card
-        title="Personliga anteckningar"
-        icon={<NotebookPen size={28} />}
-      >
+      {showNotes && (
+        <Card
+          title="Personliga anteckningar"
+          icon={<NotebookPen size={28} />}
+        >
         <form
           onSubmit={addNote}
           className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -838,7 +851,8 @@ export default function PersonalCenter({
             </div>
           )}
         </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
