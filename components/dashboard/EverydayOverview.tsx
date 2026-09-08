@@ -1,13 +1,11 @@
 "use client";
 
 import {
-  CalendarClock,
   CalendarDays,
   CloudSun,
   Clock3,
   Home,
-  LoaderCircle,
-  PartyPopper,
+  MapPin,
   RefreshCw,
   TriangleAlert,
   Zap,
@@ -18,9 +16,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { supabase } from "@/lib/supabase";
+
 import {
   ElectricityData,
+  ElectricityPrice,
   formatHour,
   formatPrice,
 } from "@/lib/electricity";
@@ -28,9 +27,8 @@ import {
   createUpcomingFamilyEvents,
   type FamilyEvent,
 } from "@/lib/family";
-import {
-  getFamilyMembersFromDatabase,
-} from "@/lib/family-db";
+import { getFamilyMembersFromDatabase } from "@/lib/family-db";
+import { supabase } from "@/lib/supabase";
 
 type GoogleCalendarEvent = {
   id: string;
@@ -47,6 +45,7 @@ type GoogleCalendarResponse = {
   events?: GoogleCalendarEvent[];
   error?: string;
 };
+
 
 type CountdownRow = {
   id: string;
@@ -76,71 +75,84 @@ type EverydayWeather = {
   updatedAt: string;
 };
 
-function getStockholmDateKey(
-  dateString: string
-): string {
-  const parts =
-    new Intl.DateTimeFormat(
-      "sv-SE",
-      {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        timeZone:
-          "Europe/Stockholm",
-      }
-    ).formatToParts(
-      new Date(dateString)
-    );
+type ElectricityPeriod = {
+  startTime: string;
+  endTime: string;
+  averagePrice: number;
+};
 
-  const year =
-    parts.find(
-      (part) =>
-        part.type === "year"
-    )?.value ?? "";
+const STOCKHOLM_TIME_ZONE = "Europe/Stockholm";
 
-  const month =
-    parts.find(
-      (part) =>
-        part.type === "month"
-    )?.value ?? "";
 
-  const day =
-    parts.find(
-      (part) =>
-        part.type === "day"
-    )?.value ?? "";
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function formatCalendarTime(
-  dateString: string
-): string {
-  return new Intl.DateTimeFormat(
-    "sv-SE",
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone:
-        "Europe/Stockholm",
-    }
-  ).format(
-    new Date(dateString)
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getDaysUntil(value: string): number {
+  const today = parseLocalDate(getTodayDateString());
+  const date = parseLocalDate(value);
+
+  return Math.round(
+    (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) -
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+      86_400_000
   );
 }
 
-function getGreeting(
-  hour: number
-): string {
-  if (hour < 10) {
-    return "God morgon";
-  }
+function getDaysLabel(days: number): string {
+  if (days === 0) return "Idag";
+  if (days === 1) return "Imorgon";
+  return `Om ${days} dagar`;
+}
 
-  if (hour < 17) {
-    return "God dag";
-  }
+function getStockholmDateKey(dateString: string): string {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).formatToParts(new Date(dateString));
 
+  const year =
+    parts.find((part) => part.type === "year")?.value ?? "";
+  const month =
+    parts.find((part) => part.type === "month")?.value ?? "";
+  const day =
+    parts.find((part) => part.type === "day")?.value ?? "";
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatCalendarTime(dateString: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).format(new Date(dateString));
+}
+
+function formatCalendarDate(dateString: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).format(new Date(dateString));
+}
+
+function getGreeting(hour: number): string {
+  if (hour < 10) return "God morgon";
+  if (hour < 17) return "God dag";
   return "God kväll";
 }
 
@@ -150,6 +162,7 @@ function getDayPhase(hour: number) {
       message: "En ny dag har börjat – här är läget just nu.",
       accent: "text-amber-200",
       glow: "bg-amber-300/[0.08]",
+      recommendationTitle: "Bra start på dagen",
     };
   }
 
@@ -158,6 +171,7 @@ function getDayPhase(hour: number) {
       message: "Här är det viktigaste för resten av dagen.",
       accent: "text-blue-200",
       glow: "bg-blue-400/10",
+      recommendationTitle: "Smart för resten av dagen",
     };
   }
 
@@ -165,247 +179,124 @@ function getDayPhase(hour: number) {
     message: "Dagen börjar gå mot sitt slut – här är kvällens läge.",
     accent: "text-violet-200",
     glow: "bg-violet-400/[0.10]",
+    recommendationTitle: "Bra att veta ikväll",
   };
 }
 
-function getTodayDateString(): string {
-  const now = new Date();
+function getRelativeTime(event: GoogleCalendarEvent, now: Date): string {
+  if (event.allDay) return "Hela dagen";
 
-  const year =
-    now.getFullYear();
+  if (!event.startTime) return "";
 
-  const month =
-    String(
-      now.getMonth() + 1
-    ).padStart(
-      2,
-      "0"
-    );
+  const diffMs = new Date(event.startTime).getTime() - now.getTime();
 
-  const day =
-    String(
-      now.getDate()
-    ).padStart(
-      2,
-      "0"
-    );
+  if (diffMs <= 0) return "Pågår nu";
 
-  return `${year}-${month}-${day}`;
+  const totalMinutes = Math.max(1, Math.round(diffMs / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `Om ${minutes} min`;
+  if (minutes === 0) return `Om ${hours} h`;
+
+  return `Om ${hours} h ${minutes} min`;
 }
 
-function parseLocalDate(
-  value: string
-): Date {
-  const [
-    year,
-    month,
-    day,
-  ] =
-    value
-      .split("-")
-      .map(Number);
+function getEventTime(event: GoogleCalendarEvent): string {
+  if (event.allDay) return "Hela dagen";
+  if (!event.startTime) return "";
 
-  return new Date(
-    year,
-    month - 1,
-    day
-  );
+  const start = formatCalendarTime(event.startTime);
+
+  if (!event.endTime) return start;
+
+  return `${start}–${formatCalendarTime(event.endTime)}`;
 }
 
-function getDaysUntil(
-  value: string
-): number {
-  const today =
-    parseLocalDate(
-      getTodayDateString()
-    );
+function findCheapestPeriod(
+  prices: ElectricityPrice[],
+  entries: number
+): ElectricityPeriod | null {
+  if (prices.length < entries || entries < 1) return null;
 
-  const date =
-    parseLocalDate(
-      value
-    );
+  let cheapest: ElectricityPeriod | null = null;
 
-  const todayUtc =
-    Date.UTC(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
+  for (let index = 0; index <= prices.length - entries; index += 1) {
+    const period = prices.slice(index, index + entries);
+    const averagePrice =
+      period.reduce((sum, price) => sum + price.SEK_per_kWh, 0) /
+      period.length;
 
-  const dateUtc =
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    );
-
-  return Math.round(
-    (
-      dateUtc -
-      todayUtc
-    ) /
-      86_400_000
-  );
-}
-
-function formatShortDate(
-  value: string
-): string {
-  return parseLocalDate(
-    value
-  ).toLocaleDateString(
-    "sv-SE",
-    {
-      weekday:
-        "short",
-      day:
-        "numeric",
-      month:
-        "short",
+    if (!cheapest || averagePrice < cheapest.averagePrice) {
+      cheapest = {
+        startTime: period[0].time_start,
+        endTime: period[period.length - 1].time_end,
+        averagePrice,
+      };
     }
-  );
+  }
+
+  return cheapest;
 }
 
-function getCountdownLabel(
-  days: number
-): string {
-  if (
-    days === 0
-  ) {
-    return "Idag";
-  }
-
-  if (
-    days === 1
-  ) {
-    return "Imorgon";
-  }
-
-  if (
-    days > 1
-  ) {
-    return `Om ${days} dagar`;
-  }
-
-  return `${Math.abs(
-    days
-  )} dagar sedan`;
-}
-
-function InfoCard({
-  icon,
-  eyebrow,
-  title,
-  description,
-  children,
-}: {
-  icon:
-    React.ReactNode;
-  eyebrow: string;
+function getElectricityAdvice(
+  electricity: ElectricityData | null,
+  now: Date | null
+): {
   title: string;
   description: string;
-  children?:
-    React.ReactNode;
-}) {
-  return (
-    <article className="h-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/25 text-blue-300">
-          {icon}
-        </div>
+} {
+  if (!electricity || !now) {
+    return {
+      title: "Ingen prisdata",
+      description: "Elpriset kunde inte hämtas just nu.",
+    };
+  }
 
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            {eyebrow}
-          </p>
-
-          <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
-            {title}
-          </p>
-
-          <p className="mt-1 text-sm leading-5 text-slate-400 sm:leading-6">
-            {description}
-          </p>
-
-          {children}
-        </div>
-      </div>
-    </article>
+  const remaining = electricity.prices.filter(
+    (price) => new Date(price.time_end).getTime() > now.getTime()
   );
+
+  const threeHourPeriod = findCheapestPeriod(remaining, 3);
+  const oneHourPeriod = findCheapestPeriod(remaining, 1);
+  const period = threeHourPeriod ?? oneHourPeriod;
+
+  if (!period) {
+    return {
+      title: "Dagens priser är snart slut",
+      description: `Dagens snitt är ${formatPrice(
+        electricity.averagePrice
+      )} kr/kWh.`,
+    };
+  }
+
+  const durationLabel = threeHourPeriod ? "3 timmar" : "timmen";
+
+  return {
+    title: `${formatHour(period.startTime)}–${formatHour(period.endTime)}`,
+    description: `Bästa ${durationLabel} som återstår · cirka ${formatPrice(
+      period.averagePrice
+    )} kr/kWh.`,
+  };
 }
 
 export default function EverydayOverview() {
-  const [
-    now,
-    setNow,
-  ] =
-    useState<Date | null>(
-      null
-    );
+  const [now, setNow] = useState<Date | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<
+    GoogleCalendarEvent[]
+  >([]);
+  const [countdowns, setCountdowns] = useState<CountdownRow[]>([]);
+  const [familyEvents, setFamilyEvents] = useState<FamilyEvent[]>([]);
+  const [weather, setWeather] = useState<EverydayWeather | null>(null);
+  const [electricity, setElectricity] =
+    useState<ElectricityData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasPartialError, setHasPartialError] = useState(false);
 
-  const [
-    calendarEvents,
-    setCalendarEvents,
-  ] =
-    useState<
-      GoogleCalendarEvent[]
-    >([]);
-
-  const [
-    countdowns,
-    setCountdowns,
-  ] =
-    useState<
-      CountdownRow[]
-    >([]);
-
-  const [
-    familyEvents,
-    setFamilyEvents,
-  ] =
-    useState<
-      FamilyEvent[]
-    >([]);
-
-  const [
-    weather,
-    setWeather,
-  ] =
-    useState<
-      EverydayWeather | null
-    >(null);
-
-  const [
-    electricity,
-    setElectricity,
-  ] =
-    useState<
-      ElectricityData | null
-    >(null);
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(true);
-
-  const [
-    hasPartialError,
-    setHasPartialError,
-  ] =
-    useState(false);
-
-  const loadData =
-    useCallback(
-      async (
-        showLoader = true,
-        forceRefresh = false
-      ) => {
-        if (showLoader) {
-          setIsLoading(true);
-        }
-
-        setHasPartialError(false);
+  const loadData = useCallback(
+    async (showLoader = true, forceRefresh = false) => {
+      if (showLoader) setIsLoading(true);
+      setHasPartialError(false);
 
       try {
         const [
@@ -414,183 +305,86 @@ export default function EverydayOverview() {
           familyMembers,
           weatherResponse,
           electricityResponse,
-        ] =
-          await Promise.all([
-            fetch(
-              "/api/google-calendar",
-              {
-                cache:
-                  "no-store",
-              }
-            ),
+        ] = await Promise.all([
+          fetch("/api/google-calendar", {
+            cache: "no-store",
+          }),
+          supabase
+            .from("countdowns")
+            .select("id, title, event_date, created_at")
+            .gte("event_date", getTodayDateString())
+            .order("event_date", { ascending: true })
+            .order("created_at", { ascending: true }),
+          getFamilyMembersFromDatabase(),
+          fetch(
+            "/api/everyday-weather",
+            forceRefresh ? { cache: "reload" } : undefined
+          ),
+          fetch(
+            "/api/electricity",
+            forceRefresh ? { cache: "reload" } : undefined
+          ),
+        ]);
 
-            supabase
-              .from(
-                "countdowns"
-              )
-              .select(
-                "id, title, event_date, created_at"
-              )
-              .gte(
-                "event_date",
-                getTodayDateString()
-              )
-              .order(
-                "event_date",
-                {
-                  ascending:
-                    true,
-                }
-              )
-              .order(
-                "created_at",
-                {
-                  ascending:
-                    true,
-                }
-              ),
-
-            getFamilyMembersFromDatabase(),
-
-            fetch(
-              "/api/everyday-weather",
-              forceRefresh
-                ? {
-                    cache:
-                      "reload",
-                  }
-                : undefined
-            ),
-
-            fetch(
-              "/api/electricity",
-              forceRefresh
-                ? {
-                    cache:
-                      "reload",
-                  }
-                : undefined
-            ),
-          ]);
-
-        if (
-          calendarResponse.ok
-        ) {
+        if (calendarResponse.ok) {
           const calendarData =
             (await calendarResponse.json()) as GoogleCalendarResponse;
 
-          if (
-            calendarData.connected ===
-            true
-          ) {
-            setCalendarEvents(
-              calendarData.events ??
-                []
-            );
+          if (calendarData.connected === true) {
+            setCalendarEvents(calendarData.events ?? []);
           } else {
             console.error(
-              "Vardagen: Google Kalender är inte ansluten:",
+              "Idag: Google Kalender är inte ansluten:",
               calendarData.error
             );
-            setCalendarEvents(
-              []
-            );
-            setHasPartialError(
-              true
-            );
+            setCalendarEvents([]);
+            setHasPartialError(true);
           }
         } else {
-          console.error(
-            "Vardagen: kunde inte hämta Google Kalender."
-          );
-          setCalendarEvents(
-            []
-          );
-          setHasPartialError(
-            true
-          );
+          console.error("Idag: kunde inte hämta Google Kalender.");
+          setCalendarEvents([]);
+          setHasPartialError(true);
         }
 
-        if (
-          countdownResult.error
-        ) {
+        if (countdownResult.error) {
           console.error(
-            "Vardagen: kunde inte hämta nedräkningar:",
+            "Idag: kunde inte hämta nedräkningar:",
             countdownResult.error
           );
-          setHasPartialError(
-            true
-          );
+          setCountdowns([]);
+          setHasPartialError(true);
         } else {
-          setCountdowns(
-            (
-              countdownResult.data ??
-              []
-            ) as CountdownRow[]
-          );
+          setCountdowns((countdownResult.data ?? []) as CountdownRow[]);
         }
 
-        setFamilyEvents(
-          createUpcomingFamilyEvents(
-            familyMembers
-          )
-        );
+        setFamilyEvents(createUpcomingFamilyEvents(familyMembers));
 
-        if (
-          weatherResponse.ok
-        ) {
-          const weatherData =
-            (await weatherResponse.json()) as EverydayWeather;
-
+        if (weatherResponse.ok) {
           setWeather(
-            weatherData
+            (await weatherResponse.json()) as EverydayWeather
           );
         } else {
           setWeather(null);
-          setHasPartialError(
-            true
-          );
+          setHasPartialError(true);
         }
 
-        if (
-          electricityResponse.ok
-        ) {
+        if (electricityResponse.ok) {
           const electricityData =
             (await electricityResponse.json()) as ElectricityData;
 
-          if (
-            Array.isArray(
-              electricityData.prices
-            )
-          ) {
-            setElectricity(
-              electricityData
-            );
+          if (Array.isArray(electricityData.prices)) {
+            setElectricity(electricityData);
           } else {
-            setElectricity(
-              null
-            );
-            setHasPartialError(
-              true
-            );
+            setElectricity(null);
+            setHasPartialError(true);
           }
         } else {
-          setElectricity(
-            null
-          );
-          setHasPartialError(
-            true
-          );
+          setElectricity(null);
+          setHasPartialError(true);
         }
       } catch (error) {
-        console.error(
-          "Vardagen kunde inte hämta dagens data:",
-          error
-        );
-
-        setHasPartialError(
-          true
-        );
+        console.error("Idag kunde inte hämta dagens data:", error);
+        setHasPartialError(true);
       } finally {
         setIsLoading(false);
       }
@@ -601,147 +395,106 @@ export default function EverydayOverview() {
   useEffect(() => {
     void loadData();
 
-    const refreshId =
-      window.setInterval(
-        () => {
-          void loadData(false);
-        },
-        15 * 60 * 1000
-      );
+    const refreshId = window.setInterval(() => {
+      void loadData(false);
+    }, 15 * 60 * 1000);
 
-    return () => {
-      window.clearInterval(
-        refreshId
-      );
-    };
+    return () => window.clearInterval(refreshId);
   }, [loadData]);
 
   useEffect(() => {
-    setNow(
-      new Date()
-    );
+    setNow(new Date());
 
-    const clockId =
-      window.setInterval(
-        () => {
-          setNow(
-            new Date()
-          );
-        },
-        60_000
-      );
+    const clockId = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
 
-    return () => {
-      window.clearInterval(
-        clockId
-      );
-    };
+    return () => window.clearInterval(clockId);
   }, []);
 
-  const nextFamilyEvent =
-    useMemo(
-      () =>
-        familyEvents.find(
-          (event) =>
-            event.daysUntil >=
-            0
-        ) ??
-        null,
-      [familyEvents]
+  const nextFamilyEvent = useMemo(
+    () =>
+      familyEvents.find((event) => event.daysUntil >= 0) ?? null,
+    [familyEvents]
+  );
+
+  const nextCountdown = countdowns[0] ?? null;
+
+  const todaysCalendarEvents = useMemo(() => {
+    if (!now) return [];
+
+    const today = getStockholmDateKey(now.toISOString());
+
+    return calendarEvents.filter(
+      (event) =>
+        event.startTime &&
+        getStockholmDateKey(event.startTime) === today
+    );
+  }, [calendarEvents, now]);
+
+  const nextCalendarEvent = useMemo(() => {
+    if (!now) return null;
+
+    return (
+      todaysCalendarEvents.find((event) => {
+        if (event.allDay) return true;
+        if (!event.endTime) return true;
+
+        return new Date(event.endTime).getTime() > now.getTime();
+      }) ?? null
+    );
+  }, [todaysCalendarEvents, now]);
+
+  const nextUpcomingEvent = useMemo(() => {
+    if (!now) return null;
+
+    return (
+      calendarEvents.find((event) => {
+        if (!event.startTime) return false;
+
+        if (event.allDay) {
+          return (
+            getStockholmDateKey(event.startTime) >=
+            getStockholmDateKey(now.toISOString())
+          );
+        }
+
+        return (
+          !event.endTime ||
+          new Date(event.endTime).getTime() > now.getTime()
+        );
+      }) ?? null
+    );
+  }, [calendarEvents, now]);
+
+  const calendarHeroEvent =
+    nextCalendarEvent ?? nextUpcomingEvent;
+
+  const calendarIsToday =
+    Boolean(
+      calendarHeroEvent?.startTime &&
+        now &&
+        getStockholmDateKey(calendarHeroEvent.startTime) ===
+          getStockholmDateKey(now.toISOString())
     );
 
-  const nextCountdown =
-    countdowns[0] ??
-    null;
+  const electricityAdvice = useMemo(
+    () => getElectricityAdvice(electricity, now),
+    [electricity, now]
+  );
 
-  const todaysCalendarEvents =
-    useMemo(() => {
-      const today =
-        getStockholmDateKey(
-          new Date().toISOString()
-        );
+  const dayPhase = now ? getDayPhase(now.getHours()) : null;
 
-      return calendarEvents
-        .filter(
-          (event) =>
-            event.startTime &&
-            getStockholmDateKey(
-              event.startTime
-            ) === today
-        )
-        .sort(
-          (
-            first,
-            second
-          ) => {
-            if (
-              first.allDay !==
-              second.allDay
-            ) {
-              return first.allDay
-                ? -1
-                : 1;
-            }
+  const weatherSummary = weather
+    ? `${Math.round(weather.temperature)}° · ${weather.description}`
+    : "Väder saknas";
 
-            if (
-              !first.startTime ||
-              !second.startTime
-            ) {
-              return 0;
-            }
-
-            return (
-              new Date(
-                first.startTime
-              ).getTime() -
-              new Date(
-                second.startTime
-              ).getTime()
-            );
-          }
-        );
-    }, [calendarEvents]);
-
-  const nextCalendarEvent =
-    todaysCalendarEvents[0] ??
-    null;
-
-  const calendarDescription =
-    nextCalendarEvent
-      ? nextCalendarEvent.allDay
-        ? "Hela dagen"
-        : nextCalendarEvent.startTime
-          ? `Kl. ${formatCalendarTime(
-              nextCalendarEvent.startTime
-            )}${
-              nextCalendarEvent.location
-                ? ` · ${nextCalendarEvent.location}`
-                : ""
-            }`
-          : nextCalendarEvent.location ??
-            "Kommande händelse idag."
-      : "Inga händelser kvar i Google Kalender idag.";
-
-  const cheapestElectricityTime =
-    electricity
-      ? formatHour(
-          electricity.minPrice.time_start
-        )
-      : null;
-
-  const cheapestElectricityPrice =
-    electricity
-      ? formatPrice(
-          electricity.minPrice.SEK_per_kWh
-        )
-      : null;
-
-  const dayPhase =
-    now
-      ? getDayPhase(
-          now.getHours()
-        )
-      : null;
+  const electricitySummary =
+    electricity?.currentPrice
+      ? `${formatPrice(
+          electricity.currentPrice.SEK_per_kWh
+        )} kr/kWh`
+      : "Pris saknas";
 
   return (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
@@ -752,28 +505,20 @@ export default function EverydayOverview() {
             dayPhase?.glow ?? "bg-blue-400/10",
           ].join(" ")}
         />
-
         <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-violet-400/[0.08] blur-3xl" />
 
         <div className="relative">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-blue-300">
-                <Home
-                  size={18}
-                />
-
+                <Home size={18} />
                 <p className="text-xs font-semibold uppercase tracking-[0.18em]">
-                  Vardagen
+                  Idag
                 </p>
               </div>
 
               <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">
-                {now
-                  ? getGreeting(
-                      now.getHours()
-                    )
-                  : "Hej"} 👋
+                {now ? getGreeting(now.getHours()) : "Hej"} 👋
               </h2>
 
               {dayPhase && (
@@ -789,67 +534,48 @@ export default function EverydayOverview() {
 
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400">
                 <span className="flex items-center gap-2 capitalize">
-                  <CalendarDays
-                    size={16}
-                  />
-
+                  <CalendarDays size={16} />
                   {now
-                    ? now.toLocaleDateString(
-                        "sv-SE",
-                        {
-                          weekday:
-                            "long",
-                          day:
-                            "numeric",
-                          month:
-                            "long",
-                        }
-                      )
+                    ? now.toLocaleDateString("sv-SE", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })
                     : "Laddar datum…"}
                 </span>
 
                 <span className="flex items-center gap-2">
-                  <Clock3
-                    size={16}
-                  />
-
+                  <Clock3 size={16} />
                   {now
-                    ? now.toLocaleTimeString(
-                        "sv-SE",
-                        {
-                          hour:
-                            "2-digit",
-                          minute:
-                            "2-digit",
-                        }
-                      )
+                    ? now.toLocaleTimeString("sv-SE", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                     : "--:--"}
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full border border-sky-300/15 bg-sky-400/[0.08] px-3 py-1.5 text-xs font-semibold text-sky-100">
+                  🌤 {weatherSummary}
+                </span>
+
+                <span className="rounded-full border border-amber-300/15 bg-amber-400/[0.08] px-3 py-1.5 text-xs font-semibold text-amber-100">
+                  ⚡ {electricitySummary}
                 </span>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() =>
-                void loadData(
-                  true,
-                  true
-                )
-              }
-              disabled={
-                isLoading
-              }
+              onClick={() => void loadData(true, true)}
+              disabled={isLoading}
               className="flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-400/20 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw
                 size={16}
-                className={
-                  isLoading
-                    ? "animate-spin"
-                    : ""
-                }
+                className={isLoading ? "animate-spin" : ""}
               />
-
               Uppdatera
             </button>
           </div>
@@ -860,267 +586,226 @@ export default function EverydayOverview() {
                 size={18}
                 className="mt-0.5 shrink-0 text-amber-300"
               />
-
               <p className="text-sm text-amber-100/80">
-                Någon del av dagens information kunde inte hämtas, men övriga delar visas som vanligt.
+                Någon del av dagens information kunde inte hämtas, men
+                övriga delar visas som vanligt.
               </p>
             </div>
           )}
 
-          {weather && (
-            <div className="mt-6 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.09] via-blue-400/[0.05] to-transparent p-4 sm:p-5 lg:p-6">
-              <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-sky-300/15 bg-sky-400/10 text-sky-300">
-                    <CloudSun
-                      size={29}
-                    />
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-fuchsia-300/10 bg-fuchsia-400/[0.05] px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fuchsia-300">
+                  Nästa familjehändelse
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-slate-200">
+                  {nextFamilyEvent?.title ?? "Ingen kommande händelse"}
+                </p>
+              </div>
+              {nextFamilyEvent && (
+                <span className="shrink-0 text-sm font-bold text-white">
+                  {getDaysLabel(nextFamilyEvent.daysUntil)}
+                </span>
+              )}
+            </div>
+
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.05] px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                  Nästa nedräkning
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-slate-200">
+                  {nextCountdown?.title ?? "Ingen aktiv nedräkning"}
+                </p>
+              </div>
+              {nextCountdown && (
+                <span className="shrink-0 text-sm font-bold text-white">
+                  {getDaysLabel(getDaysUntil(nextCountdown.event_date))}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <article className="rounded-3xl border border-violet-300/15 bg-gradient-to-br from-violet-400/[0.10] via-blue-400/[0.05] to-transparent p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-violet-200">
+                <CalendarDays size={17} />
+                <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+                  Nästa på tur
+                </p>
+              </div>
+
+              {calendarHeroEvent ? (
+                <>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xl font-bold text-white">
+                        {calendarHeroEvent.title}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-400">
+                        {calendarIsToday
+                          ? getEventTime(calendarHeroEvent)
+                          : calendarHeroEvent.startTime
+                            ? `${formatCalendarDate(
+                                calendarHeroEvent.startTime
+                              )} · ${getEventTime(calendarHeroEvent)}`
+                            : getEventTime(calendarHeroEvent)}
+                      </p>
+
+                      {calendarHeroEvent.location && (
+                        <p className="mt-3 flex items-start gap-2 text-sm text-slate-400">
+                          <MapPin
+                            size={15}
+                            className="mt-0.5 shrink-0"
+                          />
+                          <span>{calendarHeroEvent.location}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {calendarIsToday && now && (
+                      <span className="w-fit shrink-0 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-xs font-bold text-violet-100">
+                        {getRelativeTime(calendarHeroEvent, now)}
+                      </span>
+                    )}
+                  </div>
+
+                  {todaysCalendarEvents.length > 1 && calendarIsToday && (
+                    <p className="mt-4 border-t border-white/10 pt-3 text-xs text-slate-500">
+                      {todaysCalendarEvents.length - 1} ytterligare{" "}
+                      {todaysCalendarEvents.length - 1 === 1
+                        ? "händelse"
+                        : "händelser"}{" "}
+                      kvar i dagens kalender.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="mt-4">
+                  <p className="text-lg font-bold text-white">
+                    Klart för idag
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Inga fler kalenderhändelser är planerade.
+                  </p>
+                </div>
+              )}
+            </article>
+
+            <article className="rounded-3xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {dayPhase?.recommendationTitle ?? "Dagens läge"}
+              </p>
+
+              <div className="mt-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/[0.08] text-lg">
+                    🌿
                   </div>
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">
-                      Dagens väder
+                    <p className="text-xs font-semibold uppercase tracking-[0.13em] text-emerald-300">
+                      Bäst ute
                     </p>
 
-                    <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <p className="text-3xl font-black text-white">
-                        {Math.round(
-                          weather.temperature
-                        )}
-                        °
-                      </p>
-
-                      <p className="font-semibold text-slate-200">
-                        {
-                          weather.description
-                        }
-                      </p>
-                    </div>
-
-                    <p className="mt-1 text-sm text-slate-400">
-                      {weather.location} · Högst{" "}
-                      {Math.round(
-                        weather.temperatureMax
-                      )}
-                      ° · Lägst{" "}
-                      {Math.round(
-                        weather.temperatureMin
-                      )}
-                      ° · Känns som{" "}
-                      {Math.round(
-                        weather.apparentTemperature
-                      )}
-                      °
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 xl:min-w-[28rem]">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
-                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
-                      🌧 Regnrisk
-                    </p>
-
-                    <p className="mt-1 font-bold text-white">
-                      {Math.round(
-                        weather.precipitationProbability
-                      )}
-                      %
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
-                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
-                      🌬 Vind
-                    </p>
-
-                    <p className="mt-1 font-bold text-white">
-                      {Math.round(
-                        weather.windSpeed
-                      )}{" "}
-                      m/s
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/25 px-3 py-3 sm:px-4">
-                    <p className="text-[11px] leading-4 text-slate-500 sm:text-xs">
-                      ☀️ UV
-                    </p>
-
-                    <p className="mt-1 font-bold text-white">
-                      {Math.round(
-                        weather.uvIndex
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 border-t border-white/10 pt-4">
-                {weather.outdoor ? (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/[0.08] text-lg">
-                        🌿
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-300">
-                          Bästa tiden att vara ute
-                        </p>
-
-                        <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
+                    {weather?.outdoor ? (
+                      <>
+                        <p className="mt-1 font-bold text-white">
                           {weather.outdoor.start}–{weather.outdoor.end}
                         </p>
-                      </div>
-                    </div>
-
-                    <p className="max-w-2xl text-sm leading-5 text-slate-400 sm:text-right sm:leading-6">
-                      {weather.outdoor.reason}
-                    </p>
+                        <p className="mt-1 text-sm leading-5 text-slate-400">
+                          {weather.outdoor.reason}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-400">
+                        Ingen lämplig utetid återstår att bedöma idag.
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-400">
-                    Ingen lämplig utetid återstår att bedöma idag.
-                  </p>
-                )}
-              </div>
+                </div>
 
-              <div className="mt-4 border-t border-white/10 pt-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="border-t border-white/10 pt-4">
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-300">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-300">
                       <Zap size={18} />
                     </div>
 
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-300">
-                        Billigaste elen idag
+                      <p className="text-xs font-semibold uppercase tracking-[0.13em] text-amber-300">
+                        Smart elanvändning
                       </p>
-
-                      <p className="mt-1 break-words text-base font-bold text-white sm:text-lg">
-                        {cheapestElectricityTime ??
-                          "Ingen prisdata"}
+                      <p className="mt-1 font-bold text-white">
+                        {electricityAdvice.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-5 text-slate-400">
+                        {electricityAdvice.description}
                       </p>
                     </div>
                   </div>
-
-                  <p className="text-sm leading-6 text-slate-400 sm:text-right">
-                    {cheapestElectricityPrice !==
-                    null
-                      ? `${cheapestElectricityPrice} kr/kWh`
-                      : "Elpriset kunde inte hämtas just nu."}
-                  </p>
                 </div>
               </div>
-            </div>
-          )}
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <InfoCard
-              icon={
-                <CalendarDays
-                  size={21}
-                />
-              }
-              eyebrow="Dagsplanering"
-              title={
-                nextCalendarEvent
-                  ? nextCalendarEvent.title
-                  : "Inget planerat idag"
-              }
-              description={
-                calendarDescription
-              }
-            >
-              {todaysCalendarEvents.length >
-                1 && (
-                <div className="mt-3 divide-y divide-white/10 border-t border-white/10 pt-1">
-                  {todaysCalendarEvents
-                    .slice(1)
-                    .map(
-                      (event) => (
-                        <div
-                          key={
-                            event.id
-                          }
-                          className="flex items-start justify-between gap-3 py-2 text-sm"
-                        >
-                          <p className="min-w-0 flex-1 break-words font-semibold leading-5 text-slate-200">
-                            {
-                              event.title
-                            }
-                          </p>
-
-                          <p className="shrink-0 text-xs text-slate-400">
-                            {event.allDay
-                              ? "Hela dagen"
-                              : event.startTime
-                                ? formatCalendarTime(
-                                    event.startTime
-                                  )
-                                : ""}
-                          </p>
-                        </div>
-                      )
-                    )}
-                </div>
-              )}
-            </InfoCard>
-
-            <InfoCard
-              icon={
-                <CalendarClock
-                  size={21}
-                />
-              }
-              eyebrow="Familjen"
-              title={
-                nextFamilyEvent
-                  ? nextFamilyEvent.title
-                  : "Inget nära inpå"
-              }
-              description={
-                nextFamilyEvent
-                  ? `${getCountdownLabel(
-                      nextFamilyEvent.daysUntil
-                    )} · ${formatShortDate(
-                      nextFamilyEvent.date
-                    )}`
-                  : "Ingen kommande födelsedag eller namnsdag hittades."
-              }
-            />
-
-            <InfoCard
-              icon={
-                <PartyPopper
-                  size={21}
-                />
-              }
-              eyebrow="Nedräkning"
-              title={
-                nextCountdown
-                  ? nextCountdown.title
-                  : "Ingen nedräkning"
-              }
-              description={
-                nextCountdown
-                  ? `${getCountdownLabel(
-                      getDaysUntil(
-                        nextCountdown.event_date
-                      )
-                    )} · ${formatShortDate(
-                      nextCountdown.event_date
-                    )}`
-                  : "Lägg till något att längta till under Hemmet."
-              }
-            />
-
-
+            </article>
           </div>
+
+          {weather && (
+            <article className="mt-4 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.08] via-blue-400/[0.04] to-transparent p-4 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-300/15 bg-sky-400/10 text-sky-300">
+                    <CloudSun size={23} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-300">
+                      Vädret idag
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                      <p className="text-2xl font-black text-white">
+                        {Math.round(weather.temperature)}°
+                      </p>
+                      <p className="font-semibold text-slate-200">
+                        {weather.description}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {weather.location} · Högst{" "}
+                      {Math.round(weather.temperatureMax)}° · Lägst{" "}
+                      {Math.round(weather.temperatureMin)}° · Känns som{" "}
+                      {Math.round(weather.apparentTemperature)}°
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 sm:min-w-[20rem]">
+                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                    <p className="text-[11px] text-slate-500">🌧 Regn</p>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      {Math.round(weather.precipitationProbability)}%
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                    <p className="text-[11px] text-slate-500">🌬 Vind</p>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      {Math.round(weather.windSpeed)} m/s
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                    <p className="text-[11px] text-slate-500">☀️ UV</p>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      {Math.round(weather.uvIndex)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          )}
         </div>
       </section>
-
     </div>
   );
 }

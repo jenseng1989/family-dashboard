@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ExternalLink,
   RefreshCw,
+  ShieldCheck,
+  Thermometer,
   Waves,
 } from "lucide-react";
 
@@ -16,16 +18,12 @@ import {
   getBathingTemperatureLevel,
 } from "@/lib/bathing";
 
-function getTemperatureStyle(
-  place: BathingPlace
-): string {
+function getTemperatureStyle(place: BathingPlace): string {
   if (place.warning) {
     return "border-red-400/30 bg-red-500/10";
   }
 
-  const level = getBathingTemperatureLevel(
-    place.temperature
-  );
+  const level = getBathingTemperatureLevel(place.temperature);
 
   if (level === "warm") {
     return "border-orange-300/25 bg-orange-400/10";
@@ -42,16 +40,12 @@ function getTemperatureStyle(
   return "border-white/10 bg-white/5";
 }
 
-function getTemperatureBadge(
-  place: BathingPlace
-): string {
+function getTemperatureBadge(place: BathingPlace): string {
   if (place.warning) {
     return "bg-red-500/20 text-red-200";
   }
 
-  const level = getBathingTemperatureLevel(
-    place.temperature
-  );
+  const level = getBathingTemperatureLevel(place.temperature);
 
   if (level === "warm") {
     return "bg-orange-400/20 text-orange-100";
@@ -66,6 +60,63 @@ function getTemperatureBadge(
   }
 
   return "bg-white/10 text-slate-300";
+}
+
+function getTemperatureLabel(
+  temperature: number | null
+): string {
+  const level = getBathingTemperatureLevel(temperature);
+
+  if (level === "warm") {
+    return "Varmt";
+  }
+
+  if (level === "medium") {
+    return "Skönt";
+  }
+
+  if (level === "cold") {
+    if (temperature !== null && temperature < 14) {
+      return "Kallt";
+    }
+
+    return "Svalt";
+  }
+
+  return "Ingen mätning";
+}
+
+function getTemperatureLabelClasses(
+  temperature: number | null
+): string {
+  const level = getBathingTemperatureLevel(temperature);
+
+  if (level === "warm") {
+    return "text-orange-200";
+  }
+
+  if (level === "medium") {
+    return "text-cyan-200";
+  }
+
+  if (level === "cold") {
+    return "text-blue-200";
+  }
+
+  return "text-slate-500";
+}
+
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "–";
+  }
+
+  return date.toLocaleTimeString("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function BathingWidget() {
@@ -117,8 +168,49 @@ export default function BathingWidget() {
   }
 
   useEffect(() => {
-    loadBathingPlaces();
+    void loadBathingPlaces();
   }, []);
+
+  const measuredPlaces = useMemo(
+    () =>
+      bathingData?.places.filter(
+        (place) => place.temperature !== null
+      ) ?? [],
+    [bathingData]
+  );
+
+  const placesWithoutTemperature = useMemo(
+    () =>
+      bathingData?.places.filter(
+        (place) => place.temperature === null
+      ) ?? [],
+    [bathingData]
+  );
+
+  const recommendedPlace = useMemo(
+    () =>
+      measuredPlaces.find((place) => !place.warning) ??
+      null,
+    [measuredPlaces]
+  );
+
+  const warningCount = useMemo(
+    () =>
+      bathingData?.places.filter(
+        (place) => Boolean(place.warning)
+      ).length ?? 0,
+    [bathingData]
+  );
+
+  const warmCount = useMemo(
+    () =>
+      measuredPlaces.filter(
+        (place) =>
+          place.temperature !== null &&
+          place.temperature >= 20
+      ).length,
+    [measuredPlaces]
+  );
 
   if (isLoading) {
     return (
@@ -164,7 +256,7 @@ export default function BathingWidget() {
 
               <button
                 type="button"
-                onClick={loadBathingPlaces}
+                onClick={() => void loadBathingPlaces()}
                 className="mt-4 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
               >
                 Försök igen
@@ -176,51 +268,95 @@ export default function BathingWidget() {
     );
   }
 
-  const measuredPlaces =
-    bathingData.places.filter(
-      (place) => place.temperature !== null
-    );
-
-  const placesWithoutTemperature =
-    bathingData.places.filter(
-      (place) => place.temperature === null
-    );
-
-  const warmestPlace = measuredPlaces[0];
-
   return (
     <Card
       title="Badtemperaturer"
       icon={<Waves size={28} />}
       className="md:col-span-2 xl:col-span-1"
     >
-      {warmestPlace && (
-        <div className="mb-5 rounded-3xl border border-orange-300/20 bg-gradient-to-r from-orange-400/15 via-cyan-400/10 to-blue-500/10 p-5">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-orange-100">
-            Varmast just nu
-          </p>
+      {recommendedPlace && (
+        <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.14] via-blue-400/[0.07] to-slate-950/20 p-5">
+          <div className="flex items-center gap-2 text-cyan-200">
+            <ShieldCheck size={17} />
+            <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+              Bäst för ett dopp
+            </p>
+          </div>
 
-          <div className="mt-3 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xl font-bold text-white">
-                {warmestPlace.name}
+          <div className="mt-4 flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-xl font-bold text-white">
+                {recommendedPlace.name}
               </p>
 
-              <p className="mt-1 text-sm text-slate-300">
-                Göteborg
+              <p className="mt-1 text-sm text-slate-400">
+                Högst temperatur utan aktuell badavrådan
+              </p>
+
+              <p
+                className={`mt-2 text-sm font-semibold ${getTemperatureLabelClasses(
+                  recommendedPlace.temperature
+                )}`}
+              >
+                {getTemperatureLabel(
+                  recommendedPlace.temperature
+                )}
               </p>
             </div>
 
-            <p className="text-4xl font-bold text-white">
+            <p className="shrink-0 text-4xl font-black text-white">
               {formatBathingTemperature(
-                warmestPlace.temperature
+                recommendedPlace.temperature
               )}
             </p>
           </div>
         </div>
       )}
 
-      <div className="mb-4">
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Mätningar
+          </p>
+          <p className="mt-1 text-xl font-bold text-white">
+            {measuredPlaces.length}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-orange-300/15 bg-orange-400/[0.05] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-300">
+            ≥ 20 °C
+          </p>
+          <p className="mt-1 text-xl font-bold text-white">
+            {warmCount}
+          </p>
+        </div>
+
+        <div
+          className={[
+            "rounded-2xl border p-3",
+            warningCount > 0
+              ? "border-red-300/20 bg-red-400/[0.07]"
+              : "border-emerald-300/15 bg-emerald-400/[0.05]",
+          ].join(" ")}
+        >
+          <p
+            className={[
+              "text-[10px] font-semibold uppercase tracking-[0.12em]",
+              warningCount > 0
+                ? "text-red-300"
+                : "text-emerald-300",
+            ].join(" ")}
+          >
+            Avrådan
+          </p>
+          <p className="mt-1 text-xl font-bold text-white">
+            {warningCount}
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-3 mt-5">
         <p className="font-semibold text-white">
           Göteborgs badplatser
         </p>
@@ -230,38 +366,44 @@ export default function BathingWidget() {
         </p>
       </div>
 
-      <div className="max-h-[36rem] space-y-3 overflow-y-auto pr-1">
+      <div className="max-h-[36rem] space-y-2 overflow-y-auto pr-1">
         {measuredPlaces.map((place, index) => (
           <article
             key={place.name}
-            className={`rounded-2xl border p-4 ${getTemperatureStyle(
+            className={`rounded-2xl border px-3 py-3 ${getTemperatureStyle(
               place
             )}`}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sm font-bold text-white">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xs font-bold text-white">
                   {index + 1}
                 </div>
 
                 <div className="min-w-0">
-                  <p className="font-semibold text-white">
+                  <p className="truncate text-sm font-semibold text-white">
                     {place.name}
                   </p>
 
                   {place.warning ? (
-                    <p className="mt-1 text-sm font-medium text-red-200">
+                    <p className="mt-1 text-xs font-semibold text-red-200">
                       ⚠️ {place.warning}
                     </p>
                   ) : (
-                    <p className="mt-1 text-sm text-slate-400">
-                      Ingen aktuell badavrådan
+                    <p
+                      className={`mt-1 text-xs font-semibold ${getTemperatureLabelClasses(
+                        place.temperature
+                      )}`}
+                    >
+                      {getTemperatureLabel(
+                        place.temperature
+                      )}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <span
                   className={`rounded-full px-3 py-1 text-sm font-bold ${getTemperatureBadge(
                     place
@@ -277,10 +419,11 @@ export default function BathingWidget() {
                     href={place.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 text-xs text-slate-400 transition hover:text-white"
+                    aria-label={`Mer information om ${place.name}`}
+                    title="Mer info"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-slate-400 transition hover:bg-white/10 hover:text-white"
                   >
-                    Mer info
-                    <ExternalLink size={12} />
+                    <ExternalLink size={13} />
                   </a>
                 )}
               </div>
@@ -290,36 +433,40 @@ export default function BathingWidget() {
 
         {placesWithoutTemperature.length > 0 && (
           <div className="pt-3">
-            <p className="mb-3 text-sm font-medium text-slate-400">
+            <p className="mb-2 text-sm font-medium text-slate-400">
               Saknar aktuell temperatur
             </p>
 
-            {placesWithoutTemperature.map(
-              (place) => (
-                <div
-                  key={place.name}
-                  className="mb-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-slate-300">
-                      {place.name}
-                    </p>
+            {placesWithoutTemperature.map((place) => (
+              <div
+                key={place.name}
+                className="mb-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="truncate text-sm text-slate-300">
+                    {place.name}
+                  </p>
 
-                    <span className="text-xs text-slate-500">
-                      Ingen mätning
-                    </span>
-                  </div>
+                  <span className="shrink-0 text-xs text-slate-500">
+                    Ingen mätning
+                  </span>
                 </div>
-              )
-            )}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      <p className="mt-4 text-xs text-slate-500">
-        Källa: Havs- och vattenmyndigheten.
-        Temperaturer och badavrådan kan ändras.
-      </p>
+      <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <span className="flex items-center gap-1.5">
+          <Thermometer size={13} />
+          Uppdaterad {formatUpdatedAt(bathingData.updatedAt)}
+        </span>
+
+        <span>
+          Källa: Havs- och vattenmyndigheten
+        </span>
+      </div>
     </Card>
   );
 }

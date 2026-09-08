@@ -28,7 +28,7 @@ const tabs: Array<{
 }> = [
   {
     id: "everyday",
-    label: "Vardagen",
+    label: "Idag",
     icon: Sparkles,
   },
   {

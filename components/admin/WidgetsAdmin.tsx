@@ -638,22 +638,6 @@ export default function WidgetsAdmin() {
           </div>
         )}
 
-        <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-white/10 px-4 py-3 shadow-2xl shadow-black/20 backdrop-blur-xl">
-          <div className="flex items-start gap-3">
-            <CheckCircle2
-              className="mt-0.5 shrink-0 text-emerald-300"
-              size={18}
-            />
-
-            <p className="text-sm leading-6 text-slate-300">
-              Alla familjemedlemmar från familjedatabasen
-              visas som egna grupper här. Personöversikterna
-              för vuxna och barn är fasta på dashboarden och
-              kan därför inte döljas, flyttas eller ändra storlek.
-            </p>
-          </div>
-        </div>
-
         {!isLoading && (
           <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
