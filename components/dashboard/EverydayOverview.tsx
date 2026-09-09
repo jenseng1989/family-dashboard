@@ -133,6 +133,161 @@ function getStockholmDateKey(dateString: string): string {
   return `${year}-${month}-${day}`;
 }
 
+function addDaysToDateKey(key: string, days: number): string {
+  const [year, month, day] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function isMidnightInStockholm(dateString: string): boolean {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).formatToParts(new Date(dateString));
+
+  return (
+    parts.find((part) => part.type === "hour")?.value === "00" &&
+    parts.find((part) => part.type === "minute")?.value === "00" &&
+    parts.find((part) => part.type === "second")?.value === "00"
+  );
+}
+
+function getEventDateRange(event: GoogleCalendarEvent): {
+  startKey: string;
+  endKey: string;
+  totalDays: number;
+} | null {
+  if (!event.startTime) return null;
+
+  const startKey = getStockholmDateKey(event.startTime);
+  let endKey = event.endTime
+    ? getStockholmDateKey(event.endTime)
+    : startKey;
+
+  if (event.endTime && event.allDay) {
+    endKey = addDaysToDateKey(endKey, -1);
+  } else if (
+    event.endTime &&
+    endKey > startKey &&
+    isMidnightInStockholm(event.endTime)
+  ) {
+    endKey = addDaysToDateKey(endKey, -1);
+  }
+
+  if (endKey < startKey) {
+    endKey = startKey;
+  }
+
+  const start = new Date(`${startKey}T12:00:00Z`);
+  const end = new Date(`${endKey}T12:00:00Z`);
+  const totalDays =
+    Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+
+  return { startKey, endKey, totalDays };
+}
+
+function eventOccursOnDate(
+  event: GoogleCalendarEvent,
+  key: string
+): boolean {
+  const range = getEventDateRange(event);
+  return Boolean(range && key >= range.startKey && key <= range.endKey);
+}
+
+function isCalendarEventActiveNow(
+  event: GoogleCalendarEvent,
+  now: Date
+): boolean {
+  const today = getStockholmDateKey(now.toISOString());
+
+  if (!eventOccursOnDate(event, today)) {
+    return false;
+  }
+
+  if (event.allDay) {
+    return true;
+  }
+
+  if (!event.startTime) {
+    return false;
+  }
+
+  const start = new Date(event.startTime).getTime();
+  const end = event.endTime
+    ? new Date(event.endTime).getTime()
+    : Number.POSITIVE_INFINITY;
+
+  return start <= now.getTime() && end > now.getTime();
+}
+
+function formatShortCalendarDateKey(key: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    day: "numeric",
+    month: "short",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).format(new Date(`${key}T12:00:00Z`));
+}
+
+function getCalendarEventRangeLabel(
+  event: GoogleCalendarEvent,
+  today: string
+): string | null {
+  const range = getEventDateRange(event);
+
+  if (!range || range.totalDays <= 1) {
+    return null;
+  }
+
+  if (today < range.startKey) {
+    return `${formatShortCalendarDateKey(
+      range.startKey
+    )}–${formatShortCalendarDateKey(range.endKey)} · ${range.totalDays} dagar`;
+  }
+
+  const start = new Date(`${range.startKey}T12:00:00Z`);
+  const current = new Date(`${today}T12:00:00Z`);
+  const dayNumber =
+    Math.round((current.getTime() - start.getTime()) / 86_400_000) + 1;
+
+  if (today === range.startKey) {
+    if (!event.allDay && event.startTime && event.endTime) {
+      return `Startar idag ${formatCalendarTime(
+        event.startTime
+      )} · ${range.totalDays} dagar · till ${formatShortCalendarDateKey(
+        range.endKey
+      )} ${formatCalendarTime(event.endTime)}.`;
+    }
+
+    return `Startar idag · ${range.totalDays} dagar · till ${formatShortCalendarDateKey(
+      range.endKey
+    )}.`;
+  }
+
+  if (today >= range.startKey && today <= range.endKey) {
+    if (!event.allDay && event.endTime) {
+      return `Pågår · dag ${dayNumber} av ${range.totalDays} · till ${formatShortCalendarDateKey(
+        range.endKey
+      )} ${formatCalendarTime(event.endTime)}.`;
+    }
+
+    return `Pågår · dag ${dayNumber} av ${range.totalDays} · till ${formatShortCalendarDateKey(
+      range.endKey
+    )}.`;
+  }
+
+  return `${formatShortCalendarDateKey(
+    range.startKey
+  )}–${formatShortCalendarDateKey(range.endKey)} · ${range.totalDays} dagar`;
+}
+
 function formatCalendarTime(dateString: string): string {
   return new Intl.DateTimeFormat("sv-SE", {
     hour: "2-digit",
@@ -425,22 +580,29 @@ export default function EverydayOverview() {
 
     const today = getStockholmDateKey(now.toISOString());
 
-    return calendarEvents.filter(
-      (event) =>
-        event.startTime &&
-        getStockholmDateKey(event.startTime) === today
+    return calendarEvents.filter((event) =>
+      eventOccursOnDate(event, today)
     );
   }, [calendarEvents, now]);
+
+  const activeCalendarEvents = useMemo(() => {
+    if (!now) return [];
+
+    return todaysCalendarEvents.filter((event) =>
+      isCalendarEventActiveNow(event, now)
+    );
+  }, [todaysCalendarEvents, now]);
 
   const nextCalendarEvent = useMemo(() => {
     if (!now) return null;
 
     return (
       todaysCalendarEvents.find((event) => {
-        if (event.allDay) return true;
-        if (!event.endTime) return true;
+        if (isCalendarEventActiveNow(event, now)) return false;
+        if (event.allDay) return false;
+        if (!event.startTime) return false;
 
-        return new Date(event.endTime).getTime() > now.getTime();
+        return new Date(event.startTime).getTime() > now.getTime();
       }) ?? null
     );
   }, [todaysCalendarEvents, now]);
@@ -448,35 +610,55 @@ export default function EverydayOverview() {
   const nextUpcomingEvent = useMemo(() => {
     if (!now) return null;
 
+    const today = getStockholmDateKey(now.toISOString());
+
     return (
       calendarEvents.find((event) => {
-        if (!event.startTime) return false;
+        const range = getEventDateRange(event);
+        if (!range) return false;
 
-        if (event.allDay) {
-          return (
-            getStockholmDateKey(event.startTime) >=
-            getStockholmDateKey(now.toISOString())
-          );
+        if (range.endKey < today) return false;
+
+        if (eventOccursOnDate(event, today)) {
+          if (isCalendarEventActiveNow(event, now)) return false;
+          if (!event.startTime) return false;
+          return new Date(event.startTime).getTime() > now.getTime();
         }
 
-        return (
-          !event.endTime ||
-          new Date(event.endTime).getTime() > now.getTime()
-        );
+        return range.startKey > today;
       }) ?? null
     );
   }, [calendarEvents, now]);
 
-  const calendarHeroEvent =
-    nextCalendarEvent ?? nextUpcomingEvent;
+  const calendarHeroEvents = useMemo(() => {
+    if (activeCalendarEvents.length > 0) {
+      return activeCalendarEvents;
+    }
 
-  const calendarIsToday =
-    Boolean(
-      calendarHeroEvent?.startTime &&
-        now &&
-        getStockholmDateKey(calendarHeroEvent.startTime) ===
-          getStockholmDateKey(now.toISOString())
-    );
+    const next = nextCalendarEvent ?? nextUpcomingEvent;
+    return next ? [next] : [];
+  }, [activeCalendarEvents, nextCalendarEvent, nextUpcomingEvent]);
+
+  const calendarTodayKey = now
+    ? getStockholmDateKey(now.toISOString())
+    : "";
+
+  const calendarHeroIds = useMemo(
+    () => new Set(calendarHeroEvents.map((event) => event.id)),
+    [calendarHeroEvents]
+  );
+
+  const remainingTodayEvents = useMemo(() => {
+    if (!now) return [];
+
+    return todaysCalendarEvents.filter((event) => {
+      if (calendarHeroIds.has(event.id)) return false;
+      if (event.allDay) return true;
+      if (!event.endTime) return true;
+
+      return new Date(event.endTime).getTime() > now.getTime();
+    });
+  }, [calendarHeroIds, now, todaysCalendarEvents]);
 
   const electricityAdvice = useMemo(
     () => getElectricityAdvice(electricity, now),
@@ -636,46 +818,80 @@ export default function EverydayOverview() {
                 </p>
               </div>
 
-              {calendarHeroEvent ? (
+              {calendarHeroEvents.length > 0 ? (
                 <>
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-xl font-bold text-white">
-                        {calendarHeroEvent.title}
-                      </p>
+                  <div className="mt-4 space-y-4">
+                    {calendarHeroEvents.map((event, index) => {
+                      const isToday = Boolean(
+                        calendarTodayKey &&
+                          eventOccursOnDate(event, calendarTodayKey)
+                      );
+                      const rangeLabel = calendarTodayKey
+                        ? getCalendarEventRangeLabel(
+                            event,
+                            calendarTodayKey
+                          )
+                        : null;
 
-                      <p className="mt-1 text-sm text-slate-400">
-                        {calendarIsToday
-                          ? getEventTime(calendarHeroEvent)
-                          : calendarHeroEvent.startTime
-                            ? `${formatCalendarDate(
-                                calendarHeroEvent.startTime
-                              )} · ${getEventTime(calendarHeroEvent)}`
-                            : getEventTime(calendarHeroEvent)}
-                      </p>
+                      return (
+                        <div
+                          key={event.id}
+                          className={
+                            index > 0
+                              ? "border-t border-white/10 pt-4"
+                              : undefined
+                          }
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="text-xl font-bold text-white">
+                                {event.title}
+                              </p>
 
-                      {calendarHeroEvent.location && (
-                        <p className="mt-3 flex items-start gap-2 text-sm text-slate-400">
-                          <MapPin
-                            size={15}
-                            className="mt-0.5 shrink-0"
-                          />
-                          <span>{calendarHeroEvent.location}</span>
-                        </p>
-                      )}
-                    </div>
+                              {!rangeLabel && (
+                                <p className="mt-1 text-sm text-slate-400">
+                                  {isToday
+                                    ? getEventTime(event)
+                                    : event.startTime
+                                      ? `${formatCalendarDate(
+                                          event.startTime
+                                        )} · ${getEventTime(event)}`
+                                      : getEventTime(event)}
+                                </p>
+                              )}
 
-                    {calendarIsToday && now && (
-                      <span className="w-fit shrink-0 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-xs font-bold text-violet-100">
-                        {getRelativeTime(calendarHeroEvent, now)}
-                      </span>
-                    )}
+                              {rangeLabel && (
+                                <p className="mt-2 text-sm font-semibold text-violet-200">
+                                  {rangeLabel}
+                                </p>
+                              )}
+
+                              {event.location && (
+                                <p className="mt-3 flex items-start gap-2 text-sm text-slate-400">
+                                  <MapPin
+                                    size={15}
+                                    className="mt-0.5 shrink-0"
+                                  />
+                                  <span>{event.location}</span>
+                                </p>
+                              )}
+                            </div>
+
+                            {isToday && now && (
+                              <span className="w-fit shrink-0 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-xs font-bold text-violet-100">
+                                {getRelativeTime(event, now)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {todaysCalendarEvents.length > 1 && calendarIsToday && (
+                  {remainingTodayEvents.length > 0 && (
                     <p className="mt-4 border-t border-white/10 pt-3 text-xs text-slate-500">
-                      {todaysCalendarEvents.length - 1} ytterligare{" "}
-                      {todaysCalendarEvents.length - 1 === 1
+                      {remainingTodayEvents.length} ytterligare{" "}
+                      {remainingTodayEvents.length === 1
                         ? "händelse"
                         : "händelser"}{" "}
                       kvar i dagens kalender.

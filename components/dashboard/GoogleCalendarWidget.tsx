@@ -58,13 +58,15 @@ function formatTime(dateString: string) {
   }).format(new Date(dateString));
 }
 
-function formatLongDate(dateString: string) {
-  return new Intl.DateTimeFormat("sv-SE", {
+function formatLongDateFromKey(key: string) {
+  const formatted = new Intl.DateTimeFormat("sv-SE", {
     weekday: "long",
     day: "numeric",
     month: "long",
     timeZone: STOCKHOLM_TIME_ZONE,
-  }).format(new Date(dateString));
+  }).format(new Date(`${key}T12:00:00Z`));
+
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 function dateKey(dateString: string) {
@@ -89,11 +91,86 @@ function todayKey() {
   return dateKey(new Date().toISOString());
 }
 
-function tomorrowKey() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+function addDaysToKey(key: string, days: number) {
+  const [year, month, day] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
 
-  return dateKey(tomorrow.toISOString());
+  const nextYear = date.getUTCFullYear();
+  const nextMonth = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const nextDay = String(date.getUTCDate()).padStart(2, "0");
+
+  return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
+function tomorrowKey() {
+  return addDaysToKey(todayKey(), 1);
+}
+
+function isMidnightInStockholm(dateString: string) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    timeZone: STOCKHOLM_TIME_ZONE,
+  }).formatToParts(new Date(dateString));
+
+  const hour =
+    parts.find((part) => part.type === "hour")?.value ?? "";
+  const minute =
+    parts.find((part) => part.type === "minute")?.value ?? "";
+  const second =
+    parts.find((part) => part.type === "second")?.value ?? "";
+
+  return hour === "00" && minute === "00" && second === "00";
+}
+
+function getEventDayKeys(event: GoogleCalendarEvent) {
+  if (!event.startTime) {
+    return [];
+  }
+
+  const startKey = dateKey(event.startTime);
+
+  if (!event.endTime) {
+    return [startKey];
+  }
+
+  const rawEndKey = dateKey(event.endTime);
+  let lastIncludedKey = rawEndKey;
+
+  if (event.allDay) {
+    // Google Calendar använder exklusivt slutdatum för heldagshändelser.
+    lastIncludedKey = addDaysToKey(rawEndKey, -1);
+  } else if (
+    rawEndKey > startKey &&
+    isMidnightInStockholm(event.endTime)
+  ) {
+    // En tidsbestämd aktivitet som slutar exakt 00:00 hör inte till
+    // den nya kalenderdagen.
+    lastIncludedKey = addDaysToKey(rawEndKey, -1);
+  }
+
+  if (lastIncludedKey < startKey) {
+    return [startKey];
+  }
+
+  const keys: string[] = [];
+  let currentKey = startKey;
+
+  while (currentKey <= lastIncludedKey) {
+    keys.push(currentKey);
+    currentKey = addDaysToKey(currentKey, 1);
+  }
+
+  return keys;
+}
+
+function eventOccursOnDay(
+  event: GoogleCalendarEvent,
+  key: string
+) {
+  return getEventDayKeys(event).includes(key);
 }
 
 function eventTime(event: GoogleCalendarEvent) {
@@ -114,10 +191,49 @@ function eventTime(event: GoogleCalendarEvent) {
   return `${start}–${formatTime(event.endTime)}`;
 }
 
-function groupLabel(
-  key: string,
-  firstEvent: GoogleCalendarEvent
+function eventTimeForDay(
+  event: GoogleCalendarEvent,
+  dayKey: string
 ) {
+  if (event.allDay) {
+    return "Hela dagen";
+  }
+
+  if (!event.startTime) {
+    return "";
+  }
+
+  const startKey = dateKey(event.startTime);
+
+  if (!event.endTime) {
+    return formatTime(event.startTime);
+  }
+
+  let endKey = dateKey(event.endTime);
+
+  if (
+    endKey > startKey &&
+    isMidnightInStockholm(event.endTime)
+  ) {
+    endKey = addDaysToKey(endKey, -1);
+  }
+
+  if (startKey === endKey) {
+    return eventTime(event);
+  }
+
+  if (dayKey === startKey) {
+    return `${formatTime(event.startTime)} →`;
+  }
+
+  if (dayKey === endKey) {
+    return `→ ${formatTime(event.endTime)}`;
+  }
+
+  return "Pågår";
+}
+
+function groupLabel(key: string) {
   if (key === todayKey()) {
     return "Idag";
   }
@@ -126,28 +242,91 @@ function groupLabel(
     return "Imorgon";
   }
 
-  if (firstEvent.startTime) {
-    const formatted = formatLongDate(firstEvent.startTime);
-    return (
-      formatted.charAt(0).toUpperCase() +
-      formatted.slice(1)
-    );
-  }
-
-  return "Kommande";
+  return formatLongDateFromKey(key);
 }
 
 function getDaysUntil(dateString: string): number {
   const targetKey = dateKey(dateString);
   const currentKey = todayKey();
 
-  const target = new Date(`${targetKey}T12:00:00`);
-  const current = new Date(`${currentKey}T12:00:00`);
+  const target = new Date(`${targetKey}T12:00:00Z`);
+  const current = new Date(`${currentKey}T12:00:00Z`);
 
   return Math.round(
     (target.getTime() - current.getTime()) /
       (1000 * 60 * 60 * 24)
   );
+}
+
+function getEventRangeSummary(
+  event: GoogleCalendarEvent,
+  referenceKey: string
+): string | null {
+  const days = getEventDayKeys(event);
+
+  if (days.length <= 1) {
+    return null;
+  }
+
+  const startKey = days[0];
+  const endKey = days[days.length - 1];
+
+  const formatShortKey = (key: string) =>
+    new Intl.DateTimeFormat("sv-SE", {
+      day: "numeric",
+      month: "short",
+      timeZone: STOCKHOLM_TIME_ZONE,
+    }).format(new Date(`${key}T12:00:00Z`));
+
+  if (referenceKey < startKey) {
+    return `${formatShortKey(startKey)}–${formatShortKey(endKey)} · ${days.length} dagar`;
+  }
+
+  const dayNumber = Math.max(1, days.indexOf(referenceKey) + 1);
+
+  if (referenceKey === startKey) {
+    if (!event.allDay && event.startTime && event.endTime) {
+      return `Startar idag ${formatTime(event.startTime)} · ${days.length} dagar · till ${formatShortKey(endKey)} ${formatTime(event.endTime)}.`;
+    }
+
+    return `Startar idag · ${days.length} dagar · till ${formatShortKey(endKey)}.`;
+  }
+
+  if (referenceKey >= startKey && referenceKey <= endKey) {
+    if (!event.allDay && event.endTime) {
+      return `Pågår · dag ${dayNumber} av ${days.length} · till ${formatShortKey(endKey)} ${formatTime(event.endTime)}.`;
+    }
+
+    return `Pågår · dag ${dayNumber} av ${days.length} · till ${formatShortKey(endKey)}.`;
+  }
+
+  return `${formatShortKey(startKey)}–${formatShortKey(endKey)} · ${days.length} dagar`;
+}
+
+function isEventActiveNow(
+  event: GoogleCalendarEvent,
+  now: Date
+) {
+  const currentKey = dateKey(now.toISOString());
+
+  if (!eventOccursOnDay(event, currentKey)) {
+    return false;
+  }
+
+  if (event.allDay) {
+    return true;
+  }
+
+  if (!event.startTime) {
+    return false;
+  }
+
+  const start = new Date(event.startTime).getTime();
+  const end = event.endTime
+    ? new Date(event.endTime).getTime()
+    : Number.POSITIVE_INFINITY;
+
+  return start <= now.getTime() && end > now.getTime();
 }
 
 function getNextEventMessage(
@@ -157,17 +336,25 @@ function getNextEventMessage(
     return "Inga fler planerade händelser.";
   }
 
-  const key = dateKey(event.startTime);
+  const currentDayKey = todayKey();
 
-  if (key === todayKey()) {
+  if (eventOccursOnDay(event, currentDayKey)) {
     if (event.allDay) {
       return `${event.title} pågår hela dagen.`;
+    }
+
+    const startKey = dateKey(event.startTime);
+
+    if (startKey < currentDayKey) {
+      return `${event.title} pågår idag.`;
     }
 
     return `${event.title} är nästa punkt idag, ${eventTime(
       event
     )}.`;
   }
+
+  const key = dateKey(event.startTime);
 
   if (key === tomorrowKey()) {
     return `${event.title} är nästa händelse, imorgon${
@@ -236,38 +423,69 @@ export default function GoogleCalendarWidget() {
       string,
       GoogleCalendarEvent[]
     >();
+    const currentDayKey = todayKey();
 
     for (const event of events) {
-      if (!event.startTime) {
-        continue;
-      }
+      for (const key of getEventDayKeys(event)) {
+        if (key < currentDayKey) {
+          continue;
+        }
 
-      const key = dateKey(event.startTime);
-      const existing = grouped.get(key) ?? [];
-      existing.push(event);
-      grouped.set(key, existing);
+        const existing = grouped.get(key) ?? [];
+
+        if (!existing.some((item) => item.id === event.id)) {
+          existing.push(event);
+        }
+
+        grouped.set(key, existing);
+      }
     }
 
-    return Array.from(grouped.entries()).map(
-      ([key, groupedEvents]) => ({
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, groupedEvents]) => ({
         key,
-        label: groupLabel(key, groupedEvents[0]),
+        label: groupLabel(key),
         events: groupedEvents,
-      })
+      }));
+  }, [events]);
+
+  const todayEvents = useMemo(() => {
+    const currentDayKey = todayKey();
+
+    return events.filter((event) =>
+      eventOccursOnDay(event, currentDayKey)
     );
   }, [events]);
 
-  const todayEvents = useMemo(
-    () =>
-      events.filter(
-        (event) =>
-          event.startTime &&
-          dateKey(event.startTime) === todayKey()
-      ),
-    [events]
-  );
+  const heroEvents = useMemo(() => {
+    const now = new Date();
+    const activeEvents = events.filter((event) =>
+      isEventActiveNow(event, now)
+    );
 
-  const nextEvent = events[0];
+    if (activeEvents.length > 0) {
+      return activeEvents;
+    }
+
+    const currentDayKey = todayKey();
+    const nextEvent =
+      events.find((event) => {
+        if (!event.startTime) return false;
+
+        if (eventOccursOnDay(event, currentDayKey)) {
+          if (event.allDay) return true;
+          if (!event.endTime) {
+            return new Date(event.startTime).getTime() > now.getTime();
+          }
+          return new Date(event.endTime).getTime() > now.getTime();
+        }
+
+        return dateKey(event.startTime) > currentDayKey;
+      }) ?? events[0];
+
+    return nextEvent ? [nextEvent] : [];
+  }, [events]);
 
   return (
     <Card
@@ -325,38 +543,68 @@ export default function GoogleCalendarWidget() {
               </p>
             </div>
 
-            <p className="mt-3 text-xl font-bold text-white">
-              {nextEvent.title}
-            </p>
+            <div className="mt-3 space-y-4">
+              {heroEvents.map((event, index) => {
+                const rangeSummary = getEventRangeSummary(
+                  event,
+                  todayKey()
+                );
 
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              {getNextEventMessage(nextEvent)}
-            </p>
+                return (
+                  <div
+                    key={event.id}
+                    className={
+                      index > 0
+                        ? "border-t border-white/10 pt-4"
+                        : undefined
+                    }
+                  >
+                    <p className="text-xl font-bold text-white">
+                      {event.title}
+                    </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {nextEvent.startTime && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
-                  <CalendarDays size={13} />
-                  {formatDate(nextEvent.startTime)}
-                </span>
-              )}
+                    {!rangeSummary && (
+                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                        {getNextEventMessage(event)}
+                      </p>
+                    )}
 
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
-                <Clock3 size={13} />
-                {eventTime(nextEvent)}
-              </span>
+                    {rangeSummary && (
+                      <p className="mt-2 text-sm font-semibold text-violet-200">
+                        {rangeSummary}
+                      </p>
+                    )}
 
-              {nextEvent.location && (
-                <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-300">
-                  <MapPin
-                    size={13}
-                    className="shrink-0"
-                  />
-                  <span className="truncate">
-                    {nextEvent.location}
-                  </span>
-                </span>
-              )}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {!rangeSummary && event.startTime && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
+                          <CalendarDays size={13} />
+                          {formatDate(event.startTime)}
+                        </span>
+                      )}
+
+                      {!rangeSummary && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
+                          <Clock3 size={13} />
+                          {eventTime(event)}
+                        </span>
+                      )}
+
+                      {event.location && (
+                        <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-300">
+                          <MapPin
+                            size={13}
+                            className="shrink-0"
+                          />
+                          <span className="truncate">
+                            {event.location}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -400,7 +648,7 @@ export default function GoogleCalendarWidget() {
                 <div className="space-y-2">
                   {group.events.map((event) => (
                     <article
-                      key={event.id}
+                      key={`${group.key}-${event.id}`}
                       className="rounded-2xl border border-white/10 bg-white/[0.05] p-3.5 shadow-sm shadow-black/10 transition hover:bg-white/[0.08]"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -432,7 +680,7 @@ export default function GoogleCalendarWidget() {
                             ].join(" ")}
                           >
                             <Clock3 size={13} />
-                            {eventTime(event)}
+                            {eventTimeForDay(event, group.key)}
                           </span>
 
                           {event.htmlLink && (
