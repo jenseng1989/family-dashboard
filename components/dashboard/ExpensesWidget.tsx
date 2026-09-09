@@ -22,7 +22,7 @@ import {
 import Card from "@/components/ui/Card";
 import { supabase } from "@/lib/supabase";
 
-type Payer = "Jens" | "Lenita";
+type Payer = "Jens" | "Lenita" | "Gemensam";
 
 type ExpenseGroup = {
   id: string;
@@ -167,17 +167,24 @@ export default function ExpensesWidget() {
         result.total += price;
         if (expense.paid_by === "Jens") result.jens += price;
         if (expense.paid_by === "Lenita") result.lenita += price;
+        if (expense.paid_by === "Gemensam") result.gemensam += price;
         if (!expense.paid_by) result.unassigned += price;
         return result;
       },
-      { total: 0, jens: 0, lenita: 0, unassigned: 0 }
+      { total: 0, jens: 0, lenita: 0, gemensam: 0, unassigned: 0 }
     );
   }, [activeExpenses]);
 
   const settlementText = useMemo(() => {
     if (totals.unassigned > 0 || totals.total <= 0) return null;
 
-    const fairShare = totals.total / 2;
+    const personalTotal = totals.jens + totals.lenita;
+
+    if (personalTotal <= 0) {
+      return null;
+    }
+
+    const fairShare = personalTotal / 2;
     const jensDifference = totals.jens - fairShare;
 
     if (Math.abs(jensDifference) < 0.005) {
@@ -467,7 +474,7 @@ export default function ExpensesWidget() {
       </div>
 
       <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(130px,180px)_minmax(180px,220px)_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,0.5fr)_minmax(130px,180px)_minmax(330px,1fr)_auto]">
           <label className="min-w-0">
             <span className="mb-2 block text-sm font-medium text-slate-300">Utgift</span>
             <input
@@ -503,8 +510,8 @@ export default function ExpensesWidget() {
 
           <fieldset className="min-w-0">
             <legend className="mb-2 block text-sm font-medium text-slate-300">Betalat av</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {(["Jens", "Lenita"] as Payer[]).map((payer) => (
+            <div className="grid grid-cols-3 gap-2 min-w-[330px]">
+              {(["Jens", "Lenita", "Gemensam"] as Payer[]).map((payer) => (
                 <button
                   key={payer}
                   type="button"
@@ -608,7 +615,7 @@ export default function ExpensesWidget() {
           <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{formatCurrency(totals.total)}</p>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-black/10 p-3">
             <p className="text-xs text-emerald-100/60">Jens har betalat</p>
             <p className="mt-1 text-lg font-bold text-white">{formatCurrency(totals.jens)}</p>
@@ -616,6 +623,10 @@ export default function ExpensesWidget() {
           <div className="rounded-xl bg-black/10 p-3">
             <p className="text-xs text-emerald-100/60">Lenita har betalat</p>
             <p className="mt-1 text-lg font-bold text-white">{formatCurrency(totals.lenita)}</p>
+          </div>
+          <div className="rounded-xl bg-black/10 p-3">
+            <p className="text-xs text-emerald-100/60">Gemensamt betalat</p>
+            <p className="mt-1 text-lg font-bold text-white">{formatCurrency(totals.gemensam)}</p>
           </div>
         </div>
 
