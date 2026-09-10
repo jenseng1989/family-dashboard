@@ -814,7 +814,9 @@ export default function EverydayOverview() {
               <div className="flex items-center gap-2 text-violet-200">
                 <CalendarDays size={17} />
                 <p className="text-xs font-semibold uppercase tracking-[0.16em]">
-                  Nästa på tur
+                  {activeCalendarEvents.length > 0
+                    ? "Pågående"
+                    : "Nästa på tur"}
                 </p>
               </div>
 

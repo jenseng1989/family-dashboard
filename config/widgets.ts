@@ -68,7 +68,7 @@ export const widgetGroups: WidgetGroup[] = [
     widgets: [
       {
         id: "google-calendar",
-        name: "Google Kalender",
+        name: "Kalender",
         description: "Kommande händelser från familjens valda Google-kalender.",
         icon: CalendarDays,
         defaultSize: "full",

@@ -489,7 +489,7 @@ export default function GoogleCalendarWidget() {
 
   return (
     <Card
-      title="Google Kalender"
+      title="Kalender"
       icon={<CalendarDays size={28} />}
     >
       {loading ? (
@@ -539,7 +539,11 @@ export default function GoogleCalendarWidget() {
               <Sparkles size={17} />
 
               <p className="text-xs font-semibold uppercase tracking-[0.16em]">
-                Nästa i kalendern
+                {heroEvents.some((event) =>
+                  isEventActiveNow(event, new Date())
+                )
+                  ? "Pågående"
+                  : "Nästa på tur"}
               </p>
             </div>
 

@@ -16,7 +16,6 @@ import {
   AlertTriangle,
   Clock3,
   RefreshCw,
-  Sparkles,
   TrendingDown,
   TrendingUp,
   Zap,
@@ -36,10 +35,6 @@ type CheapestPeriod = {
   averagePrice: number;
 };
 
-type RankedHour = {
-  price: ElectricityPrice;
-  rank: number;
-};
 
 function findCheapestPeriod(
   prices: ElectricityPrice[],
@@ -174,31 +169,49 @@ function getFuturePrices(
   return prices.slice(currentIndex);
 }
 
-function getTopHours(
-  prices: ElectricityPrice[],
-  count = 3
-): RankedHour[] {
-  return [...prices]
-    .sort((a, b) => a.SEK_per_kWh - b.SEK_per_kWh)
-    .slice(0, count)
-    .map((price, index) => ({
-      price,
-      rank: index + 1,
-    }));
+function getTomorrowComparison(
+  todayAverage: number,
+  tomorrowAverage: number | null
+): {
+  text: string;
+  classes: string;
+} | null {
+  if (
+    tomorrowAverage === null ||
+    !Number.isFinite(todayAverage) ||
+    todayAverage === 0
+  ) {
+    return null;
+  }
+
+  const change =
+    ((tomorrowAverage - todayAverage) / Math.abs(todayAverage)) * 100;
+
+  const rounded = Math.round(Math.abs(change));
+
+  if (Math.abs(change) < 1) {
+    return {
+      text: "Nästan samma snitt som idag",
+      classes:
+        "border-white/10 bg-white/[0.05] text-slate-300",
+    };
+  }
+
+  if (change < 0) {
+    return {
+      text: `Cirka ${rounded} % billigare än idag`,
+      classes:
+        "border-emerald-300/20 bg-emerald-400/[0.10] text-emerald-200",
+    };
+  }
+
+  return {
+    text: `Cirka ${rounded} % dyrare än idag`,
+    classes:
+      "border-red-300/20 bg-red-400/[0.10] text-red-200",
+  };
 }
 
-function getRankSymbol(rank: number): string {
-  switch (rank) {
-    case 1:
-      return "🥇";
-    case 2:
-      return "🥈";
-    case 3:
-      return "🥉";
-    default:
-      return `${rank}.`;
-  }
-}
 
 export default function ElectricityWidget() {
   const [electricity, setElectricity] =
@@ -284,18 +297,6 @@ export default function ElectricityWidget() {
     );
   }, [electricity]);
 
-  const bestToday = useMemo(() => {
-    if (!electricity) {
-      return [];
-    }
-
-    return getTopHours(electricity.prices);
-  }, [electricity]);
-
-  const bestAhead = useMemo(
-    () => getTopHours(futurePrices),
-    [futurePrices]
-  );
 
   const cheapestFuturePeriod = useMemo(() => {
     return findCheapestPeriod(
@@ -303,6 +304,17 @@ export default function ElectricityWidget() {
       selectedHours
     );
   }, [futurePrices, selectedHours]);
+
+  const cheapestTomorrowPeriod = useMemo(() => {
+    if (!electricity) {
+      return null;
+    }
+
+    return findCheapestPeriod(
+      electricity.tomorrowPrices ?? [],
+      3
+    );
+  }, [electricity]);
 
   if (isLoading) {
     return (
@@ -393,6 +405,18 @@ export default function ElectricityWidget() {
 
   const periodIsFuture =
     cheapestFuturePeriod !== null;
+
+  const tomorrowComparison = getTomorrowComparison(
+    electricity.averagePrice,
+    electricity.tomorrowAveragePrice ?? null
+  );
+
+  const hasTomorrowPrices =
+    Array.isArray(electricity.tomorrowPrices) &&
+    electricity.tomorrowPrices.length > 0 &&
+    electricity.tomorrowMinPrice !== null &&
+    electricity.tomorrowMaxPrice !== null &&
+    electricity.tomorrowAveragePrice !== null;
 
   return (
     <Card
@@ -485,108 +509,6 @@ export default function ElectricityWidget() {
                 )}
               </p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.05] p-4">
-          <div className="flex items-center gap-2">
-            <Sparkles
-              size={17}
-              className="text-emerald-300"
-            />
-            <p className="font-semibold text-white">
-              Bäst idag
-            </p>
-          </div>
-
-          <p className="mt-1 text-xs text-slate-500">
-            Dagens tre billigaste enskilda timmar
-          </p>
-
-          <div className="mt-4 space-y-2">
-            {bestToday.map(({ price, rank }) => (
-              <div
-                key={price.time_start}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">
-                    {getRankSymbol(rank)}
-                  </span>
-                  <span className="font-semibold text-white">
-                    {formatHour(
-                      price.time_start
-                    )}
-                    –
-                    {formatHour(
-                      price.time_end
-                    )}
-                  </span>
-                </div>
-
-                <span className="text-sm font-semibold text-emerald-200">
-                  {formatPrice(
-                    price.SEK_per_kWh
-                  )}{" "}
-                  kr
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.05] p-4">
-          <div className="flex items-center gap-2">
-            <Clock3
-              size={17}
-              className="text-blue-300"
-            />
-            <p className="font-semibold text-white">
-              Bäst framöver
-            </p>
-          </div>
-
-          <p className="mt-1 text-xs text-slate-500">
-            Billigaste timmarna som fortfarande återstår idag
-          </p>
-
-          <div className="mt-4 space-y-2">
-            {bestAhead.length > 0 ? (
-              bestAhead.map(({ price, rank }) => (
-                <div
-                  key={price.time_start}
-                  className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">
-                      {getRankSymbol(rank)}
-                    </span>
-                    <span className="font-semibold text-white">
-                      {formatHour(
-                        price.time_start
-                      )}
-                      –
-                      {formatHour(
-                        price.time_end
-                      )}
-                    </span>
-                  </div>
-
-                  <span className="text-sm font-semibold text-blue-200">
-                    {formatPrice(
-                      price.SEK_per_kWh
-                    )}{" "}
-                    kr
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-4 text-sm text-slate-400">
-                Inga fler timpriser återstår idag.
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -856,6 +778,128 @@ export default function ElectricityWidget() {
           </p>
         </div>
       </div>
+      <div className="mt-5 overflow-hidden rounded-3xl border border-violet-300/15 bg-gradient-to-br from-violet-500/[0.10] via-blue-500/[0.05] to-transparent p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-violet-200">
+              <Clock3 size={17} />
+              <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+                Elpriser i morgon
+              </p>
+            </div>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Jämförelse med dagens priser i {electricity.area}
+            </p>
+          </div>
+
+          {hasTomorrowPrices && tomorrowComparison && (
+            <span
+              className={[
+                "w-fit rounded-full border px-3 py-1.5 text-xs font-bold",
+                tomorrowComparison.classes,
+              ].join(" ")}
+            >
+              {tomorrowComparison.text}
+            </span>
+          )}
+        </div>
+
+        {hasTomorrowPrices ? (
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.07] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+                  Billigast
+                </p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  {formatPrice(
+                    electricity.tomorrowMinPrice!.SEK_per_kWh
+                  )}{" "}
+                  kr/kWh
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatHour(
+                    electricity.tomorrowMinPrice!.time_start
+                  )}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Snitt
+                </p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  {formatPrice(
+                    electricity.tomorrowAveragePrice!
+                  )}{" "}
+                  kr/kWh
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  hela dygnet
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-red-300/15 bg-red-400/[0.07] p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-red-300">
+                  Dyrast
+                </p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  {formatPrice(
+                    electricity.tomorrowMaxPrice!.SEK_per_kWh
+                  )}{" "}
+                  kr/kWh
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatHour(
+                    electricity.tomorrowMaxPrice!.time_start
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {cheapestTomorrowPeriod && (
+              <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-300">
+                    Billigaste 3 timmarna
+                  </p>
+                  <p className="mt-1 font-bold text-white">
+                    {formatHour(
+                      cheapestTomorrowPeriod.startTime
+                    )}
+                    –
+                    {formatHour(
+                      cheapestTomorrowPeriod.endTime
+                    )}
+                  </p>
+                </div>
+
+                <p className="text-sm text-slate-300">
+                  Snitt{" "}
+                  <span className="font-bold text-white">
+                    {formatPrice(
+                      cheapestTomorrowPeriod.averagePrice
+                    )}{" "}
+                    kr/kWh
+                  </span>
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4">
+            <p className="font-semibold text-slate-200">
+              Morgondagens priser är inte publicerade ännu
+            </p>
+            <p className="mt-1 text-sm leading-5 text-slate-500">
+              Sektionen fylls automatiskt när prisfilen för i morgon finns
+              tillgänglig.
+            </p>
+          </div>
+        )}
+      </div>
+
     </Card>
   );
 }
