@@ -4,7 +4,7 @@ import {
   Activity,
   AppWindow,
   ArrowRight,
-  MapPin,
+  BarChart3,
   Settings,
   Users,
   Wrench,
@@ -41,6 +41,16 @@ const sections = [
       "border-emerald-300/15 bg-emerald-400/[0.06] text-emerald-200",
     status: "Aktiv",
     href: "/admin/system-status",
+  },
+  {
+    title: "Statistik",
+    description:
+      "Överblick över dashboardens innehåll, widgets och familjedata.",
+    icon: BarChart3,
+    accent:
+      "border-cyan-300/15 bg-cyan-400/[0.06] text-cyan-200",
+    status: "Aktiv",
+    href: "/admin/statistics",
   },
   {
     title: "Appinställningar",
@@ -155,12 +165,12 @@ export default function AdminDashboard() {
 
         <div className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5">
           <p className="text-sm font-semibold text-white">
-            Admin 1.4
+            Admin 1.5
           </p>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Familjen, Widgets, Systemstatus och Appinställningar
-            är nu aktiva. Fler delar aktiveras stegvis.
+            Familjen, Widgets, Systemstatus, Statistik och
+            Appinställningar är nu aktiva. Fler delar aktiveras stegvis.
           </p>
         </div>
       </div>

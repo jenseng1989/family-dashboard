@@ -23,6 +23,9 @@ import {
   type AppSettings,
   type AppTabId,
 } from "@/lib/app-settings-client";
+import {
+  trackDashboardEvent,
+} from "@/lib/dashboard-analytics";
 
 type TabId = AppTabId;
 
@@ -170,6 +173,14 @@ export default function DashboardTabs({
           loadedSettings.defaultTab
         );
 
+        void trackDashboardEvent(
+          "dashboard_view"
+        );
+        void trackDashboardEvent(
+          "tab_view",
+          loadedSettings.defaultTab
+        );
+
         document.title =
           loadedSettings.dashboardName;
       } catch (error) {
@@ -183,6 +194,14 @@ export default function DashboardTabs({
             DEFAULT_APP_SETTINGS
           );
           setActiveTab(
+            DEFAULT_APP_SETTINGS.defaultTab
+          );
+
+          void trackDashboardEvent(
+            "dashboard_view"
+          );
+          void trackDashboardEvent(
+            "tab_view",
             DEFAULT_APP_SETTINGS.defaultTab
           );
 
@@ -204,6 +223,21 @@ export default function DashboardTabs({
       cancelled = true;
     };
   }, []);
+
+  function changeTab(
+    tabId: TabId
+  ) {
+    if (tabId === activeTab) {
+      return;
+    }
+
+    setActiveTab(tabId);
+
+    void trackDashboardEvent(
+      "tab_view",
+      tabId
+    );
+  }
 
   function getActiveContent():
     ReactNode {
@@ -281,7 +315,7 @@ export default function DashboardTabs({
                       isActive
                     }
                     onClick={() =>
-                      setActiveTab(
+                      changeTab(
                         tab.id
                       )
                     }
