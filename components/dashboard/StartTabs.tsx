@@ -2,6 +2,7 @@
 
 import {
   Home,
+  HousePlug,
   LoaderCircle,
   ShoppingCart,
   Sparkles,
@@ -15,7 +16,8 @@ import {
 type StartTabId =
   | "everyday"
   | "home"
-  | "shopping";
+  | "shopping"
+  | "smart-home";
 
 type StartTabsProps = {
   everydayContent: ReactNode;
@@ -40,6 +42,11 @@ const tabs: Array<{
     id: "shopping",
     label: "Inköp",
     icon: ShoppingCart,
+  },
+  {
+    id: "smart-home",
+    label: "Smarthem",
+    icon: HousePlug,
   },
 ];
 
@@ -88,6 +95,18 @@ const StartShoppingTab = dynamic(
   }
 );
 
+const StartSmartHomeTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/StartSmartHomeTab"
+    ),
+  {
+    loading: () => (
+      <StartTabLoading label="Smarthem" />
+    ),
+  }
+);
+
 export default function StartTabs({
   everydayContent,
 }: StartTabsProps) {
@@ -111,6 +130,9 @@ export default function StartTabs({
       case "shopping":
         return <StartShoppingTab />;
 
+      case "smart-home":
+        return <StartSmartHomeTab />;
+
       default:
         return everydayContent;
     }
@@ -118,7 +140,7 @@ export default function StartTabs({
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-5 grid w-full grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
+      <div className="mb-5 grid w-full grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
         {tabs.map(
           (tab) => {
             const isActive =
