@@ -16,6 +16,7 @@ import {
 } from "react";
 
 import Card from "@/components/ui/Card";
+import { getGoogleCalendarData } from "@/lib/google-calendar-client";
 
 type GoogleCalendarEvent = {
   id: string;
@@ -27,11 +28,7 @@ type GoogleCalendarEvent = {
   htmlLink: string | null;
 };
 
-type GoogleCalendarResponse = {
-  connected?: boolean;
-  events?: GoogleCalendarEvent[];
-  error?: string;
-};
+
 
 type EventGroup = {
   key: string;
@@ -379,27 +376,12 @@ export default function GoogleCalendarWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadEvents = useCallback(async () => {
+  const loadEvents = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(
-        "/api/google-calendar",
-        {
-          cache: "no-store",
-        }
-      );
-
-      const data =
-        (await response.json()) as GoogleCalendarResponse;
-
-      if (!response.ok || !data.connected) {
-        throw new Error(
-          data.error ||
-            "Google Kalender kunde inte hämtas."
-        );
-      }
+      const data = await getGoogleCalendarData({ forceRefresh });
 
       setEvents(data.events ?? []);
     } catch (loadError) {
@@ -514,7 +496,7 @@ export default function GoogleCalendarWidget() {
 
           <button
             type="button"
-            onClick={() => void loadEvents()}
+            onClick={() => void loadEvents(true)}
             className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose-300/20 bg-white/[0.04] px-3 py-2 text-sm font-medium text-rose-200 transition hover:bg-white/[0.08]"
           >
             <RefreshCw size={15} />

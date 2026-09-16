@@ -6,12 +6,22 @@ import PollenWidget from "@/components/dashboard/PollenWidget";
 import StartTabs from "@/components/dashboard/StartTabs";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 import WidgetGate from "@/components/dashboard/WidgetGate";
+
 import {
   getWidgetGroup,
 } from "@/config/widgets";
+
+import type {
+  AppSettings,
+} from "@/lib/app-settings-client";
+
 import {
   buildDashboardWidgets,
 } from "@/lib/dashboard-widgets";
+
+type DashboardProps = {
+  initialSettings: AppSettings;
+};
 
 const startEverydayConfig =
   getWidgetGroup("start-everyday");
@@ -25,7 +35,9 @@ const weatherContentMap = {
   pollen: <PollenWidget />,
 };
 
-export default function Dashboard() {
+export default function Dashboard({
+  initialSettings,
+}: DashboardProps) {
   const everydayWidget =
     startEverydayConfig.widgets[0];
 
@@ -62,6 +74,7 @@ export default function Dashboard() {
   return (
     <div className="w-full min-w-0">
       <DashboardTabs
+        initialSettings={initialSettings}
         startContent={startContent}
         weatherContent={weatherContent}
       />

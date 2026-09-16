@@ -1,7 +1,14 @@
 import Dashboard from "@/components/dashboard/Dashboard";
 import Header from "@/components/layout/Header";
 
-export default function Home() {
+import {
+  getInitialAppSettings,
+} from "@/lib/app-settings-server";
+
+export default async function Home() {
+  const initialSettings =
+    await getInitialAppSettings();
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
       <div className="pointer-events-none fixed -left-32 -top-32 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl" />
@@ -13,8 +20,15 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 bg-slate-950/15" />
 
       <div className="relative z-10 mx-auto max-w-7xl p-4 sm:p-6 lg:p-10">
-        <Header />
-        <Dashboard />
+        <Header
+          dashboardName={
+            initialSettings.dashboardName
+          }
+        />
+
+        <Dashboard
+          initialSettings={initialSettings}
+        />
       </div>
     </main>
   );

@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+type HeaderProps = {
+  dashboardName: string;
+};
 
-import {
-  DEFAULT_APP_SETTINGS,
-  getAppSettings,
-} from "@/lib/app-settings-client";
-
-export default function Header() {
-  const [dashboardName, setDashboardName] =
-    useState(
-      DEFAULT_APP_SETTINGS.dashboardName
-    );
-
+export default function Header({
+  dashboardName,
+}: HeaderProps) {
   const date = new Date().toLocaleDateString(
     "sv-SE",
     {
@@ -22,40 +16,6 @@ export default function Header() {
       year: "numeric",
     }
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadDashboardName() {
-      try {
-        const settings =
-          await getAppSettings();
-
-        if (!cancelled) {
-          setDashboardName(
-            settings.dashboardName
-          );
-        }
-      } catch (error) {
-        console.error(
-          "Kunde inte läsa dashboardnamnet:",
-          error
-        );
-
-        if (!cancelled) {
-          setDashboardName(
-            DEFAULT_APP_SETTINGS.dashboardName
-          );
-        }
-      }
-    }
-
-    void loadDashboardName();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <header className="mb-8">

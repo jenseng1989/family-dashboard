@@ -30,6 +30,7 @@ import {
 } from "@/lib/family";
 import { getFamilyMembersFromDatabase } from "@/lib/family-db";
 import { supabase } from "@/lib/supabase";
+import { getGoogleCalendarData } from "@/lib/google-calendar-client";
 
 type GoogleCalendarEvent = {
   id: string;
@@ -41,11 +42,7 @@ type GoogleCalendarEvent = {
   htmlLink: string | null;
 };
 
-type GoogleCalendarResponse = {
-  connected?: boolean;
-  events?: GoogleCalendarEvent[];
-  error?: string;
-};
+
 
 
 type CountdownRow = {
@@ -465,18 +462,7 @@ export default function EverydayOverview() {
       // källa hindrar inte de andra från att uppdatera sin del.
       const calendarTask = (async () => {
         try {
-          const response = await fetch("/api/google-calendar", {
-            cache: "no-store",
-          });
-          if (!response.ok) {
-            throw new Error(`Google Kalender svarade ${response.status}.`);
-          }
-
-          const data =
-            (await response.json()) as GoogleCalendarResponse;
-          if (data.connected !== true) {
-            throw new Error(data.error ?? "Google Kalender är inte ansluten.");
-          }
+          const data = await getGoogleCalendarData({ forceRefresh });
 
           if (isCurrent()) setCalendarEvents(data.events ?? []);
         } catch (error) {

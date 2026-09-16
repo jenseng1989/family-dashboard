@@ -9,20 +9,21 @@ import {
   Settings,
   Users,
 } from "lucide-react";
+
 import dynamic from "next/dynamic";
 import Link from "next/link";
+
 import {
   type ReactNode,
   useEffect,
   useState,
 } from "react";
 
-import {
-  DEFAULT_APP_SETTINGS,
-  getAppSettings,
-  type AppSettings,
-  type AppTabId,
+import type {
+  AppSettings,
+  AppTabId,
 } from "@/lib/app-settings-client";
+
 import {
   trackDashboardEvent,
 } from "@/lib/dashboard-analytics";
@@ -30,6 +31,7 @@ import {
 type TabId = AppTabId;
 
 type DashboardTabsProps = {
+  initialSettings: AppSettings;
   startContent: ReactNode;
   weatherContent: ReactNode;
 };
@@ -66,10 +68,11 @@ function TabLoading({
  * Dessa tre flikar innehåller klientkompatibla
  * moduler och kan därför lazy-loadas säkert.
  *
- * Väder skickas däremot in som server-renderat
- * innehåll från Dashboard.tsx eftersom WeatherWidget
- * är en async Server Component.
+ * Väder skickas in som server-renderat
+ * innehåll från Dashboard.tsx eftersom
+ * WeatherWidget är en async Server Component.
  */
+
 const FamilyDashboardTab = dynamic(
   () =>
     import(
@@ -140,89 +143,31 @@ const tabs: TabButton[] = [
 ];
 
 export default function DashboardTabs({
+  initialSettings,
   startContent,
   weatherContent,
 }: DashboardTabsProps) {
   const [activeTab, setActiveTab] =
-    useState<TabId>("home");
-
-  const [appSettings, setAppSettings] =
-    useState<AppSettings>(
-      DEFAULT_APP_SETTINGS
+    useState<TabId>(
+      initialSettings.defaultTab
     );
 
-  const [settingsLoaded, setSettingsLoaded] =
-    useState(false);
-
   useEffect(() => {
-    let cancelled = false;
+    document.title =
+      initialSettings.dashboardName;
 
-    async function loadAppSettings() {
-      try {
-        const loadedSettings =
-          await getAppSettings();
+    void trackDashboardEvent(
+      "dashboard_view"
+    );
 
-        if (cancelled) {
-          return;
-        }
-
-        setAppSettings(
-          loadedSettings
-        );
-        setActiveTab(
-          loadedSettings.defaultTab
-        );
-
-        void trackDashboardEvent(
-          "dashboard_view"
-        );
-        void trackDashboardEvent(
-          "tab_view",
-          loadedSettings.defaultTab
-        );
-
-        document.title =
-          loadedSettings.dashboardName;
-      } catch (error) {
-        console.error(
-          "Kunde inte läsa appinställningar i dashboarden:",
-          error
-        );
-
-        if (!cancelled) {
-          setAppSettings(
-            DEFAULT_APP_SETTINGS
-          );
-          setActiveTab(
-            DEFAULT_APP_SETTINGS.defaultTab
-          );
-
-          void trackDashboardEvent(
-            "dashboard_view"
-          );
-          void trackDashboardEvent(
-            "tab_view",
-            DEFAULT_APP_SETTINGS.defaultTab
-          );
-
-          document.title =
-            DEFAULT_APP_SETTINGS.dashboardName;
-        }
-      } finally {
-        if (!cancelled) {
-          setSettingsLoaded(
-            true
-          );
-        }
-      }
-    }
-
-    void loadAppSettings();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void trackDashboardEvent(
+      "tab_view",
+      initialSettings.defaultTab
+    );
+  }, [
+    initialSettings.dashboardName,
+    initialSettings.defaultTab,
+  ]);
 
   function changeTab(
     tabId: TabId
@@ -239,8 +184,7 @@ export default function DashboardTabs({
     );
   }
 
-  function getActiveContent():
-    ReactNode {
+  function getActiveContent(): ReactNode {
     switch (activeTab) {
       case "home":
         return startContent;
@@ -268,23 +212,6 @@ export default function DashboardTabs({
     }
   }
 
-  if (!settingsLoaded) {
-    return (
-      <div className="flex min-h-[220px] w-full items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-400">
-          <LoaderCircle
-            size={21}
-            className="animate-spin"
-          />
-
-          <span className="text-sm font-semibold">
-            Startar dashboarden…
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full min-w-0">
       <div className="mb-6 flex items-stretch gap-2">
@@ -296,68 +223,57 @@ export default function DashboardTabs({
             className="grid w-full grid-cols-5 gap-2"
             role="tablist"
           >
-            {tabs.map(
-              (tab) => {
-                const isActive =
-                  activeTab ===
-                  tab.id;
+            {tabs.map((tab) => {
+              const isActive =
+                activeTab === tab.id;
 
-                const isExploreTab =
-                  tab.id ===
-                  "fun";
+              const isExploreTab =
+                tab.id === "fun";
 
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() =>
+                    changeTab(tab.id)
+                  }
+                  className={[
+                    "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
+                    "text-xs font-semibold transition duration-300 sm:text-sm",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
+                    isActive && isExploreTab
+                      ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
+                      : isActive
+                        ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
+                >
+                  <span
+                    className={
                       isActive
+                        ? "shrink-0 text-white"
+                        : "shrink-0 text-slate-400"
                     }
-                    onClick={() =>
-                      changeTab(
-                        tab.id
-                      )
-                    }
-                    className={[
-                      "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
-                      "text-xs font-semibold transition duration-300 sm:text-sm",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                      isActive &&
-                      isExploreTab
-                        ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
-                        : isActive
-                          ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
-                          : "text-slate-300 hover:bg-white/10 hover:text-white",
-                    ].join(
-                      " "
-                    )}
                   >
-                    <span
-                      className={
-                        isActive
-                          ? "shrink-0 text-white"
-                          : "shrink-0 text-slate-400"
-                      }
-                    >
-                      {tab.icon}
-                    </span>
+                    {tab.icon}
+                  </span>
 
-                    <span className="hidden min-w-0 truncate md:inline">
-                      {tab.label}
-                    </span>
+                  <span className="hidden min-w-0 truncate md:inline">
+                    {tab.label}
+                  </span>
 
-                    <span className="min-w-0 truncate md:hidden">
-                      {tab.shortLabel}
-                    </span>
-                  </button>
-                );
-              }
-            )}
+                  <span className="min-w-0 truncate md:hidden">
+                    {tab.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </nav>
 
-        {appSettings.showAdminButton && (
+        {initialSettings.showAdminButton && (
           <Link
             href="/admin"
             aria-label="Öppna admin"
