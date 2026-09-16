@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -7,11 +8,21 @@ import {
   ShoppingCart,
   Sparkles,
 } from "lucide-react";
+
 import dynamic from "next/dynamic";
+
 import {
   type ReactNode,
   useState,
 } from "react";
+
+/*
+ * Smarthem är tillfälligt dolt.
+ *
+ * All kod och integration finns kvar.
+ * Ändra till true när Smarthem ska aktiveras igen.
+ */
+const ENABLE_SMART_HOME = false;
 
 type StartTabId =
   | "everyday"
@@ -23,11 +34,13 @@ type StartTabsProps = {
   everydayContent: ReactNode;
 };
 
-const tabs: Array<{
+type StartTab = {
   id: StartTabId;
   label: string;
   icon: typeof Sparkles;
-}> = [
+};
+
+const tabs: StartTab[] = [
   {
     id: "everyday",
     label: "Idag",
@@ -43,11 +56,16 @@ const tabs: Array<{
     label: "Inköp",
     icon: ShoppingCart,
   },
-  {
-    id: "smart-home",
-    label: "Smarthem",
-    icon: HousePlug,
-  },
+
+  ...(ENABLE_SMART_HOME
+    ? [
+        {
+          id: "smart-home" as const,
+          label: "Smarthem",
+          icon: HousePlug,
+        },
+      ]
+    : []),
 ];
 
 function StartTabLoading({
@@ -95,6 +113,10 @@ const StartShoppingTab = dynamic(
   }
 );
 
+/*
+ * Smarthem-komponenten behålls.
+ * Den laddas inte så länge fliken är dold.
+ */
 const StartSmartHomeTab = dynamic(
   () =>
     import(
@@ -113,13 +135,11 @@ export default function StartTabs({
   const [
     activeTab,
     setActiveTab,
-  ] =
-    useState<StartTabId>(
-      "everyday"
-    );
+  ] = useState<StartTabId>(
+    "everyday"
+  );
 
-  function getActiveContent():
-    ReactNode {
+  function getActiveContent(): ReactNode {
     switch (activeTab) {
       case "everyday":
         return everydayContent;
@@ -131,7 +151,9 @@ export default function StartTabs({
         return <StartShoppingTab />;
 
       case "smart-home":
-        return <StartSmartHomeTab />;
+        return ENABLE_SMART_HOME
+          ? <StartSmartHomeTab />
+          : everydayContent;
 
       default:
         return everydayContent;
@@ -140,44 +162,43 @@ export default function StartTabs({
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-5 grid w-full grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
-        {tabs.map(
-          (tab) => {
-            const isActive =
-              activeTab ===
-              tab.id;
+      <div
+        className="mb-5 grid w-full gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl"
+        style={{
+          gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive =
+            activeTab === tab.id;
 
-            const Icon =
-              tab.icon;
+          const Icon = tab.icon;
 
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() =>
-                  setActiveTab(
-                    tab.id
-                  )
-                }
-                className={[
-                  "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-semibold transition sm:px-3 sm:text-sm",
-                  isActive
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-950/25"
-                    : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
-                ].join(" ")}
-              >
-                <Icon
-                  size={17}
-                  className="shrink-0"
-                />
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() =>
+                setActiveTab(tab.id)
+              }
+              className={[
+                "flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-semibold transition sm:px-3 sm:text-sm",
+                isActive
+                  ? "bg-blue-500 text-white shadow-lg shadow-blue-950/25"
+                  : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
+              ].join(" ")}
+            >
+              <Icon
+                size={17}
+                className="shrink-0"
+              />
 
-                <span className="truncate">
-                  {tab.label}
-                </span>
-              </button>
-            );
-          }
-        )}
+              <span className="truncate">
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div
