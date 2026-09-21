@@ -2,6 +2,7 @@
 
 import {
   CalendarDays,
+  CalendarCheck2,
   CloudSun,
   Clock3,
   Home,
@@ -705,20 +706,13 @@ export default function EverydayOverview() {
 
   const dayPhase = now ? getDayPhase(now.getHours()) : null;
 
-  const weatherSummary = weather
-    ? `${Math.round(weather.temperature)}° · ${weather.description}`
-    : "Väder saknas";
-
-  const electricitySummary =
-    electricity?.currentPrice
-      ? `${formatPrice(
-          electricity.currentPrice.SEK_per_kWh
-        )} kr/kWh`
-      : "Pris saknas";
+  const electricitySummary = electricity?.currentPrice
+    ? `${formatPrice(electricity.currentPrice.SEK_per_kWh)} kr/kWh`
+    : "Pris saknas";
 
   return (
-    <div className="grid w-full min-w-0 grid-cols-12 gap-5">
-      <section className="relative col-span-12 overflow-hidden rounded-[2rem] border border-blue-300/15 bg-gradient-to-br from-slate-950 via-blue-950/35 to-violet-950/25 p-5 shadow-2xl shadow-blue-950/20 sm:p-6 lg:p-7">
+    <div className="grid w-full min-w-0 grid-cols-12 gap-4 sm:gap-5">
+      <section className="relative col-span-12 min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950/40 p-4 shadow-xl shadow-black/10 sm:p-6 lg:p-7">
         <div
           className={[
             "pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full blur-3xl transition-colors duration-700",
@@ -728,7 +722,7 @@ export default function EverydayOverview() {
         <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-violet-400/[0.08] blur-3xl" />
 
         <div className="relative">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-blue-300">
                 <Home size={18} />
@@ -737,7 +731,7 @@ export default function EverydayOverview() {
                 </p>
               </div>
 
-              <h2 className="mt-3 text-3xl font-black text-white sm:text-4xl">
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
                 {now ? getGreeting(now.getHours()) : "Hej"} 👋
               </h2>
 
@@ -775,22 +769,13 @@ export default function EverydayOverview() {
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-sky-300/15 bg-sky-400/[0.08] px-3 py-1.5 text-xs font-semibold text-sky-100">
-                  🌤 {weatherSummary}
-                </span>
-
-                <span className="rounded-full border border-amber-300/15 bg-amber-400/[0.08] px-3 py-1.5 text-xs font-semibold text-amber-100">
-                  ⚡ {electricitySummary}
-                </span>
-              </div>
             </div>
 
             <button
               type="button"
               onClick={() => void loadData(true, true)}
               disabled={isLoading}
-              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-400/20 disabled:opacity-50 sm:w-auto"
+              className="flex w-full shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw
                 size={16}
@@ -813,10 +798,10 @@ export default function EverydayOverview() {
             </div>
           )}
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-fuchsia-300/10 bg-fuchsia-400/[0.05] px-4 py-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fuchsia-300">
+                <p className="text-xs font-semibold uppercase tracking-[0.13em] text-fuchsia-300">
                   Nästa familjehändelse
                 </p>
                 <p className="mt-1 truncate text-sm font-semibold text-slate-200">
@@ -830,9 +815,9 @@ export default function EverydayOverview() {
               )}
             </div>
 
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.05] px-4 py-3">
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                <p className="text-xs font-semibold uppercase tracking-[0.13em] text-cyan-300">
                   Nästa nedräkning
                 </p>
                 <p className="mt-1 truncate text-sm font-semibold text-slate-200">
@@ -847,20 +832,28 @@ export default function EverydayOverview() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <article className="rounded-3xl border border-violet-300/15 bg-gradient-to-br from-violet-400/[0.10] via-blue-400/[0.05] to-transparent p-4 sm:p-5">
-              <div className="flex items-center gap-2 text-violet-200">
-                <CalendarDays size={17} />
-                <p className="text-xs font-semibold uppercase tracking-[0.16em]">
-                  {activeCalendarEvents.length > 0
-                    ? "Pågående"
-                    : "Nästa på tur"}
-                </p>
+          <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
+            <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {activeCalendarEvents.length > 0
+                  ? "Pågående"
+                  : "Nästa på tur"}
+              </p>
+
+              <div className="mt-4 flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-300/15 bg-red-400/[0.08] text-red-300">
+                  <CalendarCheck2 size={18} aria-hidden="true" />
+                </div>
+                <div className="flex min-h-10 items-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-red-300">
+                    Kalender
+                  </p>
+                </div>
               </div>
 
               {calendarHeroEvents.length > 0 ? (
                 <>
-                  <div className="mt-4 space-y-4">
+                  <div className="mt-3 space-y-4">
                     {calendarHeroEvents.map((event, index) => {
                       const isToday = Boolean(
                         calendarTodayKey &&
@@ -948,9 +941,25 @@ export default function EverydayOverview() {
                   </p>
                 </div>
               )}
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-300">
+                    <Zap size={18} aria-hidden="true" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.13em] text-amber-300">
+                      Aktuellt elpris
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-white">
+                      {electricitySummary}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </article>
 
-            <article className="rounded-3xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+            <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 {dayPhase?.recommendationTitle ?? "Dagens läge"}
               </p>
@@ -1007,7 +1016,7 @@ export default function EverydayOverview() {
           </div>
 
           {weather && (
-            <article className="mt-4 rounded-3xl border border-sky-300/15 bg-gradient-to-br from-sky-400/[0.08] via-blue-400/[0.04] to-transparent p-4 sm:p-5">
+            <article className="mt-4 min-w-0 rounded-2xl border border-white/10 bg-white/[0.045] p-4 sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-300/15 bg-sky-400/10 text-sky-300">
