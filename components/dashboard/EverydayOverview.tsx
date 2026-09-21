@@ -775,7 +775,7 @@ export default function EverydayOverview() {
               type="button"
               onClick={() => void loadData(true, true)}
               disabled={isLoading}
-              className="flex w-full shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:opacity-50 sm:w-auto"
+              className="flex w-auto shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:opacity-50 sm:px-4 sm:py-2.5"
             >
               <RefreshCw
                 size={16}
@@ -799,7 +799,7 @@ export default function EverydayOverview() {
           )}
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4">
+            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.13em] text-fuchsia-300">
                   Nästa familjehändelse
@@ -809,13 +809,13 @@ export default function EverydayOverview() {
                 </p>
               </div>
               {nextFamilyEvent && (
-                <span className="shrink-0 text-sm font-bold text-white">
+                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
                   {getDaysLabel(nextFamilyEvent.daysUntil)}
                 </span>
               )}
             </div>
 
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4">
+            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.13em] text-cyan-300">
                   Nästa nedräkning
@@ -825,7 +825,7 @@ export default function EverydayOverview() {
                 </p>
               </div>
               {nextCountdown && (
-                <span className="shrink-0 text-sm font-bold text-white">
+                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
                   {getDaysLabel(getDaysUntil(nextCountdown.event_date))}
                 </span>
               )}
@@ -840,7 +840,7 @@ export default function EverydayOverview() {
                   : "Nästa på tur"}
               </p>
 
-              <div className="mt-4 flex items-start gap-3">
+              <div className="mt-2 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-300/15 bg-red-400/[0.08] text-red-300">
                   <CalendarCheck2 size={18} aria-hidden="true" />
                 </div>
@@ -1035,31 +1035,31 @@ export default function EverydayOverview() {
                         {weather.description}
                       </p>
                     </div>
-                    <p className="mt-1 text-sm text-slate-400">
-                      {weather.location} · Högst{" "}
-                      {Math.round(weather.temperatureMax)}° · Lägst{" "}
-                      {Math.round(weather.temperatureMin)}° · Känns som{" "}
-                      {Math.round(weather.apparentTemperature)}°
-                    </p>
+                    <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-sm text-slate-400">
+                      <span>{weather.location}</span>
+                      <span>Högst {Math.round(weather.temperatureMax)}°</span>
+                      <span>Lägst {Math.round(weather.temperatureMin)}°</span>
+                      <span>Känns som {Math.round(weather.apparentTemperature)}°</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 sm:min-w-[20rem]">
-                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                <div className="grid grid-cols-3 gap-2.5 sm:min-w-[20rem]">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/20 px-2.5 py-3 sm:px-3">
                     <p className="text-[11px] text-slate-500">🌧 Regn</p>
                     <p className="mt-1 text-sm font-bold text-white">
                       {Math.round(weather.precipitationProbability)}%
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/20 px-2.5 py-3 sm:px-3">
                     <p className="text-[11px] text-slate-500">🌬 Vind</p>
                     <p className="mt-1 text-sm font-bold text-white">
                       {Math.round(weather.windSpeed)} m/s
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2.5">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/20 px-2.5 py-3 sm:px-3">
                     <p className="text-[11px] text-slate-500">☀️ UV</p>
                     <p className="mt-1 text-sm font-bold text-white">
                       {Math.round(weather.uvIndex)}
