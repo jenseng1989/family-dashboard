@@ -6,6 +6,8 @@ import {
   CloudSun,
   Clock3,
   Home,
+  Gift,
+  Hourglass,
   MapPin,
   RefreshCw,
   TriangleAlert,
@@ -798,40 +800,6 @@ export default function EverydayOverview() {
             </div>
           )}
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.13em] text-fuchsia-300">
-                  Nästa familjehändelse
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold text-slate-200">
-                  {nextFamilyEvent?.title ?? "Ingen kommande händelse"}
-                </p>
-              </div>
-              {nextFamilyEvent && (
-                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
-                  {getDaysLabel(nextFamilyEvent.daysUntil)}
-                </span>
-              )}
-            </div>
-
-            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.13em] text-cyan-300">
-                  Nästa nedräkning
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold text-slate-200">
-                  {nextCountdown?.title ?? "Ingen aktiv nedräkning"}
-                </p>
-              </div>
-              {nextCountdown && (
-                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
-                  {getDaysLabel(getDaysUntil(nextCountdown.event_date))}
-                </span>
-              )}
-            </div>
-          </div>
-
           <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-2">
             <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -1013,6 +981,50 @@ export default function EverydayOverview() {
                 </div>
               </div>
             </article>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/15 bg-fuchsia-400/[0.08] text-fuchsia-300">
+                  <Gift size={18} aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-fuchsia-300">
+                    Nästa familjehändelse
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-200">
+                    {nextFamilyEvent?.title ?? "Ingen kommande händelse"}
+                  </p>
+                </div>
+              </div>
+              {nextFamilyEvent && (
+                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
+                  {getDaysLabel(nextFamilyEvent.daysUntil)}
+                </span>
+              )}
+            </div>
+
+            <div className="flex min-w-0 flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-400/[0.08] text-cyan-300">
+                  <Hourglass size={18} aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-cyan-300">
+                    Nästa nedräkning
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-200">
+                    {nextCountdown?.title ?? "Ingen aktiv nedräkning"}
+                  </p>
+                </div>
+              </div>
+              {nextCountdown && (
+                <span className="shrink-0 whitespace-nowrap text-sm font-bold text-white">
+                  {getDaysLabel(getDaysUntil(nextCountdown.event_date))}
+                </span>
+              )}
+            </div>
           </div>
 
           {weather && (
