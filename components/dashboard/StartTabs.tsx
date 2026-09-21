@@ -3,6 +3,7 @@
 
 import {
   Home,
+  GraduationCap,
   HousePlug,
   LoaderCircle,
   ShoppingCart,
@@ -28,6 +29,7 @@ type StartTabId =
   | "everyday"
   | "home"
   | "shopping"
+  | "school"
   | "smart-home";
 
 type StartTabsProps = {
@@ -55,6 +57,11 @@ const tabs: StartTab[] = [
     id: "shopping",
     label: "Inköp",
     icon: ShoppingCart,
+  },
+  {
+    id: "school",
+    label: "Skola",
+    icon: GraduationCap,
   },
 
   ...(ENABLE_SMART_HOME
@@ -113,6 +120,18 @@ const StartShoppingTab = dynamic(
   }
 );
 
+const StartSchoolTab = dynamic(
+  () =>
+    import(
+      "@/components/dashboard/tabs/StartSchoolTab"
+    ),
+  {
+    loading: () => (
+      <StartTabLoading label="Skola" />
+    ),
+  }
+);
+
 /*
  * Smarthem-komponenten behålls.
  * Den laddas inte så länge fliken är dold.
@@ -149,6 +168,9 @@ export default function StartTabs({
 
       case "shopping":
         return <StartShoppingTab />;
+
+      case "school":
+        return <StartSchoolTab />;
 
       case "smart-home":
         return ENABLE_SMART_HOME
