@@ -91,12 +91,12 @@ function SummaryStat({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+    <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
         {label}
       </p>
 
-      <p className="mt-2 text-2xl font-bold text-white">
+      <p className="mt-1.5 text-xl font-bold text-white sm:mt-2 sm:text-2xl">
         {value}
       </p>
 
@@ -438,8 +438,8 @@ export default function FunOtherDashboard() {
         </header>
 
         {/* Fast informationsdel – administreras inte som widget */}
-        <div className="mb-5 rounded-3xl border border-emerald-300/10 bg-gradient-to-br from-emerald-400/[0.08] via-slate-950/30 to-amber-400/[0.05] p-5">
-          <div className="flex flex-col gap-5">
+        <div className="mb-5 rounded-3xl border border-emerald-300/10 bg-gradient-to-br from-emerald-400/[0.08] via-slate-950/30 to-amber-400/[0.05] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:gap-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
@@ -448,7 +448,7 @@ export default function FunOtherDashboard() {
                   24 timmarna
                 </p>
 
-                <h3 className="mt-2 text-2xl font-bold text-white">
+                <h3 className="mt-1.5 text-xl font-bold text-white sm:mt-2 sm:text-2xl">
                   {data.summary.largest
                     ? `Starkast: M ${formatMagnitude(
                         data.summary
@@ -486,7 +486,7 @@ export default function FunOtherDashboard() {
               </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
               <SummaryStat
                 label="M4+"
                 value={String(
@@ -525,7 +525,7 @@ export default function FunOtherDashboard() {
             </div>
 
             {data.summary.latestM4 && (
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:p-4">
                 <Clock3
                   size={19}
                   className="mt-0.5 shrink-0 text-emerald-300"

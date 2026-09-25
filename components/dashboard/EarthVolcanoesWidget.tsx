@@ -28,7 +28,7 @@ export default function EarthVolcanoesWidget({
       storageKey="earth-volcanoes"
     >
       {error || !data ? (
-        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
+        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <AlertTriangle
               size={20}
@@ -48,14 +48,14 @@ export default function EarthVolcanoesWidget({
         </div>
       ) : (
         <>
-          <div className="mb-4 rounded-2xl border border-orange-300/10 bg-orange-400/[0.06] p-4">
+          <div className="mb-4 rounded-2xl border border-orange-300/10 bg-orange-400/[0.06] p-3.5 sm:p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-300">
                   Fortsatta utbrott
                 </p>
 
-                <p className="mt-1 text-3xl font-bold text-white">
+                <p className="mt-1 text-2xl font-bold text-white sm:text-3xl">
                   {data.total}
                 </p>
 
@@ -86,10 +86,10 @@ export default function EarthVolcanoesWidget({
             {data.volcanoes.map((volcano) => (
               <article
                 key={`${volcano.name}-${volcano.country}`}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 transition hover:bg-white/[0.07] sm:p-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-300/15 bg-orange-400/10 text-orange-300">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-300/15 bg-orange-400/10 text-orange-300 sm:h-11 sm:w-11">
                     <Flame size={22} />
                   </div>
 
@@ -120,7 +120,7 @@ export default function EarthVolcanoesWidget({
                       </a>
                     </div>
 
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="mt-2.5 grid gap-2 sm:mt-3 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2">
                         <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
                           Start
@@ -149,7 +149,7 @@ export default function EarthVolcanoesWidget({
             ))}
           </div>
 
-          <p className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
+          <p className="mt-3.5 border-t border-white/10 pt-3.5 text-xs leading-5 text-slate-500 sm:mt-4 sm:pt-4">
             Smithsonian påpekar att listan över fortsatta utbrott uppdateras i större omgångar, medan Weekly Volcanic Activity Report innehåller nyare aktivitet mellan databasuppdateringarna.
           </p>
         </>

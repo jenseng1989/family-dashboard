@@ -160,11 +160,11 @@ function EarthquakeCard({
     );
 
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]">
-      <div className="flex items-start gap-4">
+    <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 transition hover:bg-white/[0.07] sm:p-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <div
           className={[
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-black",
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg font-black sm:h-14 sm:w-14 sm:text-xl",
             getMagnitudeClasses(
               earthquake.magnitude
             ),
@@ -205,7 +205,7 @@ function EarthquakeCard({
 
           <div
             className={[
-              "mt-4 rounded-xl border px-3 py-3",
+              "mt-3 rounded-xl border px-3 py-2.5 sm:mt-4 sm:py-3",
               getMagnitudeClasses(
                 earthquake.magnitude
               ),
@@ -219,7 +219,7 @@ function EarthquakeCard({
             </p>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-3">
             <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/25 px-3 py-2 text-xs text-slate-400">
               <Ruler size={14} className="shrink-0 text-emerald-300" />
               {depthInterpretation} ·{" "}
@@ -284,7 +284,7 @@ export default function EarthEarthquakesWidget({
       </div>
 
       {earthquakes.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center sm:p-8">
           <Globe2
             size={32}
             className="mx-auto text-emerald-300"
@@ -309,7 +309,7 @@ export default function EarthEarthquakesWidget({
         </div>
       )}
 
-      <p className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-500">
+      <p className="mt-3.5 border-t border-white/10 pt-3.5 text-xs text-slate-500 sm:mt-4 sm:pt-4">
         USGS realtidsflöden uppdateras löpande. Magnitud, plats och djup kan justeras när fler mätningar analyseras.
       </p>
     </Card>

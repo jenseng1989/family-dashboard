@@ -50,6 +50,13 @@ const MAX_VOLCANOES = 12;
 const MEMORY_CACHE_TTL_MS =
   60 * 60 * 1000;
 
+const FAILURE_COOLDOWN_MS =
+  5 * 60 * 1000;
+
+const WFS_MAX_ATTEMPTS = 3;
+
+const WFS_RETRY_DELAY_MS = 700;
+
 const CURRENT_ERUPTIONS_URL =
   "https://volcano.si.edu/gvp_currenteruptions.cfm";
 
@@ -65,6 +72,10 @@ let cachedPayload:
   VolcanoPayload | null = null;
 
 let cachedAt = 0;
+
+let failureCooldownUntil = 0;
+
+let lastFetchError: unknown = null;
 
 let inFlight:
   Promise<VolcanoPayload> | null =
@@ -586,6 +597,44 @@ function parseGeoJsonEruptions(
     );
 }
 
+function wait(
+  milliseconds: number
+): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+function isRetryableFetchError(
+  error: unknown
+): boolean {
+  if (
+    error instanceof TypeError &&
+    error.message === "fetch failed"
+  ) {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    const message =
+      error.message.toLowerCase();
+
+    return (
+      message.includes(
+        "econnreset"
+      ) ||
+      message.includes(
+        "socket"
+      ) ||
+      message.includes(
+        "network"
+      )
+    );
+  }
+
+  return false;
+}
+
 async function fetchWfsSource():
   Promise<VolcanoItem[]> {
   /*
@@ -597,33 +646,101 @@ async function fetchWfsSource():
    * no-store, men resultatet
    * cacheas i serverprocessens
    * minne i en timme.
+   *
+   * Smithsonian WFS kan ibland
+   * stänga anslutningen mitt under
+   * överföringen (ECONNRESET).
+   * Vi gör därför ett fåtal försök
+   * med kort backoff innan routen
+   * går vidare till befintlig
+   * stale/error-hantering.
    */
-  const response =
-    await fetch(
-      WFS_ERUPTIONS_URL,
-      {
-        headers: {
-          Accept:
-            "application/json",
-          "User-Agent":
-            "Family-Dashboard/1.0",
-        },
-        cache:
-          "no-store",
-      }
-    );
+  let lastError: unknown = null;
 
-  if (!response.ok) {
-    throw new Error(
-      `Smithsonian WFS svarade med ${response.status}`
-    );
+  for (
+    let attempt = 1;
+    attempt <= WFS_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const response =
+        await fetch(
+          WFS_ERUPTIONS_URL,
+          {
+            headers: {
+              Accept:
+                "application/json",
+              "User-Agent":
+                "Family-Dashboard/1.0",
+            },
+            cache:
+              "no-store",
+          }
+        );
+
+      if (!response.ok) {
+        const error =
+          new Error(
+            `Smithsonian WFS svarade med ${response.status}`
+          );
+
+        /*
+         * 5xx är normalt tillfälliga
+         * serverfel och får därför
+         * samma korta retry som
+         * nätverksfel. 4xx returneras
+         * direkt eftersom ett nytt
+         * identiskt försök inte hjälper.
+         */
+        if (
+          response.status >= 500 &&
+          attempt <
+            WFS_MAX_ATTEMPTS
+        ) {
+          lastError = error;
+
+          await wait(
+            WFS_RETRY_DELAY_MS *
+              attempt
+          );
+
+          continue;
+        }
+
+        throw error;
+      }
+
+      const data: unknown =
+        await response.json();
+
+      return parseGeoJsonEruptions(
+        data
+      );
+    } catch (error) {
+      lastError = error;
+
+      if (
+        attempt >=
+          WFS_MAX_ATTEMPTS ||
+        !isRetryableFetchError(
+          error
+        )
+      ) {
+        throw error;
+      }
+
+      await wait(
+        WFS_RETRY_DELAY_MS *
+          attempt
+      );
+    }
   }
 
-  const data: unknown =
-    await response.json();
-
-  return parseGeoJsonEruptions(
-    data
+  throw (
+    lastError ??
+    new Error(
+      "Smithsonian WFS kunde inte hämtas."
+    )
   );
 }
 
@@ -646,49 +763,77 @@ async function loadPayload():
     return cachedPayload;
   }
 
+  if (
+    Date.now() <
+      failureCooldownUntil
+  ) {
+    if (cachedPayload) {
+      return cachedPayload;
+    }
+
+    throw (
+      lastFetchError ??
+      new Error(
+        "Smithsonian är tillfälligt otillgängligt."
+      )
+    );
+  }
+
   if (inFlight) {
     return inFlight;
   }
 
   inFlight = (async () => {
-    const volcanoes =
-      await fetchWfsSource();
+    try {
+      const volcanoes =
+        await fetchWfsSource();
 
-    if (
-      volcanoes.length === 0
-    ) {
-      throw new Error(
-        "Kunde inte hitta pågående vulkanutbrott med koordinater."
-      );
+      if (
+        volcanoes.length === 0
+      ) {
+        throw new Error(
+          "Kunde inte hitta pågående vulkanutbrott med koordinater."
+        );
+      }
+
+      const payload:
+        VolcanoPayload = {
+        generatedAt:
+          new Date().toISOString(),
+        source:
+          "Smithsonian Global Volcanism Program",
+        sourceUrl:
+          CURRENT_ERUPTIONS_URL,
+        location:
+          "Göteborg",
+        latitude:
+          GOTHENBURG.latitude,
+        longitude:
+          GOTHENBURG.longitude,
+        maxResults:
+          MAX_VOLCANOES,
+        total:
+          volcanoes.length,
+        volcanoes,
+      };
+
+      cachedPayload =
+        payload;
+      cachedAt =
+        Date.now();
+
+      failureCooldownUntil = 0;
+      lastFetchError = null;
+
+      return payload;
+    } catch (error) {
+      failureCooldownUntil =
+        Date.now() +
+        FAILURE_COOLDOWN_MS;
+      lastFetchError = error;
+
+      throw error;
     }
-
-    const payload:
-      VolcanoPayload = {
-      generatedAt:
-        new Date().toISOString(),
-      source:
-        "Smithsonian Global Volcanism Program",
-      sourceUrl:
-        CURRENT_ERUPTIONS_URL,
-      location:
-        "Göteborg",
-      latitude:
-        GOTHENBURG.latitude,
-      longitude:
-        GOTHENBURG.longitude,
-      maxResults:
-        MAX_VOLCANOES,
-      total:
-        volcanoes.length,
-      volcanoes,
-    };
-
-    cachedPayload =
-      payload;
-    cachedAt =
-      Date.now();
-
-    return payload;
   })();
 
   try {
