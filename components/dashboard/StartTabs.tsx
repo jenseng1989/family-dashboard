@@ -189,6 +189,8 @@ export default function StartTabs({
         style={{
           gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
         }}
+        role="tablist"
+        aria-label="Startflikar"
       >
         {tabs.map((tab) => {
           const isActive =
@@ -200,6 +202,10 @@ export default function StartTabs({
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`start-tabpanel-${tab.id}`}
+              id={`start-tab-${tab.id}`}
               onClick={() =>
                 setActiveTab(tab.id)
               }
@@ -225,6 +231,9 @@ export default function StartTabs({
 
       <div
         key={activeTab}
+        id={`start-tabpanel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`start-tab-${activeTab}`}
         className="w-full min-w-0 animate-[fadeIn_250ms_ease-out]"
       >
         {getActiveContent()}
