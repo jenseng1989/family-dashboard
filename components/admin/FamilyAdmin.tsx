@@ -908,8 +908,8 @@ export default function FamilyAdmin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <Link
               href="/admin"
@@ -922,7 +922,7 @@ export default function FamilyAdmin() {
             </Link>
 
             <div className="mt-4 flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-blue-500 text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-blue-500 text-white sm:h-14 sm:w-14">
                 <Users
                   size={27}
                 />
@@ -997,7 +997,7 @@ export default function FamilyAdmin() {
           )}
 
         {isLoading ? (
-          <div className="mt-5 flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/10">
+          <div className="mt-4 flex min-h-60 items-center justify-center rounded-3xl border border-white/10 bg-white/10 sm:mt-5 sm:min-h-72">
             <div className="flex flex-col items-center gap-3 text-slate-400">
               <LoaderCircle
                 size={30}
@@ -1024,7 +1024,7 @@ export default function FamilyAdmin() {
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-3">
               {activeMembers.map(
                 (
                   member,
@@ -1044,12 +1044,12 @@ export default function FamilyAdmin() {
                       className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl shadow-black/20"
                     >
                       <div
-                        className={`border-b p-5 ${accentClasses(
+                        className={`border-b p-4 sm:p-5 ${accentClasses(
                           member.accent
                         )}`}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/25 text-3xl">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/25 text-2xl sm:h-14 sm:w-14 sm:text-3xl">
                             {member.emoji ||
                               "🙂"}
                           </div>
@@ -1072,7 +1072,7 @@ export default function FamilyAdmin() {
                               </span>
                             </div>
 
-                            <h2 className="mt-2 truncate text-2xl font-bold text-white">
+                            <h2 className="mt-2 truncate text-xl font-bold text-white sm:text-2xl">
                               {
                                 member.displayName
                               }
@@ -1081,9 +1081,9 @@ export default function FamilyAdmin() {
                         </div>
                       </div>
 
-                      <div className="p-5">
+                      <div className="p-4 sm:p-5">
                         <div className="space-y-3">
-                          <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+                          <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4">
                             <Cake
                               size={18}
                               className="mt-0.5 shrink-0 text-rose-300"
@@ -1102,7 +1102,7 @@ export default function FamilyAdmin() {
                             </div>
                           </div>
 
-                          <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+                          <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4">
                             <Tag
                               size={18}
                               className="mt-0.5 shrink-0 text-blue-300"
@@ -1122,7 +1122,7 @@ export default function FamilyAdmin() {
                           </div>
                         </div>
 
-                        <div className="mt-5">
+                        <div className="mt-4 sm:mt-5">
                           <div className="flex items-center gap-2">
                             <CalendarDays
                               size={17}
@@ -1270,7 +1270,7 @@ export default function FamilyAdmin() {
 
             {archivedMembers.length >
               0 && (
-              <section className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05]">
+              <section className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.05] sm:mt-6">
                 <button
                   type="button"
                   onClick={() =>
@@ -1279,7 +1279,7 @@ export default function FamilyAdmin() {
                         !current
                     )
                   }
-                  className="flex w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-white/[0.04]"
+                  className="flex w-full items-center justify-between gap-4 p-4 text-left transition hover:bg-white/[0.04] sm:p-5"
                 >
                   <div className="flex items-center gap-3">
                     <Archive
@@ -1411,7 +1411,7 @@ export default function FamilyAdmin() {
 
         {showAddMember && (
           <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm sm:items-center">
-            <div className="my-4 w-full max-w-xl rounded-[2rem] border border-white/10 bg-slate-950 p-5 shadow-2xl sm:p-6">
+            <div className="my-3 w-full max-w-xl rounded-[2rem] border border-white/10 bg-slate-950 p-4 shadow-2xl sm:my-4 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
@@ -1437,7 +1437,7 @@ export default function FamilyAdmin() {
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_110px]">
+              <div className="mt-5 grid gap-4 sm:mt-6 sm:grid-cols-[1fr_110px]">
                 <label>
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Visningsnamn
@@ -1595,7 +1595,7 @@ export default function FamilyAdmin() {
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-5">
+              <div className="mt-5 flex justify-end gap-3 border-t border-white/10 pt-4 sm:mt-6 sm:pt-5">
                 <button
                   type="button"
                   onClick={
@@ -1636,7 +1636,7 @@ export default function FamilyAdmin() {
 
         {editingMember && (
           <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm sm:items-center">
-            <div className="my-4 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-slate-950 p-5 shadow-2xl sm:p-6">
+            <div className="my-3 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-slate-950 p-4 shadow-2xl sm:my-4 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
@@ -1664,7 +1664,7 @@ export default function FamilyAdmin() {
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_110px]">
+              <div className="mt-5 grid gap-4 sm:mt-6 sm:grid-cols-[1fr_110px]">
                 <label>
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Visningsnamn
@@ -1809,7 +1809,7 @@ export default function FamilyAdmin() {
                 </div>
               </div>
 
-              <div className="mt-6 border-t border-white/10 pt-5">
+              <div className="mt-5 border-t border-white/10 pt-4 sm:mt-6 sm:pt-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-white">
@@ -1925,7 +1925,7 @@ export default function FamilyAdmin() {
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+              <div className="mt-5 flex flex-col-reverse gap-3 border-t border-white/10 pt-4 sm:mt-6 sm:flex-row sm:justify-end sm:pt-5">
                 <button
                   type="button"
                   onClick={

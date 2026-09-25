@@ -67,12 +67,12 @@ const sections = [
 export default function AdminDashboard() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-5 sm:p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-500 text-white">
-                <Wrench size={28} />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-500 text-white sm:h-14 sm:w-14">
+                <Wrench size={26} />
               </div>
 
               <div>
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-2">
           {sections.map((section) => {
             const Icon = section.icon;
 
@@ -148,14 +148,14 @@ export default function AdminDashboard() {
               <Link
                 key={section.title}
                 href={section.href}
-                className="group rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/10"
+                className="group rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/10 sm:p-5"
               >
                 {content}
               </Link>
             ) : (
               <article
                 key={section.title}
-                className="rounded-3xl border border-white/10 bg-white/10 p-5 opacity-80 shadow-2xl shadow-black/20 backdrop-blur-xl"
+                className="rounded-3xl border border-white/10 bg-white/10 p-4 opacity-80 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-5"
               >
                 {content}
               </article>
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        <div className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5">
+        <div className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 sm:mt-5 sm:p-5">
           <p className="text-sm font-semibold text-white">
             Admin 1.5
           </p>

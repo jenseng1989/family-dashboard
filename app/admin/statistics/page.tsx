@@ -440,8 +440,8 @@ export default function StatisticsAdmin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
           <Link
             href="/admin"
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
@@ -451,7 +451,7 @@ export default function StatisticsAdmin() {
           </Link>
 
           <div className="mt-4 flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.08] text-cyan-200">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.08] text-cyan-200 sm:h-14 sm:w-14">
               <BarChart3 size={27} />
             </div>
 
@@ -479,7 +479,7 @@ export default function StatisticsAdmin() {
         )}
 
         {isLoading ? (
-          <div className="mt-5 flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/10">
+          <div className="mt-4 flex min-h-60 items-center justify-center rounded-3xl border border-white/10 bg-white/10 sm:mt-5 sm:min-h-72">
             <LoaderCircle
               size={30}
               className="animate-spin text-cyan-300"
@@ -487,7 +487,7 @@ export default function StatisticsAdmin() {
           </div>
         ) : (
           <>
-            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-5 sm:gap-3 lg:grid-cols-5">
               <StatCard
                 label="Widgets"
                 value={statistics.totalWidgets}
@@ -519,7 +519,7 @@ export default function StatisticsAdmin() {
               />
             </div>
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-400/[0.08] text-cyan-200">
@@ -542,7 +542,7 @@ export default function StatisticsAdmin() {
                 </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
                 <UsageCard
                   label="Dashboardbesök"
                   value={usageStatistics.dashboardViews}
@@ -555,7 +555,7 @@ export default function StatisticsAdmin() {
                   icon={MousePointerClick}
                 />
 
-                <article className="col-span-2 rounded-2xl border border-white/10 bg-slate-950/25 p-4 lg:col-span-1">
+                <article className="col-span-2 rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4 lg:col-span-1">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
@@ -581,8 +581,8 @@ export default function StatisticsAdmin() {
                 </article>
               </div>
 
-              <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+              <div className="mt-4 grid gap-3 sm:gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4">
                   <p className="text-sm font-semibold text-white">
                     Huvudflikar
                   </p>
@@ -637,7 +637,7 @@ export default function StatisticsAdmin() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4">
                   <p className="text-sm font-semibold text-white">
                     Dashboardbesök per dag
                   </p>
@@ -647,7 +647,7 @@ export default function StatisticsAdmin() {
                     den dag Statistik 2.0 aktiverades.
                   </p>
 
-                  <div className="mt-5 flex h-44 items-end gap-1">
+                  <div className="mt-4 flex h-40 items-end gap-1 sm:mt-5 sm:h-44">
                     {usageStatistics.dailyViews.map(
                       (day) => {
                         const height =
@@ -695,7 +695,7 @@ export default function StatisticsAdmin() {
               </div>
             </section>
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/15 bg-violet-400/[0.08] text-violet-200">
                   <LayoutGrid size={20} />
@@ -712,7 +712,7 @@ export default function StatisticsAdmin() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-4 grid gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {availableGroups.map(
                   (group) => {
                     const total =
@@ -738,7 +738,7 @@ export default function StatisticsAdmin() {
                     return (
                       <article
                         key={group.key}
-                        className="rounded-2xl border border-white/10 bg-slate-950/25 p-4"
+                        className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -785,7 +785,7 @@ export default function StatisticsAdmin() {
               </div>
             </section>
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-pink-300/15 bg-pink-400/[0.08] text-pink-200">
                   <Users size={20} />
@@ -802,7 +802,7 @@ export default function StatisticsAdmin() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                 {[...familyMembers]
                   .sort(
                     (a, b) =>
@@ -812,7 +812,7 @@ export default function StatisticsAdmin() {
                   .map((member) => (
                     <article
                       key={member.id}
-                      className="rounded-2xl border border-white/10 bg-slate-950/25 p-4"
+                      className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -848,7 +848,7 @@ export default function StatisticsAdmin() {
               </div>
             </section>
 
-            <div className="mt-5 rounded-3xl border border-cyan-300/10 bg-cyan-400/[0.04] p-5">
+            <div className="mt-4 rounded-3xl border border-cyan-300/10 bg-cyan-400/[0.04] p-4 sm:mt-5 sm:p-5">
               <p className="text-sm font-semibold text-white">
                 Statistik 2.0
               </p>
@@ -879,7 +879,7 @@ function UsageCard({
   icon: Icon,
 }: UsageCardProps) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+    <article className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
@@ -911,7 +911,7 @@ function StatCard({
   icon: Icon,
 }: StatCardProps) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/10 p-4 shadow-xl shadow-black/10">
+    <article className="rounded-2xl border border-white/10 bg-white/10 p-3.5 shadow-xl shadow-black/10 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">

@@ -247,9 +247,9 @@ export default function AppSettingsAdmin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         {/* HEADER */}
-        <header className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+        <header className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
           <Link
             href="/admin"
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
@@ -259,7 +259,7 @@ export default function AppSettingsAdmin() {
           </Link>
 
           <div className="mt-4 flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-200">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/15 bg-amber-400/[0.08] text-amber-200 sm:h-14 sm:w-14">
               <Settings size={28} />
             </div>
 
@@ -281,9 +281,9 @@ export default function AppSettingsAdmin() {
         </header>
 
         {/* DASHBOARD NAME */}
-        <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-slate-200">
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-slate-200 sm:h-11 sm:w-11">
               <Home size={21} />
             </div>
 
@@ -331,7 +331,7 @@ export default function AppSettingsAdmin() {
         </section>
 
         {/* DEFAULT TAB */}
-        <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
           <h2 className="font-bold text-white">
             Standardflik
           </h2>
@@ -341,7 +341,7 @@ export default function AppSettingsAdmin() {
             dashboarden öppnas.
           </p>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
             {tabOptions.map((tab) => {
               const selected =
                 settings.defaultTab === tab.id;
@@ -359,7 +359,7 @@ export default function AppSettingsAdmin() {
                     setSuccessMessage(null);
                   }}
                   className={[
-                    "relative rounded-2xl border p-4 text-left transition",
+                    "relative rounded-2xl border p-3.5 text-left transition sm:p-4",
                     selected
                       ? "border-blue-400/40 bg-blue-500/10"
                       : "border-white/10 bg-slate-950/25 hover:border-white/20 hover:bg-white/[0.06]",
@@ -401,9 +401,9 @@ export default function AppSettingsAdmin() {
         </section>
 
         {/* ADMIN BUTTON */}
-        <section className="mt-5 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
               <div
                 className={[
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
@@ -465,19 +465,19 @@ export default function AppSettingsAdmin() {
 
         {/* STATUS */}
         {error && (
-          <div className="mt-5 rounded-2xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-200">
+          <div className="mt-4 rounded-2xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-200 sm:mt-5">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-200">
+          <div className="mt-4 rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-200 sm:mt-5">
             {successMessage}
           </div>
         )}
 
         {/* ACTIONS */}
-        <div className="mt-5 flex flex-col-reverse gap-3 rounded-3xl border border-white/10 bg-white/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col-reverse gap-3 rounded-3xl border border-white/10 bg-white/10 p-4 sm:mt-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-white">
               {hasChanges

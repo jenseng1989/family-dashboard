@@ -594,8 +594,8 @@ export default function WidgetsAdmin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
           <Link
             href="/admin"
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
@@ -639,7 +639,7 @@ export default function WidgetsAdmin() {
         )}
 
         {!isLoading && (
-          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3 sm:mt-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-white">
                 Widgetgrupper
@@ -680,14 +680,14 @@ export default function WidgetsAdmin() {
         )}
 
         {isLoading ? (
-          <div className="mt-5 flex min-h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/10">
+          <div className="mt-4 flex min-h-60 items-center justify-center rounded-3xl border border-white/10 bg-white/10 sm:mt-5 sm:min-h-72">
             <LoaderCircle
               size={30}
               className="animate-spin text-blue-300"
             />
           </div>
         ) : (
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3 sm:mt-5">
             {orderedGroups.map(
               (group) => {
                 const GroupIcon =
@@ -722,7 +722,7 @@ export default function WidgetsAdmin() {
                         !isCollapsed
                       }
                       className={[
-                        "flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[0.04]",
+                        "flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/[0.04] sm:px-5 sm:py-4",
                         !isCollapsed
                           ? "border-b border-white/10"
                           : "",
@@ -806,7 +806,7 @@ export default function WidgetsAdmin() {
                             </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-2">
+                          <div className="grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-2">
                             {group.widgets.map(
                               (widget) => {
                                 const Icon =
@@ -840,7 +840,7 @@ export default function WidgetsAdmin() {
                                       widget.id
                                     }
                                     className={[
-                                      "flex items-center gap-4 rounded-2xl border p-4 transition",
+                                      "flex items-center gap-3 rounded-2xl border p-3.5 transition sm:gap-4 sm:p-4",
                                       visible
                                         ? "border-white/10 bg-slate-950/25"
                                         : "border-white/[0.06] bg-slate-950/10 opacity-65",
@@ -848,7 +848,7 @@ export default function WidgetsAdmin() {
                                       " "
                                     )}
                                   >
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300 sm:h-11 sm:w-11">
                                       <Icon
                                         size={
                                           21

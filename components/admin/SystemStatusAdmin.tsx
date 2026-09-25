@@ -624,9 +624,9 @@ export default function SystemStatusAdmin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         {/* HEADER */}
-        <header className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+        <header className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
           <Link
             href="/admin"
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
@@ -635,9 +635,9 @@ export default function SystemStatusAdmin() {
             Till Admin
           </Link>
 
-          <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300 sm:h-14 sm:w-14">
                 <Activity size={28} />
               </div>
 
@@ -682,7 +682,7 @@ export default function SystemStatusAdmin() {
         {/* TOTAL STATUS */}
         <section
           className={[
-            "mt-5 rounded-3xl border p-5",
+            "mt-4 rounded-3xl border p-4 sm:mt-5 sm:p-5",
             getStatusClasses(
               overallStatus
             ),
@@ -753,9 +753,9 @@ export default function SystemStatusAdmin() {
           return (
             <section
               key={group}
-              className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl"
+              className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5"
             >
-              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5 sm:px-5 sm:py-4">
                 <h2 className="font-bold text-white">
                   {group}
                 </h2>
@@ -768,7 +768,7 @@ export default function SystemStatusAdmin() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-2">
                 {groupServices.map(
                   (service) => {
                     const Icon =
@@ -777,10 +777,10 @@ export default function SystemStatusAdmin() {
                     return (
                       <article
                         key={service.id}
-                        className="rounded-2xl border border-white/10 bg-slate-950/25 p-4"
+                        className="rounded-2xl border border-white/10 bg-slate-950/25 p-3.5 sm:p-4"
                       >
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-slate-200">
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-slate-200 sm:h-11 sm:w-11">
                             <Icon
                               size={21}
                             />
@@ -822,7 +822,7 @@ export default function SystemStatusAdmin() {
                               }
                             </p>
 
-                            <div className="mt-4 grid grid-cols-2 gap-3">
+                            <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3">
                               <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
                                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
                                   Svarstid
