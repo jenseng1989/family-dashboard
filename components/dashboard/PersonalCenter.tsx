@@ -461,7 +461,7 @@ export default function PersonalCenter({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04]">
+      <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04] sm:min-h-60">
         <LoaderCircle
           size={32}
           className="animate-spin text-blue-300"
@@ -475,9 +475,9 @@ export default function PersonalCenter({
   }
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4 sm:gap-5">
       {errorMessage && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-red-400/20 bg-red-400/10 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <p className="text-sm text-red-200">
             {errorMessage}
           </p>
@@ -502,7 +502,7 @@ export default function PersonalCenter({
         >
         <form
           onSubmit={addTodo}
-          className="rounded-2xl border border-white/10 bg-white/5 p-4"
+          className="rounded-2xl border border-white/10 bg-white/5 p-3.5 sm:p-4"
         >
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
@@ -541,9 +541,9 @@ export default function PersonalCenter({
           </div>
         </form>
 
-        <div className="mt-5">
+        <div className="mt-4 sm:mt-5">
           {todos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-8">
               <CheckSquare2
                 size={36}
                 className="mx-auto text-blue-300"
@@ -568,7 +568,7 @@ export default function PersonalCenter({
                     key={todo.id}
                     className="rounded-2xl border border-white/10 bg-white/5 transition hover:bg-white/10"
                   >
-                    <label className="flex cursor-pointer items-center gap-4 p-4">
+                    <label className="flex cursor-pointer items-center gap-3 p-3.5 sm:gap-4 sm:p-4">
                       <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
                         <input
                           type="checkbox"
@@ -621,7 +621,7 @@ export default function PersonalCenter({
         >
         <form
           onSubmit={addNote}
-          className="rounded-2xl border border-white/10 bg-white/5 p-4"
+          className="rounded-2xl border border-white/10 bg-white/5 p-3.5 sm:p-4"
         >
           <div className="grid gap-4">
             <label className="block">
@@ -688,9 +688,9 @@ export default function PersonalCenter({
           </div>
         </form>
 
-        <div className="mt-5">
+        <div className="mt-4 sm:mt-5">
           {notes.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:p-8">
               <FileText
                 size={36}
                 className="mx-auto text-blue-300"
@@ -718,7 +718,7 @@ export default function PersonalCenter({
                     <form
                       key={note.id}
                       onSubmit={saveEditedNote}
-                      className="rounded-2xl border border-blue-300/20 bg-blue-400/10 p-4"
+                      className="rounded-2xl border border-blue-300/20 bg-blue-400/10 p-3.5 sm:p-4"
                     >
                       <input
                         type="text"
@@ -791,7 +791,7 @@ export default function PersonalCenter({
                 return (
                   <article
                     key={note.id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:bg-white/10"
+                    className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10 sm:p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -842,7 +842,7 @@ export default function PersonalCenter({
                       </div>
                     </div>
 
-                    <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
+                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-300 sm:mt-4">
                       {note.content}
                     </p>
                   </article>

@@ -139,7 +139,7 @@ function EmptyGrowthState({
   description: string;
 }) {
   return (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-7 text-center">
+    <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-5 text-center sm:min-h-56 sm:p-7">
       <div className="text-blue-300">
         {icon}
       </div>
@@ -437,7 +437,7 @@ export default function ChildGrowth({
               {latestMeasurement ? (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.06] p-4">
+                    <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.06] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2 text-blue-300">
                         <Scale size={17} />
 
@@ -446,7 +446,7 @@ export default function ChildGrowth({
                         </p>
                       </div>
 
-                      <p className="mt-3 text-3xl font-black text-white">
+                      <p className="mt-2.5 text-2xl font-black text-white sm:mt-3 sm:text-3xl">
                         {latestMeasurement.weight_kg.toFixed(2)}
                         <span className="ml-1 text-base font-semibold text-slate-400">
                           kg
@@ -465,7 +465,7 @@ export default function ChildGrowth({
                       )}
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-4">
+                    <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2 text-emerald-300">
                         <Ruler size={17} />
 
@@ -474,7 +474,7 @@ export default function ChildGrowth({
                         </p>
                       </div>
 
-                      <p className="mt-3 text-3xl font-black text-white">
+                      <p className="mt-2.5 text-2xl font-black text-white sm:mt-3 sm:text-3xl">
                         {latestMeasurement.height_cm.toFixed(1)}
                         <span className="ml-1 text-base font-semibold text-slate-400">
                           cm
@@ -493,7 +493,7 @@ export default function ChildGrowth({
                       )}
                     </div>
 
-                    <div className="rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] p-4">
+                    <div className="rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2 text-violet-300">
                         <Gauge size={17} />
 
@@ -517,7 +517,7 @@ export default function ChildGrowth({
                       )}
                     </div>
 
-                    <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-4">
+                    <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2 text-amber-300">
                         <CalendarDays size={17} />
 
@@ -542,7 +542,7 @@ export default function ChildGrowth({
                   </div>
 
                   {measurements.length > 1 && (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3.5 sm:p-4">
                       <div className="flex items-center gap-2">
                         <TrendingUp
                           size={18}
@@ -603,7 +603,7 @@ export default function ChildGrowth({
                   )}
                 </>
               ) : (
-                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-7 text-center">
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-5 text-center sm:p-7">
                   <TrendingUp
                     size={38}
                     className="mx-auto text-blue-300"
@@ -639,7 +639,7 @@ export default function ChildGrowth({
 
               <form
                 onSubmit={handleSubmit}
-                className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 sm:mt-5 sm:p-4"
               >
                 <div className="mb-4">
                   <p className="font-semibold text-white">
@@ -771,7 +771,7 @@ export default function ChildGrowth({
               description={`Lägg till ${displayName}s första mätning i Tillväxt. Därefter visas viktutvecklingen här.`}
             />
           ) : (
-            <div className="h-72 w-full">
+            <div className="h-64 w-full sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
@@ -860,7 +860,7 @@ export default function ChildGrowth({
               description={`Lägg till ${displayName}s första mätning i Tillväxt. Därefter visas längdutvecklingen här.`}
             />
           ) : (
-            <div className="h-72 w-full">
+            <div className="h-64 w-full sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
@@ -940,7 +940,7 @@ export default function ChildGrowth({
             </div>
           ) : measurements.length === 0 ? (
             <>
-              <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <div className="flex items-center gap-3">
                   <CalendarDays
                     size={20}
@@ -966,7 +966,7 @@ export default function ChildGrowth({
                 </div>
               </div>
 
-              <div className="border-t border-white/10 p-4">
+              <div className="border-t border-white/10 p-3.5 sm:p-4">
                 <EmptyGrowthState
                   icon={<CalendarDays size={38} />}
                   title="Ingen mäthistorik ännu"
@@ -976,7 +976,7 @@ export default function ChildGrowth({
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -1023,7 +1023,7 @@ export default function ChildGrowth({
               </div>
 
               {historyOpen && (
-                <div className="border-t border-white/10 p-4">
+                <div className="border-t border-white/10 p-3.5 sm:p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     {[...measurements]
                       .reverse()
@@ -1034,7 +1034,7 @@ export default function ChildGrowth({
                         return (
                           <article
                             key={measurement.id}
-                            className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 sm:gap-4 sm:p-4"
                           >
                             <div>
                               <p className="font-semibold capitalize text-white">

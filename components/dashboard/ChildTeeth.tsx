@@ -302,7 +302,7 @@ export default function ChildTeeth({
       storageKey={`child-${memberId}-teeth`}
     >
       {isLoading ? (
-        <div className="flex min-h-56 flex-col items-center justify-center gap-3">
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 sm:min-h-56">
           <LoaderCircle
             size={32}
             className="animate-spin text-amber-300"
@@ -315,12 +315,12 @@ export default function ChildTeeth({
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-4">
+            <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-3.5 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-300">
                 Tänder
               </p>
 
-              <p className="mt-2 text-3xl font-black text-white">
+              <p className="mt-2 text-2xl font-black text-white sm:text-3xl">
                 {teeth.length}
                 <span className="ml-1 text-base font-semibold text-slate-500">
                   / 20
@@ -328,17 +328,17 @@ export default function ChildTeeth({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-4">
+            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3.5 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
                 Kvar
               </p>
 
-              <p className="mt-2 text-3xl font-black text-white">
+              <p className="mt-2 text-2xl font-black text-white sm:text-3xl">
                 {20 - teeth.length}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] p-4">
+            <div className="rounded-2xl border border-violet-300/15 bg-violet-400/[0.06] p-3.5 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-300">
                 Senaste tanden
               </p>
@@ -378,7 +378,7 @@ export default function ChildTeeth({
             </div>
           )}
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-3.5 sm:mt-5 sm:p-5">
             <div className="flex items-start gap-3">
               <Sparkles
                 size={20}
@@ -397,7 +397,7 @@ export default function ChildTeeth({
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Överkäke
               </p>
@@ -429,7 +429,7 @@ export default function ChildTeeth({
               </p>
             </div>
 
-            <div className="mt-5 flex flex-wrap justify-center gap-4 text-xs text-slate-500">
+            <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs text-slate-500 sm:mt-5 sm:gap-4">
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded border border-slate-300/30 bg-slate-100" />
                 Inte registrerad
@@ -445,7 +445,7 @@ export default function ChildTeeth({
           {selectedTooth && (
             <form
               onSubmit={handleSubmit}
-              className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] p-4"
+              className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] p-3.5 sm:mt-5 sm:p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -506,7 +506,7 @@ export default function ChildTeeth({
           )}
 
           {teeth.length > 0 && (
-            <div className="mt-5">
+            <div className="mt-4 sm:mt-5">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarDays
                   size={18}
@@ -525,7 +525,7 @@ export default function ChildTeeth({
                   return (
                     <article
                       key={tooth.id}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 sm:gap-4 sm:p-4"
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-lg">
@@ -570,7 +570,7 @@ export default function ChildTeeth({
             </div>
           )}
 
-          <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
+          <p className="mt-4 border-t border-white/10 pt-3.5 text-xs leading-5 text-slate-500 sm:mt-5 sm:pt-4">
             Tandkartan är en familjelogg över när ni upptäcker{" "}
             {displayName}s mjölktänder. Datumet behöver inte vara
             exakt den dag tanden började bryta fram.

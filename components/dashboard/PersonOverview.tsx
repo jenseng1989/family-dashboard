@@ -321,9 +321,11 @@ function getBirthdayCountdownText(
 }
 
 export default function PersonOverview({
+  memberId,
   displayName,
   fallbackEmoji,
 }: {
+  memberId: string;
   displayName: string;
   fallbackEmoji: string;
 }) {
@@ -369,12 +371,7 @@ export default function PersonOverview({
         const result =
           members.find(
             (member) =>
-              member.displayName
-                .trim()
-                .toLocaleLowerCase(
-                  "sv-SE"
-                ) ===
-              displayName.trim().toLocaleLowerCase("sv-SE")
+              member.id === memberId
           ) ??
           null;
 
@@ -399,7 +396,7 @@ export default function PersonOverview({
       } finally {
         setIsLoading(false);
       }
-    }, [displayName]);;
+    }, [displayName, memberId]);
 
   useEffect(() => {
     void loadPerson();
@@ -471,8 +468,8 @@ export default function PersonOverview({
 
   if (isLoading) {
     return (
-      <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/20 p-6 shadow-2xl shadow-amber-950/20">
-        <div className="flex min-h-48 flex-col items-center justify-center gap-3">
+      <section className="relative overflow-hidden rounded-[2rem] border border-amber-300/15 bg-gradient-to-br from-slate-950 via-amber-950/35 to-rose-950/20 p-5 shadow-2xl sm:p-6 shadow-amber-950/20">
+        <div className="flex min-h-44 flex-col items-center justify-center gap-3 sm:min-h-48">
           <LoaderCircle
             size={32}
             className="animate-spin text-amber-300"
@@ -493,7 +490,7 @@ export default function PersonOverview({
     !nextBirthday
   ) {
     return (
-      <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-6">
+      <section className="rounded-[2rem] border border-red-300/15 bg-slate-950/70 p-5 sm:p-6">
         <div className="flex min-h-44 flex-col items-center justify-center text-center">
           <Baby
             size={36}
@@ -536,7 +533,7 @@ export default function PersonOverview({
       <div className="relative">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-amber-400/10 text-4xl shadow-lg shadow-amber-950/20">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-amber-400/10 text-3xl shadow-lg shadow-amber-950/20 sm:h-16 sm:w-16 sm:text-4xl">
               {person.emoji || fallbackEmoji}
             </div>
 
@@ -549,11 +546,11 @@ export default function PersonOverview({
                 Familjen
               </p>
 
-              <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">
+              <h2 className="mt-1 text-2xl font-black text-white sm:text-4xl">
                 {displayName}
               </h2>
 
-              <p className="mt-2 text-lg font-semibold text-amber-100">
+              <p className="mt-2 text-base font-semibold text-amber-100 sm:text-lg">
                 {getAgeTitle(
                   age
                 )}
@@ -561,7 +558,7 @@ export default function PersonOverview({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.06] px-4 py-3 lg:min-w-64">
+          <div className="rounded-2xl border border-rose-300/15 bg-rose-400/[0.06] px-3.5 py-3 sm:px-4 lg:min-w-64">
             <div className="flex items-center gap-2 text-rose-300">
               <Cake
                 size={18}
@@ -598,8 +595,8 @@ export default function PersonOverview({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+        <div className="mt-5 grid gap-3 sm:mt-6 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:p-4">
             <div className="flex items-center gap-2 text-amber-300">
               <CalendarDays
                 size={17}
@@ -619,7 +616,7 @@ export default function PersonOverview({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-rose-300">
               Född
             </p>
@@ -641,7 +638,7 @@ export default function PersonOverview({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-300">
               Nästa ålder
             </p>
@@ -658,7 +655,7 @@ export default function PersonOverview({
           </div>
         </div>
 
-        <p className="mt-5 border-t border-white/10 pt-4 text-xs text-slate-500">
+        <p className="mt-4 border-t border-white/10 pt-3.5 text-xs text-slate-500 sm:mt-5 sm:pt-4">
           Födelsedatumet hämtas från familjedatabasen och uppdateras automatiskt om det ändras under Administrera personer.
         </p>
       </div>

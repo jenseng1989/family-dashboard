@@ -60,17 +60,15 @@ export default function FamilyTabs({
       : activePersonTab?.content ??
         sharedContent;
 
-  const columnCount =
-    personTabs.length + 1;
 
   return (
     <div className="w-full min-w-0">
       <nav
         aria-label="Familjeflikar"
-        className="mb-5 rounded-2xl border border-white/10 bg-white/[0.06] p-2 shadow-xl shadow-black/10 backdrop-blur-xl"
+        className="mb-4 rounded-2xl border border-white/10 bg-white/[0.06] p-1.5 shadow-xl shadow-black/10 backdrop-blur-xl sm:mb-5 sm:p-2"
       >
         <div
-          className="flex gap-2 overflow-x-auto"
+          className="flex gap-1.5 overflow-x-auto sm:gap-2"
           role="tablist"
         >
           <button
@@ -154,8 +152,6 @@ export default function FamilyTabs({
       >
         {activeContent}
       </div>
-
-      {columnCount === 0 && null}
     </div>
   );
 }

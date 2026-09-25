@@ -41,7 +41,7 @@ function FamilyWidgetLoading({
   label: string;
 }) {
   return (
-    <div className="flex min-h-48 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+    <div className="flex min-h-44 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] sm:min-h-48">
       <div className="flex items-center gap-3 text-slate-400">
         <LoaderCircle
           size={20}
@@ -197,7 +197,7 @@ function ChildContent({
     );
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-5">
       <ChildOverview
         memberId={
           member.id
@@ -211,7 +211,7 @@ function ChildContent({
       />
 
       <OrderedWidgetGroup
-        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-4 sm:gap-5"
         itemComponent={
           WidgetGate
         }
@@ -265,8 +265,11 @@ function AdultContent({
     );
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4 sm:space-y-5">
       <PersonOverview
+        memberId={
+          member.id
+        }
         displayName={
           member.displayName
         }
@@ -277,7 +280,7 @@ function AdultContent({
       />
 
       <OrderedWidgetGroup
-        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-5"
+        wrapperClassName="grid w-full min-w-0 grid-cols-12 gap-4 sm:gap-5"
         itemComponent={
           WidgetGate
         }
@@ -427,7 +430,7 @@ export default function DynamicFamilySection({
     isLoading
   ) {
     return (
-      <div className="flex min-h-52 w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[0.04]">
+      <div className="flex min-h-48 w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[0.04] sm:min-h-52">
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <LoaderCircle
             size={28}
@@ -446,7 +449,7 @@ export default function DynamicFamilySection({
     errorMessage
   ) {
     return (
-      <div className="rounded-3xl border border-red-400/20 bg-red-500/10 p-5 text-sm text-red-200">
+      <div className="rounded-3xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200 sm:p-5">
         {
           errorMessage
         }

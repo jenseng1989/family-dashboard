@@ -368,7 +368,7 @@ export default function ChildVaccinations({
     return (
       <article
         className={[
-          "rounded-2xl border p-4 transition",
+          "rounded-2xl border p-3.5 transition sm:p-4",
           upcoming
             ? "border-amber-300/15 bg-amber-400/[0.055]"
             : "border-white/10 bg-white/[0.04] hover:bg-white/[0.065]",
@@ -466,7 +466,7 @@ export default function ChildVaccinations({
       storageKey={`child-${memberId}-vaccinations`}
     >
       {isLoading ? (
-        <div className="flex min-h-52 flex-col items-center justify-center gap-3">
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 sm:min-h-52">
           <LoaderCircle
             size={32}
             className="animate-spin text-blue-300"
@@ -479,7 +479,7 @@ export default function ChildVaccinations({
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-4">
+            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3.5 sm:p-4">
               <div className="flex items-center gap-2 text-emerald-300">
                 <ShieldCheck size={17} />
 
@@ -488,7 +488,7 @@ export default function ChildVaccinations({
                 </p>
               </div>
 
-              <p className="mt-3 text-3xl font-black text-white">
+              <p className="mt-2.5 text-2xl font-black text-white sm:mt-3 sm:text-3xl">
                 {completedVaccinations.length}
               </p>
 
@@ -499,7 +499,7 @@ export default function ChildVaccinations({
               )}
             </div>
 
-            <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-4">
+            <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-3.5 sm:p-4">
               <div className="flex items-center gap-2 text-amber-300">
                 <CalendarClock size={17} />
 
@@ -508,7 +508,7 @@ export default function ChildVaccinations({
                 </p>
               </div>
 
-              <p className="mt-3 text-3xl font-black text-white">
+              <p className="mt-2.5 text-2xl font-black text-white sm:mt-3 sm:text-3xl">
                 {upcomingVaccinations.length}
               </p>
 
@@ -517,7 +517,7 @@ export default function ChildVaccinations({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.06] p-4">
+            <div className="rounded-2xl border border-blue-300/15 bg-blue-400/[0.06] p-3.5 sm:p-4">
               <div className="flex items-center gap-2 text-blue-300">
                 <Syringe size={17} />
 
@@ -526,7 +526,7 @@ export default function ChildVaccinations({
                 </p>
               </div>
 
-              <p className="mt-3 text-3xl font-black text-white">
+              <p className="mt-2.5 text-2xl font-black text-white sm:mt-3 sm:text-3xl">
                 {vaccinations.length}
               </p>
 
@@ -537,7 +537,7 @@ export default function ChildVaccinations({
           </div>
 
           {nextVaccination ? (
-            <div className="mt-4 overflow-hidden rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/10 to-orange-400/[0.04] p-5">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/10 to-orange-400/[0.04] p-4 sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-amber-300">
@@ -584,7 +584,7 @@ export default function ChildVaccinations({
               </div>
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-5">
+            <div className="mt-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <ShieldCheck
                   size={26}
@@ -622,7 +622,7 @@ export default function ChildVaccinations({
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-3 sm:mt-5">
             <button
               type="button"
               onClick={openNewVaccinationForm}
@@ -642,7 +642,7 @@ export default function ChildVaccinations({
           {formOpen && (
             <form
               onSubmit={handleSubmit}
-              className="mt-4 rounded-2xl border border-blue-300/15 bg-blue-400/[0.045] p-4"
+              className="mt-4 rounded-2xl border border-blue-300/15 bg-blue-400/[0.045] p-3.5 sm:p-4"
             >
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
@@ -761,7 +761,7 @@ export default function ChildVaccinations({
           )}
 
           {upcomingVaccinations.length > 1 && (
-            <div className="mt-5">
+            <div className="mt-4 sm:mt-5">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarClock
                   size={18}
@@ -786,13 +786,13 @@ export default function ChildVaccinations({
           )}
 
           {completedVaccinations.length > 0 && (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.02]">
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] sm:mt-5">
               <button
                 type="button"
                 onClick={() =>
                   setHistoryOpen((current) => !current)
                 }
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left sm:gap-4 sm:px-5 sm:py-4"
               >
                 <div className="flex items-center gap-3">
                   <ShieldCheck
@@ -819,7 +819,7 @@ export default function ChildVaccinations({
               </button>
 
               {historyOpen && (
-                <div className="border-t border-white/10 p-4">
+                <div className="border-t border-white/10 p-3.5 sm:p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     {completedVaccinations.map((vaccination) => (
                       <VaccinationCard
@@ -834,7 +834,7 @@ export default function ChildVaccinations({
           )}
 
           {vaccinations.length === 0 && !formOpen && (
-            <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <div className="mt-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-6 text-center sm:mt-5 sm:p-8">
               <ShieldCheck
                 size={36}
                 className="mx-auto text-blue-300"
@@ -850,7 +850,7 @@ export default function ChildVaccinations({
             </div>
           )}
 
-          <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">
+          <p className="mt-4 border-t border-white/10 pt-3.5 text-xs leading-5 text-slate-500 sm:mt-5 sm:pt-4">
             Vaccinationsdelen är en egen familjelogg för{" "}
             {displayName}. Datum och vaccinationsuppgifter ska alltid
             kontrolleras mot BVC, journalen eller annan information
