@@ -141,13 +141,6 @@ export default function SatellitesWidget() {
 
   useEffect(() => {
     void loadData();
-
-    const intervalId = window.setInterval(
-      () => void loadData(false),
-      30 * 60 * 1000
-    );
-
-    return () => window.clearInterval(intervalId);
   }, [loadData]);
 
   return (
@@ -183,7 +176,7 @@ export default function SatellitesWidget() {
         </div>
       ) : data ? (
         <>
-          <div className="mb-4 rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.06] p-4">
+          <div className="mb-4 rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.06] p-3.5 sm:p-4">
             <div className="flex items-start gap-3">
               <Telescope
                 size={20}
@@ -205,10 +198,10 @@ export default function SatellitesWidget() {
             {data.satellites.map((satellite) => (
               <article
                 key={satellite.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.07]"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 transition hover:bg-white/[0.07] sm:p-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-xl">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-lg sm:h-11 sm:w-11 sm:text-xl">
                     {satellite.emoji}
                   </div>
 
@@ -235,8 +228,8 @@ export default function SatellitesWidget() {
                     </div>
 
                     {satellite.nextPass ? (
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
+                      <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-2.5 sm:p-3">
                           <p className="text-xs text-slate-500">
                             Nästa passage
                           </p>
@@ -251,7 +244,7 @@ export default function SatellitesWidget() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
+                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-2.5 sm:p-3">
                           <p className="text-xs text-slate-500">
                             Maxhöjd
                           </p>
@@ -264,7 +257,7 @@ export default function SatellitesWidget() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
+                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-2.5 sm:p-3">
                           <p className="text-xs text-slate-500">
                             Synlig tid
                           </p>
@@ -275,7 +268,7 @@ export default function SatellitesWidget() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
+                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-2.5 sm:p-3">
                           <p className="text-xs text-slate-500">
                             Bana över himlen
                           </p>
@@ -286,7 +279,7 @@ export default function SatellitesWidget() {
                           </p>
                         </div>
 
-                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-3 sm:col-span-2">
+                        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-2.5 sm:col-span-2 sm:p-3">
                           <p className="text-xs text-slate-500">
                             Ljusstyrka
                           </p>
@@ -299,7 +292,7 @@ export default function SatellitesWidget() {
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3">
+                      <div className="mt-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-2.5 sm:mt-4 sm:p-3">
                         <p className="text-sm text-slate-400">
                           {satellite.error ??
                             `Ingen optiskt synlig passage hittades de kommande ${data.predictionDays} dagarna.`}

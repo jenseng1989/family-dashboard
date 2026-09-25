@@ -1,5 +1,7 @@
 import { getElectricityPrices } from "@/lib/electricity";
 
+export const dynamic = "force-dynamic";
+
 export const revalidate = 900;
 
 type ElectricityPayload = Awaited<

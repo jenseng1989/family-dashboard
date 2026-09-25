@@ -208,14 +208,14 @@ function PollutantCard({
   return (
     <div
       className={[
-        "relative overflow-hidden rounded-2xl border p-4 transition hover:bg-white/[0.08]",
+        "relative overflow-hidden rounded-2xl border p-3 sm:p-4 transition hover:bg-white/[0.08]",
         isDominant
           ? "border-blue-300/20 bg-blue-400/[0.07]"
           : "border-white/10 bg-white/[0.04]",
       ].join(" ")}
     >
       {isDominant && (
-        <span className="absolute right-3 top-3 rounded-full border border-blue-300/15 bg-blue-400/[0.08] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-blue-200">
+        <span className="absolute right-2 top-2 rounded-full border border-blue-300/15 bg-blue-400/[0.08] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-blue-200 sm:right-3 sm:top-3 sm:px-2 sm:py-1 sm:text-[9px]">
           Dominerande
         </span>
       )}
@@ -225,7 +225,7 @@ function PollutantCard({
       </p>
 
       <div className="mt-2 flex items-end gap-2">
-        <p className="text-2xl font-bold text-white">
+        <p className="text-xl font-bold text-white sm:text-2xl">
           {value ?? "–"}
         </p>
 
@@ -243,7 +243,7 @@ function PollutantCard({
         {level.label}
       </p>
 
-      <p className="mt-3 text-xs leading-5 text-slate-500">
+      <p className="mt-2 hidden text-xs leading-5 text-slate-500 sm:block">
         {description}
       </p>
     </div>
@@ -384,13 +384,13 @@ export default function AirQualityWidget() {
         <>
           <div
             className={[
-              "overflow-hidden rounded-3xl border p-5 sm:p-6",
+              "overflow-hidden rounded-3xl border p-4 sm:p-5",
               getLevelClasses(
                 data.level.key
               ),
             ].join(" ")}
           >
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start justify-between gap-3 sm:gap-5">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   Luften i Göteborg
@@ -399,7 +399,7 @@ export default function AirQualityWidget() {
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <p
                     className={[
-                      "text-3xl font-bold sm:text-4xl",
+                      "text-2xl font-bold sm:text-4xl",
                       getLevelTextClasses(
                         data.level.key
                       ),
@@ -416,23 +416,23 @@ export default function AirQualityWidget() {
                   )}
                 </div>
 
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                <p className="mt-2 max-w-2xl text-sm leading-5 text-slate-300 sm:mt-3 sm:leading-6">
                   {data.level.summary}
                 </p>
               </div>
 
-              <div className="shrink-0 rounded-2xl border border-white/10 bg-slate-950/20 px-5 py-4 sm:text-right">
+              <div className="shrink-0 rounded-2xl border border-white/10 bg-slate-950/20 px-3 py-2.5 text-right sm:px-5 sm:py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                   AQI
                 </p>
 
-                <p className="mt-1 text-4xl font-black text-white">
+                <p className="mt-0.5 text-3xl font-black text-white sm:mt-1 sm:text-4xl">
                   {data.aqi ?? "–"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <div className="relative h-2 overflow-hidden rounded-full bg-gradient-to-r from-emerald-400 via-yellow-300 via-orange-400 via-red-400 to-purple-500">
                 {data.aqi !== null && (
                   <span
@@ -466,7 +466,7 @@ export default function AirQualityWidget() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <PollutantCard
                 label="PM2,5"
                 value={data.pollutants.pm25}
@@ -499,7 +499,7 @@ export default function AirQualityWidget() {
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:mt-5 sm:p-4">
             <div className="flex items-start gap-3">
               <CircleHelp
                 size={19}
@@ -520,7 +520,7 @@ export default function AirQualityWidget() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2 border-t border-white/10 pt-3 sm:mt-5 sm:grid-cols-2 sm:gap-3 sm:pt-4">
             <div className="flex items-start gap-2 text-xs text-slate-500">
               <MapPin
                 size={14}
@@ -552,7 +552,7 @@ export default function AirQualityWidget() {
             </div>
           </div>
 
-          <div className="mt-3 flex items-start gap-2 text-[11px] leading-5 text-slate-600">
+          <div className="mt-2 flex items-start gap-2 text-[10px] leading-4 text-slate-600 sm:mt-3 sm:text-[11px] sm:leading-5">
             <Sparkles
               size={13}
               className="mt-0.5 shrink-0"

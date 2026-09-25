@@ -135,8 +135,8 @@ export default async function PollenWidget() {
         />
       }
     >
-      <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-        <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/10 via-white/[0.04] to-blue-400/10 p-5">
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr] lg:gap-5">
+        <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-400/10 via-white/[0.04] to-blue-400/10 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <MapPin
               size={16}
@@ -149,7 +149,7 @@ export default async function PollenWidget() {
             </span>
           </div>
 
-          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300 sm:mt-5">
             Högst idag
           </p>
 
@@ -220,14 +220,14 @@ export default async function PollenWidget() {
         </section>
 
         <section>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
             {sortedPollen.map(
               (pollen) => (
                 <article
                   key={
                     pollen.id
                   }
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/10 sm:p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -260,13 +260,13 @@ export default async function PollenWidget() {
                     </span>
                   </div>
 
-                  <p className="mt-4 text-2xl font-bold text-white">
+                  <p className="mt-3 text-lg font-bold text-white sm:mt-4 sm:text-2xl">
                     {
                       pollen.level
                     }
                   </p>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="hidden text-xs text-slate-500 sm:block">
                     officiell prognosnivå
                   </p>
 
@@ -289,7 +289,7 @@ export default async function PollenWidget() {
       </div>
 
       {pollenData.forecastText && (
-        <div className="mt-5 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.05] p-4">
+        <div className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.05] p-3 sm:mt-5 sm:p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
             Pollenrapportens prognos
           </p>
@@ -307,7 +307,7 @@ export default async function PollenWidget() {
           Kommande dagar
         </h3>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {pollenData.forecast.map(
             (day) => {
               const level =
@@ -320,7 +320,7 @@ export default async function PollenWidget() {
                   key={
                     day.date
                   }
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4"
                 >
                   <p className="font-semibold capitalize text-white">
                     {formatForecastDate(
@@ -368,7 +368,7 @@ export default async function PollenWidget() {
         </div>
       </div>
 
-      <div className="mt-5 flex items-start gap-2 rounded-2xl border border-blue-300/10 bg-blue-400/[0.06] p-4">
+      <div className="mt-4 flex items-start gap-2 rounded-2xl border border-blue-300/10 bg-blue-400/[0.06] p-3 sm:mt-5 sm:p-4">
         <Info
           size={17}
           className="mt-0.5 shrink-0 text-blue-300"

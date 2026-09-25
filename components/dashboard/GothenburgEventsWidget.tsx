@@ -131,14 +131,14 @@ export default function GothenburgEventsWidget() {
           </button>
         </div>
       ) : data ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {data.upcomingDays.map((day, dayIndex) => {
             const displayed = day.events.slice(0, 5);
 
             return (
               <section
                 key={day.date}
-                className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"
+                className="rounded-2xl border border-white/10 bg-slate-950/20 p-3 sm:p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="font-bold text-white">
@@ -151,22 +151,22 @@ export default function GothenburgEventsWidget() {
                 </div>
 
                 {displayed.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">
+                  <p className="mt-2.5 text-sm text-slate-500 sm:mt-3">
                     Inga evenemang hittades.
                   </p>
                 ) : (
-                  <div className="mt-3 divide-y divide-white/[0.07]">
+                  <div className="mt-2 divide-y divide-white/[0.07] sm:mt-3">
                     {displayed.map((event) => (
                       <a
                         key={event.id}
                         href={event.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="group flex items-start gap-3 py-3 first:pt-0 last:pb-0"
+                        className="group flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0 sm:gap-3 sm:py-3"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold leading-5 text-white transition group-hover:text-blue-200">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <p className="text-sm font-semibold leading-5 text-white transition group-hover:text-blue-200 sm:text-base">
                               {event.title}
                             </p>
 
@@ -185,7 +185,7 @@ export default function GothenburgEventsWidget() {
                             )}
                           </div>
 
-                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
+                          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-slate-400 sm:gap-x-3 sm:text-xs">
                             {event.place && (
                               <span className="inline-flex items-center gap-1">
                                 <MapPin size={12} />
@@ -209,7 +209,7 @@ export default function GothenburgEventsWidget() {
                 )}
 
                 {day.events.length > displayed.length && (
-                  <p className="mt-3 text-xs text-slate-500">
+                  <p className="mt-2 text-[11px] text-slate-500 sm:mt-3 sm:text-xs">
                     + {day.events.length - displayed.length} fler denna dag
                   </p>
                 )}
@@ -217,7 +217,7 @@ export default function GothenburgEventsWidget() {
             );
           })}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-500 sm:gap-3 sm:text-xs">
             <span>
               Källa: goteborg.com
             </span>

@@ -46,13 +46,13 @@ function ActiveShowerCard({
   shower: MeteorShowerOccurrence;
 }) {
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-emerald-400/10 via-violet-400/[0.05] to-transparent p-5">
+    <article className="relative overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-emerald-400/10 via-violet-400/[0.05] to-transparent p-4 sm:p-5">
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl" />
 
       <div className="relative">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <span className="text-4xl">
+            <span className="text-3xl sm:text-4xl">
               {shower.emoji}
             </span>
 
@@ -61,7 +61,7 @@ function ActiveShowerCard({
                 Aktivt nu
               </p>
 
-              <h3 className="mt-1 text-2xl font-bold text-white">
+              <h3 className="mt-1 text-xl font-bold text-white sm:text-2xl">
                 {shower.name}
               </h3>
 
@@ -76,7 +76,7 @@ function ActiveShowerCard({
           </span>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-2.5 sm:mt-5 sm:grid-cols-3 sm:gap-3">
           <div className="rounded-xl border border-white/10 bg-slate-950/30 p-3">
             <p className="text-xs text-slate-500">
               Aktivitetsperiod
@@ -180,9 +180,9 @@ export default function MeteorShowersWidget() {
         </div>
       ) : (
         <>
-          <div className="mb-5 rounded-2xl border border-fuchsia-300/10 bg-gradient-to-r from-fuchsia-400/[0.08] via-violet-400/[0.06] to-blue-400/[0.06] p-5">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-fuchsia-400/10 text-fuchsia-300">
+          <div className="mb-4 rounded-2xl border border-fuchsia-300/10 bg-gradient-to-r from-fuchsia-400/[0.08] via-violet-400/[0.06] to-blue-400/[0.06] p-4 sm:mb-5 sm:p-5">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-400/10 text-fuchsia-300 sm:h-12 sm:w-12 sm:rounded-2xl">
                 <Sparkles size={25} />
               </div>
 
@@ -224,7 +224,7 @@ export default function MeteorShowersWidget() {
               )}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 sm:p-5">
               <p className="font-semibold text-white">
                 Inget större meteorregn är aktivt idag
               </p>
@@ -245,7 +245,7 @@ export default function MeteorShowersWidget() {
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-5 sm:mt-6">
             <div className="flex items-center gap-2">
               <CalendarDays
                 size={18}
@@ -262,7 +262,7 @@ export default function MeteorShowersWidget() {
                 (shower) => (
                   <article
                     key={`${shower.id}-${shower.peakDate}`}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 sm:p-4"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-2xl">
@@ -316,7 +316,7 @@ export default function MeteorShowersWidget() {
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/30 p-3.5 sm:mt-5 sm:p-4">
             <p className="text-xs leading-5 text-slate-500">
               ZHR är den teoretiska timfrekvensen under mycket
               mörk himmel med radianten nära zenit. Det faktiska

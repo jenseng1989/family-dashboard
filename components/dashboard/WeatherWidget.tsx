@@ -164,15 +164,15 @@ export default async function WeatherWidget() {
       className="xl:col-span-2"
       storageKey="weather"
     >
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-500/[0.12] via-white/[0.04] to-slate-950/20 p-5 sm:p-6">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-500/[0.12] via-white/[0.04] to-slate-950/20 p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-blue-200">
               {weather.location} · Idag
             </p>
 
             <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
-              <p className="text-5xl font-bold tracking-tight text-white sm:text-6xl">
+              <p className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 {Math.round(weather.temperature)}
                 °C
               </p>
@@ -188,13 +188,13 @@ export default async function WeatherWidget() {
               </p>
             </div>
 
-            <p className="mt-2 text-lg font-medium text-slate-200">
+            <p className="mt-1.5 text-base font-medium text-slate-200 sm:text-lg">
               {getWeatherDescription(
                 weather.weatherCode
               )}
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
               <span className="rounded-full border border-white/10 bg-slate-950/25 px-3 py-1.5 text-sm text-slate-300">
                 <span className="font-semibold text-white">
                   {Math.round(todayMax)}°
@@ -231,10 +231,10 @@ export default async function WeatherWidget() {
             </div>
           </div>
 
-          <div className="flex h-28 w-28 shrink-0 items-center justify-center self-center rounded-3xl border border-white/10 bg-white/[0.06] shadow-lg shadow-black/10 sm:h-32 sm:w-32">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl sm:h-28 sm:w-28 sm:rounded-3xl border border-white/10 bg-white/[0.06] shadow-lg shadow-black/10 sm:h-32 sm:w-32">
             <WeatherIcon
               code={weather.weatherCode}
-              size={78}
+              size={60}
             />
           </div>
         </div>
@@ -307,14 +307,14 @@ export default async function WeatherWidget() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         {details.map((item) => {
           const Icon = item.icon;
 
           return (
             <div
               key={item.label}
-              className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.08]"
+              className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 transition hover:bg-white/[0.08]"
             >
               <div className="flex items-center gap-2 text-slate-400">
                 <Icon
@@ -338,7 +338,7 @@ export default async function WeatherWidget() {
         })}
       </div>
 
-      <div className="mt-7">
+      <div className="mt-6">
         <div className="mb-3">
           <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
             7-dygnsprognos
@@ -349,7 +349,7 @@ export default async function WeatherWidget() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-7">
           {weather.daily.time.map(
             (day, index) => {
               const weatherCode =
@@ -398,7 +398,7 @@ export default async function WeatherWidget() {
                     )}
                   </div>
 
-                  <div className="my-4 flex justify-center">
+                  <div className="my-3 flex justify-center">
                     <WeatherIcon
                       code={weatherCode}
                       size={38}
@@ -411,7 +411,7 @@ export default async function WeatherWidget() {
                     )}
                   </p>
 
-                  <p className="mt-3 text-center text-lg font-bold text-white">
+                  <p className="mt-2 text-center text-base font-bold text-white sm:text-lg">
                     {Math.round(
                       weather.daily.temperatureMax[
                         index

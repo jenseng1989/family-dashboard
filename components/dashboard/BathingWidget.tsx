@@ -275,7 +275,7 @@ export default function BathingWidget() {
       className="md:col-span-2 xl:col-span-1"
     >
       {recommendedPlace && (
-        <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.14] via-blue-400/[0.07] to-slate-950/20 p-5">
+        <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.14] via-blue-400/[0.07] to-slate-950/20 p-4 sm:p-5">
           <div className="flex items-center gap-2 text-cyan-200">
             <ShieldCheck size={17} />
             <p className="text-xs font-semibold uppercase tracking-[0.16em]">
@@ -283,13 +283,13 @@ export default function BathingWidget() {
             </p>
           </div>
 
-          <div className="mt-4 flex items-end justify-between gap-4">
+          <div className="mt-3 flex items-end justify-between gap-3 sm:mt-4 sm:gap-4">
             <div className="min-w-0">
-              <p className="truncate text-xl font-bold text-white">
+              <p className="truncate text-lg font-bold text-white sm:text-xl">
                 {recommendedPlace.name}
               </p>
 
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
                 Högst temperatur utan aktuell badavrådan
               </p>
 
@@ -304,7 +304,7 @@ export default function BathingWidget() {
               </p>
             </div>
 
-            <p className="shrink-0 text-4xl font-black text-white">
+            <p className="shrink-0 text-3xl font-black text-white sm:text-4xl">
               {formatBathingTemperature(
                 recommendedPlace.temperature
               )}
@@ -313,28 +313,28 @@ export default function BathingWidget() {
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 sm:p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Mätningar
           </p>
-          <p className="mt-1 text-xl font-bold text-white">
+          <p className="mt-1 text-lg font-bold text-white sm:text-xl">
             {measuredPlaces.length}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-orange-300/15 bg-orange-400/[0.05] p-3">
+        <div className="rounded-2xl border border-orange-300/15 bg-orange-400/[0.05] p-2.5 sm:p-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-300">
             ≥ 20 °C
           </p>
-          <p className="mt-1 text-xl font-bold text-white">
+          <p className="mt-1 text-lg font-bold text-white sm:text-xl">
             {warmCount}
           </p>
         </div>
 
         <div
           className={[
-            "rounded-2xl border p-3",
+            "rounded-2xl border p-2.5 sm:p-3",
             warningCount > 0
               ? "border-red-300/20 bg-red-400/[0.07]"
               : "border-emerald-300/15 bg-emerald-400/[0.05]",
@@ -350,33 +350,33 @@ export default function BathingWidget() {
           >
             Avrådan
           </p>
-          <p className="mt-1 text-xl font-bold text-white">
+          <p className="mt-1 text-lg font-bold text-white sm:text-xl">
             {warningCount}
           </p>
         </div>
       </div>
 
-      <div className="mb-3 mt-5">
+      <div className="mb-2.5 mt-4 sm:mb-3 sm:mt-5">
         <p className="font-semibold text-white">
           Göteborgs badplatser
         </p>
 
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
           Sorterade från varmast till kallast
         </p>
       </div>
 
-      <div className="max-h-[36rem] space-y-2 overflow-y-auto pr-1">
+      <div className="max-h-[36rem] space-y-1.5 overflow-y-auto pr-1 sm:space-y-2">
         {measuredPlaces.map((place, index) => (
           <article
             key={place.name}
-            className={`rounded-2xl border px-3 py-3 ${getTemperatureStyle(
+            className={`rounded-2xl border px-2.5 py-2.5 sm:px-3 sm:py-3 ${getTemperatureStyle(
               place
             )}`}
           >
             <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xs font-bold text-white">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[11px] font-bold text-white sm:h-8 sm:w-8 sm:rounded-xl sm:text-xs">
                   {index + 1}
                 </div>
 
@@ -405,7 +405,7 @@ export default function BathingWidget() {
 
               <div className="flex shrink-0 items-center gap-2">
                 <span
-                  className={`rounded-full px-3 py-1 text-sm font-bold ${getTemperatureBadge(
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold sm:px-3 sm:text-sm ${getTemperatureBadge(
                     place
                   )}`}
                 >
@@ -440,7 +440,7 @@ export default function BathingWidget() {
             {placesWithoutTemperature.map((place) => (
               <div
                 key={place.name}
-                className="mb-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3"
+                className="mb-1.5 rounded-2xl border border-white/10 bg-white/[0.04] px-2.5 py-2.5 sm:mb-2 sm:px-3 sm:py-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="truncate text-sm text-slate-300">
@@ -457,7 +457,7 @@ export default function BathingWidget() {
         )}
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex flex-col gap-1.5 border-t border-white/10 pt-3 text-[11px] text-slate-500 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:pt-4 sm:text-xs">
         <span className="flex items-center gap-1.5">
           <Thermometer size={13} />
           Uppdaterad {formatUpdatedAt(bathingData.updatedAt)}

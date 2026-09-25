@@ -242,13 +242,13 @@ export default function VasttrafikWidget() {
         </div>
       ) : data ? (
         <>
-          <div className="mb-4 rounded-2xl border border-blue-300/15 bg-blue-500/[0.07] p-4">
+          <div className="mb-3 rounded-2xl border border-blue-300/15 bg-blue-500/[0.07] p-3 sm:mb-4 sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300">
               Hållplats
             </p>
 
-            <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <p className="text-xl font-bold text-white">
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-lg font-bold text-white sm:text-xl">
                 {data.stop.name}
               </p>
 
@@ -257,7 +257,7 @@ export default function VasttrafikWidget() {
                 onClick={() =>
                   void loadData()
                 }
-                className="inline-flex items-center gap-2 self-start rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white sm:gap-2 sm:px-3 sm:py-2 sm:text-xs"
               >
                 <RefreshCw
                   size={14}
@@ -278,10 +278,10 @@ export default function VasttrafikWidget() {
                     key={
                       departure.id
                     }
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2.5 py-2.5 sm:gap-3 sm:p-3"
                   >
                     <div
-                      className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black"
+                      className="flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-black sm:h-10 sm:min-w-10 sm:rounded-xl"
                       style={{
                         backgroundColor:
                           departure.backgroundColor ??
@@ -295,13 +295,13 @@ export default function VasttrafikWidget() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-white">
+                      <p className="truncate text-sm font-semibold text-white sm:text-base">
                         {
                           departure.direction
                         }
                       </p>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 sm:mt-1 sm:gap-x-2 sm:gap-y-1 sm:text-xs">
                         <span>
                           {formatDepartureTime(
                             departure.departureTime
@@ -330,7 +330,7 @@ export default function VasttrafikWidget() {
                     </div>
 
                     <div className="text-right">
-                      <p className="text-lg font-bold text-blue-200">
+                      <p className="whitespace-nowrap text-base font-bold text-blue-200 sm:text-lg">
                         {getMinutesText(
                           departure.minutes
                         )}
@@ -353,7 +353,7 @@ export default function VasttrafikWidget() {
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-[11px] text-slate-500 sm:mt-4 sm:pt-4 sm:text-xs">
             <span>
               Källa: {data.source}
             </span>

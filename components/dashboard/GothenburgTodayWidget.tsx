@@ -126,25 +126,25 @@ export default function GothenburgTodayWidget() {
           </button>
         </div>
       ) : data?.today ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-blue-300/15 bg-blue-500/[0.08] p-5">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="rounded-2xl border border-blue-300/15 bg-blue-500/[0.08] p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">
                   {formatToday(data.today.date)}
                 </p>
-                <p className="mt-2 text-2xl font-bold text-white">
+                <p className="mt-1.5 text-xl font-bold text-white sm:mt-2 sm:text-2xl">
                   {data.today.events.length === 1
                     ? "1 evenemang idag"
                     : `${data.today.events.length} evenemang idag`}
                 </p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
                   Utvalt från Göteborgs officiella evenemangskalender.
                 </p>
               </div>
 
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-400/15 text-blue-200">
-                <CalendarDays size={24} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-400/15 text-blue-200 sm:h-12 sm:w-12 sm:rounded-2xl">
+                <CalendarDays size={22} />
               </div>
             </div>
           </div>
@@ -154,14 +154,14 @@ export default function GothenburgTodayWidget() {
               Inga evenemang hittades för idag.
             </div>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
               {highlighted.map((event) => (
                 <a
                   key={event.id}
                   href={event.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="group rounded-2xl border border-white/10 bg-slate-950/25 p-4 transition hover:border-blue-300/25 hover:bg-blue-500/[0.07]"
+                  className="group rounded-2xl border border-white/10 bg-slate-950/25 p-3 transition hover:border-blue-300/25 hover:bg-blue-500/[0.07] sm:p-4"
                 >
                   <div className="flex flex-wrap gap-2">
                     <span className="rounded-full border border-blue-300/20 bg-blue-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-blue-200">
@@ -183,7 +183,7 @@ export default function GothenburgTodayWidget() {
                     )}
                   </div>
 
-                  <div className="mt-3 flex items-start gap-2">
+                  <div className="mt-2.5 flex items-start gap-2 sm:mt-3">
                     <p className="min-w-0 flex-1 font-semibold leading-5 text-white">
                       {event.title}
                     </p>
@@ -194,7 +194,7 @@ export default function GothenburgTodayWidget() {
                   </div>
 
                   {event.place && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400 sm:mt-2">
                       <MapPin size={13} />
                       <span className="truncate">
                         {event.place}

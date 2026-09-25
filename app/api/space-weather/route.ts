@@ -331,9 +331,7 @@ async function fetchJsonSafe(
             "Family-Dashboard/1.0",
         },
 
-        next: {
-          revalidate: 300,
-        },
+        cache: "no-store",
       });
 
     if (!response.ok) {

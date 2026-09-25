@@ -258,7 +258,7 @@ function SpaceStat({
   return (
     <div
       className={[
-        "rounded-2xl border p-4",
+        "rounded-2xl border p-3.5 sm:p-4",
         highlight
           ? "border-emerald-300/20 bg-emerald-400/[0.07]"
           : "border-violet-300/10 bg-slate-950/35",
@@ -279,7 +279,7 @@ function SpaceStat({
         </p>
       </div>
 
-      <p className="mt-3 text-2xl font-bold text-white">
+      <p className="mt-2.5 text-xl font-bold text-white sm:mt-3 sm:text-2xl">
         {value}
       </p>
 
@@ -436,7 +436,7 @@ export default function SolarActivityWidget() {
       ) : (
         <>
           <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-            <section className="relative overflow-hidden rounded-2xl border border-orange-300/15 bg-gradient-to-br from-orange-400/15 via-amber-300/[0.06] to-red-500/[0.06] p-5">
+            <section className="relative overflow-hidden rounded-2xl border border-orange-300/15 bg-gradient-to-br from-orange-400/15 via-amber-300/[0.06] to-red-500/[0.06] p-4 sm:p-5">
               <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-orange-400/15 blur-3xl" />
 
               <div className="relative">
@@ -446,12 +446,12 @@ export default function SolarActivityWidget() {
                       Rymdväder
                     </p>
 
-                    <h3 className="mt-2 text-2xl font-bold text-white">
+                    <h3 className="mt-2 text-xl font-bold text-white sm:text-2xl">
                       {data.level}
                     </h3>
                   </div>
 
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-orange-200/20 bg-orange-400/15 text-orange-300 shadow-[0_0_30px_rgba(251,146,60,0.18)]">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-orange-200/20 bg-orange-400/15 text-orange-300 shadow-[0_0_30px_rgba(251,146,60,0.18)] sm:h-14 sm:w-14">
                     <Sun
                       size={31}
                     />
@@ -473,7 +473,7 @@ export default function SolarActivityWidget() {
                   {data.stormDescription}
                 </p>
 
-                <div className="mt-5 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2.5 text-sm text-slate-300">
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2.5 text-sm text-slate-300 sm:mt-5">
                   <TrendIcon
                     trend={
                       data.trend
@@ -599,7 +599,7 @@ export default function SolarActivityWidget() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-sky-300/15 bg-sky-400/[0.06] p-5">
+          <div className="mt-4 rounded-2xl border border-sky-300/15 bg-sky-400/[0.06] p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <Sparkles size={22} className="mt-0.5 shrink-0 text-sky-300" />
               <div>
@@ -618,7 +618,7 @@ export default function SolarActivityWidget() {
 
           <div
             className={[
-              "mt-4 rounded-2xl border p-5",
+              "mt-4 rounded-2xl border p-4 sm:p-5",
               bzIsFavourable
                 ? "border-emerald-300/20 bg-emerald-400/[0.07]"
                 : "border-violet-300/10 bg-violet-400/[0.05]",
@@ -639,7 +639,7 @@ export default function SolarActivityWidget() {
                   Bz just nu
                 </p>
 
-                <p className="mt-2 text-xl font-bold text-white">
+                <p className="mt-2 text-lg font-bold text-white sm:text-xl">
                   {data.bz !== null
                     ? `${data.bz} nT · ${data.bzStatus}`
                     : "Ingen Bz-data"}
@@ -652,7 +652,7 @@ export default function SolarActivityWidget() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.06] p-5">
+          <div className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.06] p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <Sparkles
                 size={22}
@@ -664,7 +664,7 @@ export default function SolarActivityWidget() {
                   Norrskenschans i Göteborg
                 </p>
 
-                <p className="mt-2 text-xl font-bold text-white">
+                <p className="mt-2 text-lg font-bold text-white sm:text-xl">
                   {data.auroraChance}
                 </p>
 
@@ -687,7 +687,7 @@ export default function SolarActivityWidget() {
 
           {data.forecast.length >
             0 && (
-            <section className="mt-4 rounded-2xl border border-violet-300/10 bg-slate-950/35 p-5">
+            <section className="mt-4 rounded-2xl border border-violet-300/10 bg-slate-950/35 p-4 sm:p-5">
               <div className="flex items-center gap-2">
                 <Activity
                   size={19}
