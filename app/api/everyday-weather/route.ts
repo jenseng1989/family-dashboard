@@ -351,6 +351,43 @@ export async function GET() {
         todayHours
       );
 
+    const hourlyForecast =
+      weather.hourly.time
+        .map(
+          (
+            time,
+            index
+          ) => ({
+            time,
+            temperature:
+              weather
+                .hourly
+                .temperature[
+                index
+              ],
+            precipitationProbability:
+              weather
+                .hourly
+                .precipitationProbability[
+                index
+              ] ?? 0,
+            weatherCode:
+              weather
+                .hourly
+                .weatherCode[
+                index
+              ],
+          })
+        )
+        .filter(
+          (hour) =>
+            new Date(
+              hour.time
+            ).getTime() >
+            now.getTime()
+        )
+        .slice(0, 5);
+
     const maxRainProbability =
       todayHours.length > 0
         ? Math.max(
@@ -392,6 +429,7 @@ export async function GET() {
         uvIndex:
           weather.uvIndex,
         outdoor,
+        hourlyForecast,
         updatedAt:
           new Date().toISOString(),
       },

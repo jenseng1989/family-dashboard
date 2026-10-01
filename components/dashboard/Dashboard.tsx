@@ -1,6 +1,6 @@
 import WeatherAirQualityLazy from "@/components/dashboard/WeatherAirQualityLazy";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
-import EverydayOverview from "@/components/dashboard/EverydayOverview";
+import DailyAssistantWidget from "@/components/dashboard/DailyAssistantWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import PollenWidget from "@/components/dashboard/PollenWidget";
 import StartTabs from "@/components/dashboard/StartTabs";
@@ -63,7 +63,7 @@ export default function Dashboard({
                 everydayWidget.dashboardClassName
               }
             >
-              <EverydayOverview />
+              <DailyAssistantWidget />
             </WidgetGate>
           ) : null
         }
