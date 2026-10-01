@@ -7,16 +7,6 @@ type HeaderProps = {
 export default function Header({
   dashboardName,
 }: HeaderProps) {
-  const date = new Date().toLocaleDateString(
-    "sv-SE",
-    {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }
-  );
-
   return (
     <header className="mb-8">
       <div className="min-w-0">
@@ -28,9 +18,6 @@ export default function Header({
           {dashboardName}
         </h1>
 
-        <p className="mt-2 capitalize text-slate-300">
-          {date}
-        </p>
       </div>
     </header>
   );

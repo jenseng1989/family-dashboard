@@ -14,20 +14,6 @@ type VolcanoItem = {
   distanceKm: number;
 };
 
-type GeoJsonFeature = {
-  geometry?: {
-    coordinates?: unknown;
-  } | null;
-  properties?: Record<
-    string,
-    unknown
-  >;
-};
-
-type GeoJsonFeatureCollection = {
-  features?: GeoJsonFeature[];
-};
-
 type VolcanoPayload = {
   generatedAt: string;
   source: string;
@@ -38,6 +24,17 @@ type VolcanoPayload = {
   maxResults: number;
   total: number;
   volcanoes: VolcanoItem[];
+};
+
+type RssVolcano = {
+  name: string;
+  country: string;
+  eruptionStart: string;
+  lastKnownActivity: string;
+  eruptionType: string;
+  url: string;
+  latitude: number;
+  longitude: number;
 };
 
 const GOTHENBURG = {
@@ -53,20 +50,14 @@ const MEMORY_CACHE_TTL_MS =
 const FAILURE_COOLDOWN_MS =
   5 * 60 * 1000;
 
-const WFS_MAX_ATTEMPTS = 3;
+const RSS_MAX_ATTEMPTS = 3;
+const RSS_RETRY_DELAY_MS = 700;
 
-const WFS_RETRY_DELAY_MS = 700;
+const WEEKLY_REPORT_URL =
+  "https://volcano.si.edu/reports_weekly.cfm";
 
-const CURRENT_ERUPTIONS_URL =
-  "https://volcano.si.edu/gvp_currenteruptions.cfm";
-
-const WFS_ERUPTIONS_URL =
-  "https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows" +
-  "?service=WFS" +
-  "&version=1.0.0" +
-  "&request=GetFeature" +
-  "&typeName=GVP-VOTW%3ASmithsonian_VOTW_Holocene_Eruptions" +
-  "&outputFormat=application%2Fjson";
+const WEEKLY_RSS_URL =
+  "https://volcano.si.edu/news/WeeklyVolcanoRSS.xml";
 
 let cachedPayload:
   VolcanoPayload | null = null;
@@ -78,287 +69,377 @@ let failureCooldownUntil = 0;
 let lastFetchError: unknown = null;
 
 let inFlight:
-  Promise<VolcanoPayload> | null =
-  null;
+  Promise<VolcanoPayload> | null = null;
 
-function normalizeKey(
-  value: string
-): string {
+function decodeXml(value: string): string {
   return value
-    .toLowerCase()
     .replace(
-      /[^a-z0-9]/g,
-      ""
-    );
-}
-
-function getProperty(
-  properties: Record<
-    string,
-    unknown
-  >,
-  candidates: string[]
-): unknown {
-  const normalizedCandidates =
-    candidates.map(
-      normalizeKey
-    );
-
-  for (
-    const [
-      key,
-      value,
-    ] of Object.entries(
-      properties
+      /<!\[CDATA\[([\s\S]*?)\]\]>/g,
+      "$1"
     )
-  ) {
-    if (
-      normalizedCandidates.includes(
-        normalizeKey(key)
-      )
-    ) {
-      return value;
-    }
-  }
-
-  return undefined;
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;|&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(
+      /&#(\d+);/g,
+      (_, code: string) =>
+        String.fromCharCode(
+          Number.parseInt(code, 10)
+        )
+    )
+    .replace(
+      /&#x([0-9a-f]+);/gi,
+      (_, code: string) =>
+        String.fromCharCode(
+          Number.parseInt(code, 16)
+        )
+    );
 }
 
-function getStringProperty(
-  properties: Record<
-    string,
-    unknown
-  >,
-  candidates: string[]
+function stripHtml(value: string): string {
+  return decodeXml(value)
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getXmlValue(
+  xml: string,
+  tagNames: string[]
 ): string | null {
-  const value =
-    getProperty(
-      properties,
-      candidates
-    );
-
-  if (
-    typeof value ===
-      "string" &&
-    value.trim()
-  ) {
-    return value.trim();
-  }
-
-  if (
-    typeof value ===
-      "number" &&
-    Number.isFinite(value)
-  ) {
-    return String(value);
-  }
-
-  return null;
-}
-
-function getNumberProperty(
-  properties: Record<
-    string,
-    unknown
-  >,
-  candidates: string[]
-): number | null {
-  const value =
-    getProperty(
-      properties,
-      candidates
-    );
-
-  if (
-    typeof value ===
-      "number" &&
-    Number.isFinite(value)
-  ) {
-    return value;
-  }
-
-  if (
-    typeof value ===
-    "string"
-  ) {
-    const parsed =
-      Number.parseFloat(
-        value
+  for (const tagName of tagNames) {
+    const escapedTag =
+      tagName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
       );
 
-    return Number.isFinite(
-      parsed
-    )
-      ? parsed
-      : null;
+    const expression =
+      new RegExp(
+        `<${escapedTag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escapedTag}>`,
+        "i"
+      );
+
+    const match = xml.match(expression);
+
+    if (match?.[1]) {
+      const value =
+        stripHtml(match[1]);
+
+      if (value) {
+        return value;
+      }
+    }
   }
 
   return null;
 }
 
-function isContinuingEruption(
-  properties: Record<
-    string,
-    unknown
-  >
-): boolean {
-  const stopDate =
-    getStringProperty(
-      properties,
-      [
-        "End Date",
-        "EndDate",
-        "Stop Date",
-        "StopDate",
-        "Eruption Stop Date",
-        "EruptionStopDate",
-      ]
-    );
-
-  const continuing =
-    getStringProperty(
-      properties,
-      [
-        "Continuing",
-        "Is Continuing",
-        "Current",
-        "Status",
-      ]
-    );
-
-  if (continuing) {
-    const value =
-      continuing.toLowerCase();
-
-    if (
-      value.includes(
-        "continu"
-      ) ||
-      value === "yes" ||
-      value === "true" ||
-      value === "current"
-    ) {
-      return true;
-    }
-  }
-
-  return !stopDate;
-}
-
-function buildGvpProfileUrl(
-  properties: Record<
-    string,
-    unknown
-  >
-): string {
-  const volcanoNumber =
-    getStringProperty(
-      properties,
-      [
-        "Volcano Number",
-        "VolcanoNumber",
-        "VolcanoNo",
-        "VolcanoNum",
-      ]
-    );
-
-  if (volcanoNumber) {
-    return (
-      "https://volcano.si.edu/volcano.cfm" +
-      `?vn=${encodeURIComponent(
-        volcanoNumber
-      )}`
-    );
-  }
-
-  return CURRENT_ERUPTIONS_URL;
-}
-
-function getCoordinates(
-  feature: GeoJsonFeature,
-  properties: Record<
-    string,
-    unknown
-  >
+function parseCoordinates(
+  value: string | null
 ): {
   latitude: number;
   longitude: number;
 } | null {
-  const coordinates =
-    feature.geometry
-      ?.coordinates;
-
-  if (
-    Array.isArray(
-      coordinates
-    ) &&
-    coordinates.length >= 2
-  ) {
-    const longitude =
-      typeof coordinates[0] ===
-      "number"
-        ? coordinates[0]
-        : Number.parseFloat(
-            String(
-              coordinates[0]
-            )
-          );
-
-    const latitude =
-      typeof coordinates[1] ===
-      "number"
-        ? coordinates[1]
-        : Number.parseFloat(
-            String(
-              coordinates[1]
-            )
-          );
-
-    if (
-      Number.isFinite(
-        latitude
-      ) &&
-      Number.isFinite(
-        longitude
-      )
-    ) {
-      return {
-        latitude,
-        longitude,
-      };
-    }
+  if (!value) {
+    return null;
   }
 
-  const latitude =
-    getNumberProperty(
-      properties,
-      [
-        "Latitude",
-        "Lat",
-      ]
-    );
-
-  const longitude =
-    getNumberProperty(
-      properties,
-      [
-        "Longitude",
-        "Lon",
-        "Long",
-      ]
-    );
+  const parts =
+    value
+      .trim()
+      .split(/\s+/)
+      .map((part) =>
+        Number.parseFloat(part)
+      );
 
   if (
-    latitude !== null &&
-    longitude !== null
+    parts.length < 2 ||
+    !Number.isFinite(parts[0]) ||
+    !Number.isFinite(parts[1])
   ) {
+    return null;
+  }
+
+  return {
+    latitude: parts[0],
+    longitude: parts[1],
+  };
+}
+
+function parseTitle(title: string): {
+  name: string;
+  country: string;
+} {
+  const trimmed = title.trim();
+
+  /*
+   * Feedens titel har historiskt använt
+   * "Vulkan (Land)" för rapportposter.
+   * Om formatet ändras behåller vi hela
+   * titeln som namn i stället för att
+   * kasta posten.
+   */
+  /*
+   * GeoRSS-titeln kan exempelvis vara:
+   * "Sheveluch (Russia) - Report for 10 September-16 September 2026".
+   *
+   * Landet ska därför läsas ur parentesen direkt efter
+   * vulkannamnet. Rapportperioden efter parentesen är metadata
+   * och får inte tolkas som land.
+   */
+  const match =
+    trimmed.match(
+      /^(.+?)\s*\(([^()]+)\)(?:\s*[-–—]\s*Report\b[\s\S]*)?$/i
+    );
+
+  if (match) {
     return {
-      latitude,
-      longitude,
+      name: match[1].trim(),
+      country: match[2].trim(),
     };
   }
 
-  return null;
+  /*
+   * Fallback om Smithsonian någon gång levererar en titel utan
+   * landparentes. Vi behåller då hela titeln som namn i stället
+   * för att riskera att rapportmetadata blir ett felaktigt land.
+   */
+
+  return {
+    name: trimmed,
+    country: "Okänt land",
+  };
+}
+
+function normalizeReportType(
+  category: string | null,
+  description: string
+): string {
+  const combined =
+    `${category ?? ""} ${description}`
+      .toLowerCase();
+
+  if (
+    combined.includes(
+      "new eruptive activity"
+    ) ||
+    combined.includes(
+      "activity (new)"
+    )
+  ) {
+    return "Ny eruptiv aktivitet";
+  }
+
+  if (
+    combined.includes(
+      "continuing eruptive activity"
+    ) ||
+    combined.includes(
+      "activity (continuing)"
+    )
+  ) {
+    return "Fortsatt eruptiv aktivitet";
+  }
+
+  if (
+    combined.includes("new unrest") ||
+    combined.includes("unrest (new)")
+  ) {
+    return "Ny vulkanisk oro";
+  }
+
+  if (
+    combined.includes(
+      "continuing unrest"
+    ) ||
+    combined.includes(
+      "unrest (continuing)"
+    )
+  ) {
+    return "Fortsatt vulkanisk oro";
+  }
+
+  if (
+    combined.includes("other")
+  ) {
+    return "Övrig aktivitet";
+  }
+
+  return (
+    category?.trim() ||
+    "Aktuell vulkanisk aktivitet"
+  );
+}
+
+function extractEruptionStart(
+  description: string
+): string {
+  const patterns = [
+    /eruption start date\s*:?\s*([^.;<]+)/i,
+    /eruption started\s+(?:on\s+)?([^.;<]+)/i,
+    /eruption (?:likely )?began\s+(?:on\s+)?([^.;<]+)/i,
+    /eruption (?:likely )?started\s+(?:on\s+)?([^.;<]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match =
+      description.match(pattern);
+
+    if (match?.[1]?.trim()) {
+      return match[1].trim();
+    }
+  }
+
+  return "Ej angivet";
+}
+
+function formatActivityDate(
+  pubDate: string | null
+): string {
+  if (!pubDate) {
+    return "Aktuell veckorapport";
+  }
+
+  const parsed =
+    new Date(pubDate);
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return pubDate;
+  }
+
+  return parsed.toLocaleDateString(
+    "sv-SE",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }
+  );
+}
+
+function parseWeeklyRss(
+  xml: string
+): RssVolcano[] {
+  const items =
+    xml.match(
+      /<item\b[\s\S]*?<\/item>/gi
+    ) ?? [];
+
+  const volcanoes:
+    RssVolcano[] = [];
+
+  for (const item of items) {
+    const title =
+      getXmlValue(item, [
+        "title",
+      ]);
+
+    const point =
+      getXmlValue(item, [
+        "georss:point",
+        "point",
+      ]);
+
+    if (!title || !point) {
+      continue;
+    }
+
+    const coordinates =
+      parseCoordinates(point);
+
+    if (!coordinates) {
+      continue;
+    }
+
+    const {
+      name,
+      country,
+    } = parseTitle(title);
+
+    if (!name) {
+      continue;
+    }
+
+    const description =
+      getXmlValue(item, [
+        "description",
+        "content:encoded",
+      ]) ?? "";
+
+    const category =
+      getXmlValue(item, [
+        "category",
+      ]);
+
+    const pubDate =
+      getXmlValue(item, [
+        "pubDate",
+        "dc:date",
+      ]);
+
+    const link =
+      getXmlValue(item, [
+        "link",
+        "guid",
+      ]) ??
+      WEEKLY_REPORT_URL;
+
+    volcanoes.push({
+      name,
+      country,
+      eruptionStart:
+        extractEruptionStart(
+          description
+        ),
+      lastKnownActivity:
+        formatActivityDate(
+          pubDate
+        ),
+      eruptionType:
+        normalizeReportType(
+          category,
+          description
+        ),
+      url: link,
+      latitude:
+        coordinates.latitude,
+      longitude:
+        coordinates.longitude,
+    });
+  }
+
+  const unique =
+    new Map<
+      string,
+      RssVolcano
+    >();
+
+  for (const volcano of volcanoes) {
+    const key =
+      `${volcano.name}-${volcano.latitude}-${volcano.longitude}`
+        .toLowerCase();
+
+    if (!unique.has(key)) {
+      unique.set(
+        key,
+        volcano
+      );
+    }
+  }
+
+  return Array.from(
+    unique.values()
+  );
 }
 
 function toRadians(
@@ -376,8 +457,7 @@ function getDistanceKm(
   latitude2: number,
   longitude2: number
 ): number {
-  const earthRadiusKm =
-    6371;
+  const earthRadiusKm = 6371;
 
   const lat1 =
     toRadians(latitude1);
@@ -387,14 +467,12 @@ function getDistanceKm(
 
   const deltaLat =
     toRadians(
-      latitude2 -
-        latitude1
+      latitude2 - latitude1
     );
 
   const deltaLon =
     toRadians(
-      longitude2 -
-        longitude1
+      longitude2 - longitude1
     );
 
   const a =
@@ -414,194 +492,17 @@ function getDistanceKm(
       Math.sqrt(1 - a)
     );
 
-  return (
-    earthRadiusKm * c
-  );
-}
-
-function parseGeoJsonEruptions(
-  data: unknown
-): VolcanoItem[] {
-  if (
-    typeof data !==
-      "object" ||
-    data === null
-  ) {
-    return [];
-  }
-
-  const collection =
-    data as
-      GeoJsonFeatureCollection;
-
-  if (
-    !Array.isArray(
-      collection.features
-    )
-  ) {
-    return [];
-  }
-
-  const volcanoes:
-    VolcanoItem[] = [];
-
-  for (
-    const feature of
-    collection.features
-  ) {
-    const properties =
-      feature.properties;
-
-    if (!properties) {
-      continue;
-    }
-
-    if (
-      !isContinuingEruption(
-        properties
-      )
-    ) {
-      continue;
-    }
-
-    const coordinates =
-      getCoordinates(
-        feature,
-        properties
-      );
-
-    if (!coordinates) {
-      continue;
-    }
-
-    const name =
-      getStringProperty(
-        properties,
-        [
-          "Volcano Name",
-          "VolcanoName",
-          "Volcano",
-        ]
-      );
-
-    if (!name) {
-      continue;
-    }
-
-    const country =
-      getStringProperty(
-        properties,
-        [
-          "Country",
-          "CountryName",
-        ]
-      ) ??
-      "Okänt land";
-
-    const eruptionStart =
-      getStringProperty(
-        properties,
-        [
-          "Start Date",
-          "StartDate",
-          "Eruption Start Date",
-          "EruptionStartDate",
-          "StartYear",
-        ]
-      ) ??
-      "Okänt";
-
-    const lastKnownActivity =
-      getStringProperty(
-        properties,
-        [
-          "Last Known Activity",
-          "LastActivity",
-          "LastKnownActivity",
-          "End Date",
-          "EndDate",
-        ]
-      ) ??
-      "Fortsatt aktivitet";
-
-    const eruptionType =
-      getStringProperty(
-        properties,
-        [
-          "Eruption Type",
-          "EruptionType",
-          "Activity",
-          "Evidence Method",
-        ]
-      ) ??
-      "Pågående utbrott";
-
-    volcanoes.push({
-      name,
-      country,
-      eruptionStart,
-      lastKnownActivity,
-      eruptionType,
-      url:
-        buildGvpProfileUrl(
-          properties
-        ),
-      latitude:
-        coordinates.latitude,
-      longitude:
-        coordinates.longitude,
-      distanceKm:
-        Math.round(
-          getDistanceKm(
-            GOTHENBURG.latitude,
-            GOTHENBURG.longitude,
-            coordinates.latitude,
-            coordinates.longitude
-          )
-        ),
-    });
-  }
-
-  const unique =
-    new Map<
-      string,
-      VolcanoItem
-    >();
-
-  for (
-    const volcano of
-    volcanoes
-  ) {
-    const key =
-      `${volcano.name}-${volcano.country}`.toLowerCase();
-
-    if (!unique.has(key)) {
-      unique.set(
-        key,
-        volcano
-      );
-    }
-  }
-
-  return Array.from(
-    unique.values()
-  )
-    .sort(
-      (a, b) =>
-        a.distanceKm -
-        b.distanceKm
-    )
-    .slice(
-      0,
-      MAX_VOLCANOES
-    );
+  return earthRadiusKm * c;
 }
 
 function wait(
   milliseconds: number
 ): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
+    setTimeout(
+      resolve,
+      milliseconds
+    );
   });
 }
 
@@ -635,41 +536,23 @@ function isRetryableFetchError(
   return false;
 }
 
-async function fetchWfsSource():
-  Promise<VolcanoItem[]> {
-  /*
-   * Smithsonian-svaret är cirka
-   * 11–12 MB och är större än
-   * Next.js vanliga fetch-cache.
-   *
-   * Därför hämtas källan med
-   * no-store, men resultatet
-   * cacheas i serverprocessens
-   * minne i en timme.
-   *
-   * Smithsonian WFS kan ibland
-   * stänga anslutningen mitt under
-   * överföringen (ECONNRESET).
-   * Vi gör därför ett fåtal försök
-   * med kort backoff innan routen
-   * går vidare till befintlig
-   * stale/error-hantering.
-   */
+async function fetchWeeklyRss():
+  Promise<RssVolcano[]> {
   let lastError: unknown = null;
 
   for (
     let attempt = 1;
-    attempt <= WFS_MAX_ATTEMPTS;
+    attempt <= RSS_MAX_ATTEMPTS;
     attempt += 1
   ) {
     try {
       const response =
         await fetch(
-          WFS_ERUPTIONS_URL,
+          WEEKLY_RSS_URL,
           {
             headers: {
               Accept:
-                "application/json",
+                "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
               "User-Agent":
                 "Family-Dashboard/1.0",
             },
@@ -681,26 +564,18 @@ async function fetchWfsSource():
       if (!response.ok) {
         const error =
           new Error(
-            `Smithsonian WFS svarade med ${response.status}`
+            `Smithsonian Weekly GeoRSS svarade med ${response.status}`
           );
 
-        /*
-         * 5xx är normalt tillfälliga
-         * serverfel och får därför
-         * samma korta retry som
-         * nätverksfel. 4xx returneras
-         * direkt eftersom ett nytt
-         * identiskt försök inte hjälper.
-         */
         if (
           response.status >= 500 &&
           attempt <
-            WFS_MAX_ATTEMPTS
+            RSS_MAX_ATTEMPTS
         ) {
           lastError = error;
 
           await wait(
-            WFS_RETRY_DELAY_MS *
+            RSS_RETRY_DELAY_MS *
               attempt
           );
 
@@ -710,18 +585,27 @@ async function fetchWfsSource():
         throw error;
       }
 
-      const data: unknown =
-        await response.json();
+      const xml =
+        await response.text();
 
-      return parseGeoJsonEruptions(
-        data
-      );
+      const volcanoes =
+        parseWeeklyRss(xml);
+
+      if (
+        volcanoes.length === 0
+      ) {
+        throw new Error(
+          "Smithsonian Weekly GeoRSS innehöll inga tolkbara vulkanposter."
+        );
+      }
+
+      return volcanoes;
     } catch (error) {
       lastError = error;
 
       if (
         attempt >=
-          WFS_MAX_ATTEMPTS ||
+          RSS_MAX_ATTEMPTS ||
         !isRetryableFetchError(
           error
         )
@@ -730,7 +614,7 @@ async function fetchWfsSource():
       }
 
       await wait(
-        WFS_RETRY_DELAY_MS *
+        RSS_RETRY_DELAY_MS *
           attempt
       );
     }
@@ -739,7 +623,7 @@ async function fetchWfsSource():
   throw (
     lastError ??
     new Error(
-      "Smithsonian WFS kunde inte hämtas."
+      "Smithsonian Weekly GeoRSS kunde inte hämtas."
     )
   );
 }
@@ -765,7 +649,7 @@ async function loadPayload():
 
   if (
     Date.now() <
-      failureCooldownUntil
+    failureCooldownUntil
   ) {
     if (cachedPayload) {
       return cachedPayload;
@@ -774,7 +658,7 @@ async function loadPayload():
     throw (
       lastFetchError ??
       new Error(
-        "Smithsonian är tillfälligt otillgängligt."
+        "Smithsonian Weekly GeoRSS är tillfälligt otillgänglig."
       )
     );
   }
@@ -785,25 +669,51 @@ async function loadPayload():
 
   inFlight = (async () => {
     try {
-      const volcanoes =
-        await fetchWfsSource();
+      const rssVolcanoes =
+        await fetchWeeklyRss();
 
-      if (
-        volcanoes.length === 0
-      ) {
-        throw new Error(
-          "Kunde inte hitta pågående vulkanutbrott med koordinater."
+      const allVolcanoes:
+        VolcanoItem[] =
+        rssVolcanoes
+          .map(
+            (
+              volcano
+            ): VolcanoItem => ({
+              ...volcano,
+              distanceKm:
+                Math.round(
+                  getDistanceKm(
+                    GOTHENBURG.latitude,
+                    GOTHENBURG.longitude,
+                    volcano.latitude,
+                    volcano.longitude
+                  )
+                ),
+            })
+          )
+          .sort(
+            (a, b) =>
+              a.distanceKm -
+              b.distanceKm
+          );
+
+      const total =
+        allVolcanoes.length;
+
+      const volcanoes =
+        allVolcanoes.slice(
+          0,
+          MAX_VOLCANOES
         );
-      }
 
       const payload:
         VolcanoPayload = {
         generatedAt:
           new Date().toISOString(),
         source:
-          "Smithsonian Global Volcanism Program",
+          "Smithsonian / USGS Weekly Volcanic Activity Report",
         sourceUrl:
-          CURRENT_ERUPTIONS_URL,
+          WEEKLY_REPORT_URL,
         location:
           "Göteborg",
         latitude:
@@ -812,8 +722,7 @@ async function loadPayload():
           GOTHENBURG.longitude,
         maxResults:
           MAX_VOLCANOES,
-        total:
-          volcanoes.length,
+        total,
         volcanoes,
       };
 
@@ -830,6 +739,7 @@ async function loadPayload():
       failureCooldownUntil =
         Date.now() +
         FAILURE_COOLDOWN_MS;
+
       lastFetchError = error;
 
       throw error;
@@ -863,13 +773,6 @@ export async function GET() {
       error
     );
 
-    /*
-     * Om källan tillfälligt
-     * fallerar men vi har ett
-     * äldre minnescachat svar,
-     * är gammal data bättre än
-     * ett helt trasigt kort.
-     */
     if (cachedPayload) {
       return NextResponse.json(
         {
