@@ -395,7 +395,7 @@ function getAssistantLead(
     return {
       eyebrow: "Just nu",
       message:
-        "Kalendern får högsta prioritet just nu. Resten av dagen ligger samlat direkt under.",
+        "Pågående aktivitet i kalendern",
     };
   }
 
@@ -575,9 +575,37 @@ function getElectricityAdvice(
   };
 }
 
+type SchoolTransfer = {
+  id: string;
+  kind: "dropoff" | "pickup";
+  person: string;
+  time: string;
+};
+
+function getSchoolTransfer(
+  event: GoogleCalendarEvent
+): Omit<SchoolTransfer, "id" | "time"> | null {
+  const match = event.title
+    .trim()
+    .match(/^(hämtning|lämning)\s*[-–]\s*(.+)$/i);
+
+  if (!match) return null;
+
+  return {
+    kind:
+      match[1].toLocaleLowerCase("sv-SE") === "hämtning"
+        ? "pickup"
+        : "dropoff",
+    person: match[2].trim(),
+  };
+}
+
 export default function DailyAssistantWidget() {
   const [now, setNow] = useState<Date | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<
+    GoogleCalendarEvent[]
+  >([]);
+  const [schoolCalendarEvents, setSchoolCalendarEvents] = useState<
     GoogleCalendarEvent[]
   >([]);
   const [countdowns, setCountdowns] = useState<CountdownRow[]>([]);
@@ -622,6 +650,40 @@ export default function DailyAssistantWidget() {
           console.error("Idag: kunde inte hämta Google Kalender:", error);
           if (isCurrent()) {
             setCalendarEvents([]);
+            setHasPartialError(true);
+          }
+        }
+      })();
+
+      const schoolCalendarTask = (async () => {
+        try {
+          const response = await fetch("/api/google-school-calendar", {
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(
+              `Google Skolkalender svarade ${response.status}.`
+            );
+          }
+
+          const data =
+            (await response.json()) as GoogleCalendarResponse;
+          if (data.connected !== true) {
+            throw new Error(
+              data.error ?? "Google Skolkalender är inte ansluten."
+            );
+          }
+
+          if (isCurrent()) {
+            setSchoolCalendarEvents(data.events ?? []);
+          }
+        } catch (error) {
+          console.error(
+            "Idag: kunde inte hämta Google Skolkalender:",
+            error
+          );
+          if (isCurrent()) {
+            setSchoolCalendarEvents([]);
             setHasPartialError(true);
           }
         }
@@ -710,6 +772,7 @@ export default function DailyAssistantWidget() {
       // när samtliga källor har avslutats, precis som tidigare.
       await Promise.all([
         calendarTask,
+        schoolCalendarTask,
         countdownTask,
         familyTask,
         weatherTask,
@@ -836,6 +899,36 @@ export default function DailyAssistantWidget() {
       return new Date(event.endTime).getTime() > now.getTime();
     });
   }, [calendarHeroIds, now, todaysCalendarEvents]);
+
+  const todaysSchoolTransfers = useMemo(() => {
+    if (!now) {
+      return { dropoffs: [] as SchoolTransfer[], pickups: [] as SchoolTransfer[] };
+    }
+
+    const today = getStockholmDateKey(now.toISOString());
+    const transfers = schoolCalendarEvents
+      .filter((event) => eventOccursOnDate(event, today))
+      .map((event) => {
+        const transfer = getSchoolTransfer(event);
+        if (!transfer) return null;
+
+        return {
+          id: event.id,
+          ...transfer,
+          time: event.allDay
+            ? "Hela dagen"
+            : event.startTime
+              ? formatCalendarTime(event.startTime)
+              : "Tid saknas",
+        };
+      })
+      .filter((transfer): transfer is SchoolTransfer => transfer !== null);
+
+    return {
+      dropoffs: transfers.filter((transfer) => transfer.kind === "dropoff"),
+      pickups: transfers.filter((transfer) => transfer.kind === "pickup"),
+    };
+  }, [now, schoolCalendarEvents]);
 
   const electricityAdvice = useMemo(
     () => getElectricityAdvice(electricity, now),
@@ -1312,6 +1405,65 @@ export default function DailyAssistantWidget() {
                     )}
                   </div>
                 )}
+              </div>
+            </article>
+          )}
+
+          {(todaysSchoolTransfers.dropoffs.length > 0 ||
+            todaysSchoolTransfers.pickups.length > 0) && (
+            <article className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.045] p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/[0.08] text-emerald-300">
+                  <CalendarCheck2 size={19} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-emerald-300">
+                    Förskola idag
+                  </p>
+
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Lämning
+                      </p>
+                      {todaysSchoolTransfers.dropoffs.length > 0 ? (
+                        todaysSchoolTransfers.dropoffs.map((transfer) => (
+                          <p
+                            key={transfer.id}
+                            className="mt-0.5 text-sm font-semibold text-slate-200"
+                          >
+                            {transfer.person} · {transfer.time}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          Ingen lämning inlagd
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Hämtning
+                      </p>
+                      {todaysSchoolTransfers.pickups.length > 0 ? (
+                        todaysSchoolTransfers.pickups.map((transfer) => (
+                          <p
+                            key={transfer.id}
+                            className="mt-0.5 text-sm font-semibold text-slate-200"
+                          >
+                            {transfer.person} · {transfer.time}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          Ingen hämtning inlagd
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </article>
           )}

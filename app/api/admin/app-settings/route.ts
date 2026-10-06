@@ -7,12 +7,14 @@ type AppSettings = {
   defaultTab: string;
   showAdminButton: boolean;
   dashboardName: string;
+  schoolLunchUrl: string;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultTab: "home",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
+  schoolLunchUrl: "",
 };
 
 const VALID_TABS = [
@@ -55,6 +57,10 @@ function rowsToSettings(
       case "dashboard_name":
         settings.dashboardName =
           row.setting_value || DEFAULT_SETTINGS.dashboardName;
+        break;
+
+      case "school_lunch_url":
+        settings.schoolLunchUrl = row.setting_value || "";
         break;
     }
   }
@@ -136,11 +142,17 @@ export async function PUT(request: NextRequest) {
         ? body.dashboardName.trim()
         : null;
 
+    const schoolLunchUrl =
+      typeof body.schoolLunchUrl === "string"
+        ? body.schoolLunchUrl.trim()
+        : null;
+
     if (
       defaultTab === null ||
       showAdminButton === null ||
       dashboardName === null ||
-      dashboardName.length === 0
+      dashboardName.length === 0 ||
+      schoolLunchUrl === null
     ) {
       return NextResponse.json(
         {
@@ -150,6 +162,29 @@ export async function PUT(request: NextRequest) {
           status: 400,
         }
       );
+    }
+
+    if (schoolLunchUrl) {
+      try {
+        const parsedUrl = new URL(schoolLunchUrl);
+
+        if (
+          parsedUrl.protocol !== "https:" ||
+          parsedUrl.hostname !== "skolmaten.se" ||
+          !parsedUrl.pathname.startsWith("/api/4/rss/week/")
+        ) {
+          throw new Error();
+        }
+      } catch {
+        return NextResponse.json(
+          {
+            error: "Matsedelslänken måste vara en giltig Skolmaten RSS-länk.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
     }
 
     const rows = [
@@ -166,6 +201,11 @@ export async function PUT(request: NextRequest) {
       {
         setting_key: "dashboard_name",
         setting_value: dashboardName,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "school_lunch_url",
+        setting_value: schoolLunchUrl,
         updated_at: new Date().toISOString(),
       },
     ];
@@ -198,6 +238,7 @@ export async function PUT(request: NextRequest) {
         defaultTab,
         showAdminButton,
         dashboardName,
+        schoolLunchUrl,
       },
     });
   } catch (error) {

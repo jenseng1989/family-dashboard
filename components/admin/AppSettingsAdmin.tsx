@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Save,
   Settings,
+  School,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -29,6 +30,7 @@ type AppSettings = {
   defaultTab: TabId;
   showAdminButton: boolean;
   dashboardName: string;
+  schoolLunchUrl: string;
 };
 
 type ApiResponse = {
@@ -40,6 +42,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultTab: "home",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
+  schoolLunchUrl: "",
 };
 
 const tabOptions: {
@@ -149,7 +152,9 @@ export default function AppSettingsAdmin() {
     settings.showAdminButton !==
       savedSettings.showAdminButton ||
     settings.dashboardName !==
-      savedSettings.dashboardName;
+      savedSettings.dashboardName ||
+    settings.schoolLunchUrl !==
+      savedSettings.schoolLunchUrl;
 
   async function saveSettings() {
     const dashboardName =
@@ -160,6 +165,28 @@ export default function AppSettingsAdmin() {
         "Dashboardens namn får inte vara tomt."
       );
       return;
+    }
+
+    const schoolLunchUrl =
+      settings.schoolLunchUrl.trim();
+
+    if (schoolLunchUrl) {
+      try {
+        const parsedUrl = new URL(schoolLunchUrl);
+
+        if (
+          parsedUrl.protocol !== "https:" ||
+          parsedUrl.hostname !== "skolmaten.se" ||
+          !parsedUrl.pathname.startsWith("/api/4/rss/week/")
+        ) {
+          throw new Error();
+        }
+      } catch {
+        setError(
+          "Matsedelslänken måste vara en giltig Skolmaten RSS-länk."
+        );
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -177,6 +204,7 @@ export default function AppSettingsAdmin() {
           body: JSON.stringify({
             ...settings,
             dashboardName,
+            schoolLunchUrl,
           }),
         }
       );
@@ -197,6 +225,7 @@ export default function AppSettingsAdmin() {
         result.settings ?? {
           ...settings,
           dashboardName,
+          schoolLunchUrl,
         };
 
       setSettings(updatedSettings);
@@ -397,6 +426,54 @@ export default function AppSettingsAdmin() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        {/* SCHOOL */}
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-slate-200 sm:h-11 sm:w-11">
+              <School size={21} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h2 className="font-bold text-white">
+                Skola
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 text-slate-400">
+                Ange vilken matsedel som ska visas i Skollunch-widgeten.
+              </p>
+
+              <div className="mt-4 max-w-3xl">
+                <label
+                  htmlFor="school-lunch-url"
+                  className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
+                >
+                  Länk till matsedel
+                </label>
+
+                <input
+                  id="school-lunch-url"
+                  type="url"
+                  value={settings.schoolLunchUrl}
+                  onChange={(event) => {
+                    setSettings((current) => ({
+                      ...current,
+                      schoolLunchUrl: event.target.value,
+                    }));
+
+                    setSuccessMessage(null);
+                  }}
+                  className="min-h-12 w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-500/20"
+                  placeholder="https://skolmaten.se/api/4/rss/week/..."
+                />
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Klistra in RSS-länken från Skolmaten. Lämna fältet tomt om ingen matsedel ska användas.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
