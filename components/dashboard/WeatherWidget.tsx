@@ -32,35 +32,207 @@ function formatHour(dateString: string): string {
   );
 }
 
-function getTodayHourlyForecast(
+function getNext24HoursForecast(
   weather: WeatherData
 ) {
   const now = new Date();
-  const todayKey = new Intl.DateTimeFormat("sv-SE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "Europe/Stockholm",
-  }).format(now);
+  const end = now.getTime() + 24 * 60 * 60 * 1000;
 
   return weather.hourly.time
     .map((time, index) => ({
       time,
       index,
       timestamp: new Date(time).getTime(),
-      dateKey: new Intl.DateTimeFormat("sv-SE", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        timeZone: "Europe/Stockholm",
-      }).format(new Date(time)),
     }))
     .filter(
       (item) =>
         Number.isFinite(item.timestamp) &&
         item.timestamp > now.getTime() &&
-        item.dateKey === todayKey
+        item.timestamp <= end
+    )
+    .slice(0, 24);
+}
+
+
+function getStockholmDateKey(value: string | Date): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(typeof value === "string" ? new Date(value) : value)
+    .replace(/(\d{4})-(\d{2})-(\d{2})/, "$1-$2-$3");
+}
+
+function isRainCode(code: number): boolean {
+  return (
+    (code >= 51 && code <= 67) ||
+    (code >= 80 && code <= 82) ||
+    (code >= 95 && code <= 99)
+  );
+}
+
+function isSnowCode(code: number): boolean {
+  return code === 68 || code === 69 || (code >= 71 && code <= 77) || code === 85 || code === 86;
+}
+
+function getWeatherHighlights(weather: WeatherData): Array<{
+  label: string;
+  text: string;
+}> {
+  const now = Date.now();
+  const nextHours = weather.hourly.time
+    .map((time, index) => ({
+      time,
+      timestamp: new Date(time).getTime(),
+      temperature: weather.hourly.temperature[index],
+      probability: weather.hourly.precipitationProbability[index] ?? 0,
+      code: weather.hourly.weatherCode[index] ?? 0,
+    }))
+    .filter(
+      (item) =>
+        Number.isFinite(item.timestamp) &&
+        item.timestamp > now &&
+        item.timestamp <= now + 18 * 60 * 60 * 1000
     );
+
+  const highlights: Array<{ label: string; text: string }> = [];
+
+  if (nextHours.length > 0) {
+    const first = nextHours[0];
+    const rainingNow =
+      isRainCode(weather.weatherCode) ||
+      weather.precipitation > 0;
+
+    if (rainingNow) {
+      const firstDry = nextHours.find(
+        (item) =>
+          !isRainCode(item.code) &&
+          item.probability < 40
+      );
+
+      highlights.push({
+        label: "Regn",
+        text: firstDry
+          ? `Regnet väntas avta omkring ${formatHour(firstDry.time)}`
+          : "Regn kan fortsätta under de närmaste timmarna",
+      });
+    } else {
+      const firstRain = nextHours.find(
+        (item) =>
+          isRainCode(item.code) ||
+          item.probability >= 60
+      );
+
+      highlights.push({
+        label: "Regn",
+        text: firstRain
+          ? `Regn väntas omkring ${formatHour(firstRain.time)}`
+          : "Inget tydligt regn väntas de närmaste 18 timmarna",
+      });
+    }
+
+    const firstSnow = nextHours.find((item) => isSnowCode(item.code));
+    const firstFrost = nextHours.find(
+      (item) => item.temperature <= 0
+    );
+
+    if (firstSnow) {
+      highlights.push({
+        label: "Snö",
+        text: `Snö kan förekomma omkring ${formatHour(firstSnow.time)}`,
+      });
+    } else if (firstFrost) {
+      const today = getStockholmDateKey(new Date());
+      const frostDay = getStockholmDateKey(firstFrost.time);
+
+      highlights.push({
+        label: "Frost",
+        text:
+          frostDay === today
+            ? `Temperaturen kan nå 0° omkring ${formatHour(firstFrost.time)}`
+            : `Risk för frost i natt omkring ${formatHour(firstFrost.time)}`,
+      });
+    }
+  }
+
+  return highlights;
+}
+
+
+function formatDuration(totalMinutes: number): string {
+  const safeMinutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+
+  if (hours === 0) return `${minutes} min`;
+  return `${hours} h ${minutes.toString().padStart(2, "0")} min`;
+}
+
+function getDaylightInfo(sunrise: string, sunset: string) {
+  const sunriseDate = new Date(sunrise);
+  const sunsetDate = new Date(sunset);
+
+  if (
+    Number.isNaN(sunriseDate.getTime()) ||
+    Number.isNaN(sunsetDate.getTime())
+  ) {
+    return null;
+  }
+
+  const totalMinutes =
+    (sunsetDate.getTime() - sunriseDate.getTime()) / 60000;
+  const now = new Date();
+
+  return {
+    totalMinutes,
+    remainingMinutes:
+      now < sunriseDate
+        ? totalMinutes
+        : now < sunsetDate
+          ? (sunsetDate.getTime() - now.getTime()) / 60000
+          : 0,
+    isBeforeSunrise: now < sunriseDate,
+    isAfterSunset: now >= sunsetDate,
+  };
+}
+
+
+function getYesterdayComparison(
+  currentTemperature: number,
+  yesterdayTemperature: number | null
+): string | null {
+  if (
+    yesterdayTemperature === null ||
+    !Number.isFinite(
+      yesterdayTemperature
+    )
+  ) {
+    return null;
+  }
+
+  const difference =
+    currentTemperature -
+    yesterdayTemperature;
+
+  if (Math.abs(difference) < 0.5) {
+    return "Ungefär samma temperatur som igår vid samma tid";
+  }
+
+  const roundedDifference =
+    Math.max(
+      1,
+      Math.round(
+        Math.abs(difference)
+      )
+    );
+
+  return `${roundedDifference}° ${
+    difference > 0
+      ? "varmare"
+      : "kallare"
+  } än igår vid samma tid`;
 }
 
 function getWindDirectionLabel(degrees: number): string {
@@ -93,6 +265,7 @@ function TemperatureChart({
   points: Array<{
     time: string;
     temperature: number;
+    apparentTemperature: number;
   }>;
 }) {
   if (points.length < 2) {
@@ -104,28 +277,40 @@ function TemperatureChart({
   const paddingX = 24;
   const paddingTop = 30;
   const paddingBottom = 42;
-  const values = points.map((point) => point.temperature);
+  const values = points.flatMap((point) => [
+    point.temperature,
+    point.apparentTemperature,
+  ]);
   const minTemperature = Math.min(...values);
   const maxTemperature = Math.max(...values);
   const range = Math.max(1, maxTemperature - minTemperature);
 
-  const coordinates = points.map((point, index) => {
-    const x =
+  const getY = (value: number) =>
+    paddingTop +
+    ((maxTemperature - value) / range) *
+      (height - paddingTop - paddingBottom);
+
+  const coordinates = points.map((point, index) => ({
+    ...point,
+    x:
       paddingX +
       (index / Math.max(1, points.length - 1)) *
-        (width - paddingX * 2);
-    const y =
-      paddingTop +
-      ((maxTemperature - point.temperature) / range) *
-        (height - paddingTop - paddingBottom);
+        (width - paddingX * 2),
+    temperatureY: getY(point.temperature),
+    apparentY: getY(point.apparentTemperature),
+  }));
 
-    return { ...point, x, y };
-  });
-
-  const path = coordinates
+  const temperaturePath = coordinates
     .map(
       (point, index) =>
-        `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+        `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.temperatureY.toFixed(1)}`
+    )
+    .join(" ");
+
+  const apparentPath = coordinates
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.apparentY.toFixed(1)}`
     )
     .join(" ");
 
@@ -135,10 +320,21 @@ function TemperatureChart({
         viewBox={`0 0 ${width} ${height}`}
         className="h-48 min-w-[680px] w-full"
         role="img"
-        aria-label="Temperaturkurva för resten av dagen"
+        aria-label="Temperatur och känns som för resten av dagen"
       >
         <path
-          d={path}
+          d={apparentPath}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeDasharray="6 6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-slate-400"
+        />
+
+        <path
+          d={temperaturePath}
           fill="none"
           stroke="currentColor"
           strokeWidth="3"
@@ -147,46 +343,42 @@ function TemperatureChart({
           className="text-blue-300"
         />
 
-        {coordinates.map((point, index) => {
-          const isHigh = point.temperature === maxTemperature;
-          const isLow = point.temperature === minTemperature;
+        {coordinates.map((point, index) => (
+          <g key={`${point.time}-${index}`}>
+            <circle
+              cx={point.x}
+              cy={point.temperatureY}
+              r="3.5"
+              fill="currentColor"
+              className="text-blue-200"
+            />
+            <circle
+              cx={point.x}
+              cy={point.apparentY}
+              r="3"
+              fill="currentColor"
+              className="text-slate-300"
+            />
 
-          return (
-            <g key={`${point.time}-${index}`}>
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r={isHigh || isLow ? 5 : 3.5}
-                fill="currentColor"
-                className={
-                  isHigh
-                    ? "text-amber-200"
-                    : isLow
-                      ? "text-cyan-200"
-                      : "text-blue-200"
-                }
-              />
+            <text
+              x={point.x}
+              y={point.temperatureY - 12}
+              textAnchor="middle"
+              className="fill-white text-[12px] font-semibold"
+            >
+              {Math.round(point.temperature)}°
+            </text>
 
-              <text
-                x={point.x}
-                y={point.y - 12}
-                textAnchor="middle"
-                className="fill-white text-[12px] font-semibold"
-              >
-                {Math.round(point.temperature)}°
-              </text>
-
-              <text
-                x={point.x}
-                y={height - 12}
-                textAnchor="middle"
-                className="fill-slate-500 text-[11px]"
-              >
-                {formatHour(point.time)}
-              </text>
-            </g>
-          );
-        })}
+            <text
+              x={point.x}
+              y={height - 12}
+              textAnchor="middle"
+              className="fill-slate-500 text-[11px]"
+            >
+              {formatHour(point.time)}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );
@@ -247,13 +439,27 @@ export default async function WeatherWidget() {
     weather.daily.precipitationSum[0] ?? 0;
 
   const hourlyForecast =
-    getTodayHourlyForecast(weather);
+    getNext24HoursForecast(weather);
 
   const temperatureChartPoints =
     hourlyForecast.map(({ time, index }) => ({
       time,
       temperature: weather.hourly.temperature[index],
+      apparentTemperature:
+        weather.hourly.apparentTemperature[index],
     }));
+
+  const weatherHighlights =
+    getWeatherHighlights(weather);
+
+  const yesterdayComparison =
+    getYesterdayComparison(
+      weather.temperature,
+      weather.yesterdayTemperature
+    );
+
+  const daylightInfo =
+    getDaylightInfo(weather.sunrise, weather.sunset);
 
   const details = [
     {
@@ -318,6 +524,31 @@ export default async function WeatherWidget() {
                   {Math.round(todayMin)}°
                 </span>
               </p>
+
+              {weatherHighlights.length > 0 && (
+                <div className="mt-4 space-y-1.5">
+                  {weatherHighlights.map((highlight) => (
+                    <p
+                      key={highlight.label}
+                      className="text-sm leading-5 text-slate-300"
+                    >
+                      <span className="font-semibold text-white">
+                        {highlight.label}:
+                      </span>{" "}
+                      {highlight.text}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {yesterdayComparison && (
+                <p className="mt-1.5 text-sm leading-5 text-slate-300">
+                  <span className="font-semibold text-white">
+                    Jämfört med igår:
+                  </span>{" "}
+                  {yesterdayComparison}
+                </p>
+              )}
             </div>
 
             <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] shadow-lg shadow-black/10 sm:h-36 sm:w-36">
@@ -330,7 +561,7 @@ export default async function WeatherWidget() {
           <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
             <div className="mb-3">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
-                Resten av dagen
+                Kommande 24 timmar
               </p>
               <p className="mt-1 text-sm text-slate-500">
                 Dra i sidled för fler timmar
@@ -381,7 +612,7 @@ export default async function WeatherWidget() {
                   Temperaturkurva
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Resten av dagen
+                  Kommande 24 timmar
                 </p>
               </div>
 
@@ -395,7 +626,18 @@ export default async function WeatherWidget() {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="h-0.5 w-5 rounded-full bg-blue-300" />
+                <span>Temperatur</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-5 border-t-2 border-dashed border-slate-400" />
+                <span>Känns som</span>
+              </div>
+            </div>
+
+            <div className="mt-2">
               <TemperatureChart points={temperatureChartPoints} />
             </div>
           </section>
@@ -604,6 +846,34 @@ export default async function WeatherWidget() {
               </p>
             </div>
           </div>
+
+          {daylightInfo && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/20 p-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs text-slate-500">Dagsljus idag</p>
+                  <p className="mt-1 font-semibold text-white">
+                    {formatDuration(daylightInfo.totalMinutes)}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">
+                    {daylightInfo.isAfterSunset
+                      ? "Solen har gått ner"
+                      : daylightInfo.isBeforeSunrise
+                        ? "Dagsljus efter soluppgång"
+                        : "Dagsljus kvar"}
+                  </p>
+                  {!daylightInfo.isAfterSunset && (
+                    <p className="mt-1 font-semibold text-white">
+                      {formatDuration(daylightInfo.remainingMinutes)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </Card>

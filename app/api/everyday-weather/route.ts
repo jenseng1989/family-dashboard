@@ -351,6 +351,10 @@ export async function GET() {
         todayHours
       );
 
+    const forecastEnd =
+      now.getTime() +
+      24 * 60 * 60 * 1000;
+
     const hourlyForecast =
       weather.hourly.time
         .map(
@@ -379,17 +383,25 @@ export async function GET() {
               ],
           })
         )
-        .filter((hour) => {
-          const date = new Date(hour.time);
-          const dateString = `${date.getFullYear()}-${String(
-            date.getMonth() + 1
-          ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        .filter(
+          (hour) => {
+            const timestamp =
+              new Date(
+                hour.time
+              ).getTime();
 
-          return (
-            dateString === today &&
-            date.getTime() > now.getTime()
-          );
-        });
+            return (
+              Number.isFinite(
+                timestamp
+              ) &&
+              timestamp >
+                now.getTime() &&
+              timestamp <=
+                forecastEnd
+            );
+          }
+        )
+        .slice(0, 24);
 
     const maxRainProbability =
       todayHours.length > 0

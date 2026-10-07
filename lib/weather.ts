@@ -2,6 +2,7 @@ export type WeatherData = {
   location: string;
   temperature: number;
   apparentTemperature: number;
+  yesterdayTemperature: number | null;
   windSpeed: number;
   windDirection: number;
   windGusts: number;

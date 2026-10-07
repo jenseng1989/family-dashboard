@@ -81,7 +81,8 @@ function getOpenMeteoUrl() {
     "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,is_day" +
     "&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m" +
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum" +
-    "&timezone=auto"
+    "&timezone=auto" +
+    "&past_days=1"
   );
 }
 
@@ -138,6 +139,73 @@ async function fetchOpenMeteo():
     );
   }
 
+  const currentTime =
+    String(data.current.time ?? "");
+  const todayDate =
+    currentTime.slice(0, 10);
+  const currentHour =
+    currentTime.slice(11, 13);
+
+  const todayDailyIndex =
+    Array.isArray(data.daily.time)
+      ? data.daily.time.findIndex(
+          (value: string) =>
+            value === todayDate
+        )
+      : -1;
+
+  const safeTodayDailyIndex =
+    todayDailyIndex >= 0
+      ? todayDailyIndex
+      : 0;
+
+  const yesterdayDate =
+    new Date(
+      `${todayDate}T12:00:00`
+    );
+  yesterdayDate.setDate(
+    yesterdayDate.getDate() - 1
+  );
+
+  const yesterdayDateKey =
+    `${yesterdayDate.getFullYear()}-${String(
+      yesterdayDate.getMonth() + 1
+    ).padStart(2, "0")}-${String(
+      yesterdayDate.getDate()
+    ).padStart(2, "0")}`;
+
+  const yesterdayHourKey =
+    `${yesterdayDateKey}T${currentHour}:00`;
+
+  const yesterdayHourIndex =
+    Array.isArray(data.hourly.time)
+      ? data.hourly.time.findIndex(
+          (value: string) =>
+            value === yesterdayHourKey
+        )
+      : -1;
+
+  const yesterdayTemperature =
+    yesterdayHourIndex >= 0
+      ? data.hourly
+          .temperature_2m[
+          yesterdayHourIndex
+        ] ?? null
+      : null;
+
+  const firstTodayHourlyIndex =
+    Array.isArray(data.hourly.time)
+      ? Math.max(
+          0,
+          data.hourly.time.findIndex(
+            (value: string) =>
+              value.startsWith(
+                todayDate
+              )
+          )
+        )
+      : 0;
+
   return {
     location:
       "Göteborg",
@@ -147,6 +215,7 @@ async function fetchOpenMeteo():
     apparentTemperature:
       data.current
         .apparent_temperature,
+    yesterdayTemperature,
     windSpeed:
       data.current
         .wind_speed_10m,
@@ -164,8 +233,9 @@ async function fetchOpenMeteo():
         .relative_humidity_2m,
     uvIndex:
       data.daily
-        .uv_index_max[0] ??
-      0,
+        .uv_index_max[
+        safeTodayDailyIndex
+      ] ?? 0,
     precipitation:
       data.current
         .precipitation ??
@@ -177,46 +247,74 @@ async function fetchOpenMeteo():
       data.current
         .is_day === 1,
     sunrise:
-      data.daily.sunrise[0],
+      data.daily.sunrise[
+        safeTodayDailyIndex
+      ],
     sunset:
-      data.daily.sunset[0],
+      data.daily.sunset[
+        safeTodayDailyIndex
+      ],
     daily: {
       time:
-        data.daily.time,
+        data.daily.time.slice(
+          safeTodayDailyIndex
+        ),
       temperatureMax:
         data.daily
-          .temperature_2m_max,
+          .temperature_2m_max.slice(
+            safeTodayDailyIndex
+          ),
       temperatureMin:
         data.daily
-          .temperature_2m_min,
+          .temperature_2m_min.slice(
+            safeTodayDailyIndex
+          ),
       weatherCode:
         data.daily
-          .weather_code,
+          .weather_code.slice(
+            safeTodayDailyIndex
+          ),
       uvIndexMax:
         data.daily
-          .uv_index_max,
+          .uv_index_max.slice(
+            safeTodayDailyIndex
+          ),
       precipitationSum:
         data.daily
-          .precipitation_sum,
+          .precipitation_sum.slice(
+            safeTodayDailyIndex
+          ),
     },
     hourly: {
       time:
-        data.hourly.time,
+        data.hourly.time.slice(
+          firstTodayHourlyIndex
+        ),
       temperature:
         data.hourly
-          .temperature_2m,
+          .temperature_2m.slice(
+            firstTodayHourlyIndex
+          ),
       apparentTemperature:
         data.hourly
-          .apparent_temperature,
+          .apparent_temperature.slice(
+            firstTodayHourlyIndex
+          ),
       precipitationProbability:
         data.hourly
-          .precipitation_probability,
+          .precipitation_probability.slice(
+            firstTodayHourlyIndex
+          ),
       weatherCode:
         data.hourly
-          .weather_code,
+          .weather_code.slice(
+            firstTodayHourlyIndex
+          ),
       windSpeed:
         data.hourly
-          .wind_speed_10m,
+          .wind_speed_10m.slice(
+            firstTodayHourlyIndex
+          ),
     },
   };
 }
@@ -800,6 +898,8 @@ async function fetchMetNorway():
       currentInstant
         .air_temperature ??
       0,
+    yesterdayTemperature:
+      null,
     windSpeed:
       currentInstant
         .wind_speed ??

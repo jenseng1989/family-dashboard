@@ -1406,51 +1406,64 @@ export default function DailyAssistantWidget() {
                 </div>
 
                 {weather.hourlyForecast.length > 0 && (
-                  <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
-                    <div className="flex min-w-full snap-x snap-mandatory gap-1.5">
-                    {weather.hourlyForecast.map(
-                      (hour) => (
-                        <div
-                          key={hour.time}
-                          className="min-w-0 shrink-0 basis-[calc((100%-1.875rem)/6)] snap-start rounded-xl border border-white/[0.07] bg-slate-950/20 px-1.5 py-2 text-center"
-                        >
-                          <p className="text-[10px] font-semibold text-slate-500">
-                            {new Date(
-                              hour.time
-                            ).toLocaleTimeString(
-                              "sv-SE",
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </p>
-                          <p
-                            className="mt-0.5 text-base leading-none"
-                            aria-hidden="true"
-                          >
-                            {getCompactWeatherSymbol(
-                              hour.weatherCode
-                            )}
-                          </p>
-                          <p className="mt-1 text-xs font-bold text-slate-200">
-                            {Math.round(
-                              hour.temperature
-                            )}
-                            °
-                          </p>
-                          {hour.precipitationProbability >
-                            0 && (
-                            <p className="mt-0.5 text-[10px] text-sky-300/80">
-                              {Math.round(
-                                hour.precipitationProbability
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        Kommande 24 timmar
+                      </p>
+                      <p className="shrink-0 text-[10px] text-slate-600">
+                        Svep för fler
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+                      <div className="flex min-w-max snap-x snap-mandatory gap-1.5">
+                        {weather.hourlyForecast.map(
+                          (hour) => (
+                            <div
+                              key={hour.time}
+                              className="w-[calc((100vw-5rem)/6)] min-w-[54px] max-w-[68px] shrink-0 snap-start rounded-xl border border-white/[0.07] bg-slate-950/20 px-1.5 py-2 text-center sm:w-[64px]"
+                            >
+                              <p className="text-[10px] font-semibold text-slate-500">
+                                {new Date(
+                                  hour.time
+                                ).toLocaleTimeString(
+                                  "sv-SE",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    timeZone:
+                                      STOCKHOLM_TIME_ZONE,
+                                  }
+                                )}
+                              </p>
+                              <p
+                                className="mt-0.5 text-base leading-none"
+                                aria-hidden="true"
+                              >
+                                {getCompactWeatherSymbol(
+                                  hour.weatherCode
+                                )}
+                              </p>
+                              <p className="mt-1 text-xs font-bold text-slate-200">
+                                {Math.round(
+                                  hour.temperature
+                                )}
+                                °
+                              </p>
+                              {hour.precipitationProbability >
+                                0 && (
+                                <p className="mt-0.5 text-[10px] text-sky-300/80">
+                                  {Math.round(
+                                    hour.precipitationProbability
+                                  )}
+                                  %
+                                </p>
                               )}
-                              %
-                            </p>
-                          )}
-                        </div>
-                      )
-                    )}
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
