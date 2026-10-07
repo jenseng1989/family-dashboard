@@ -379,14 +379,17 @@ export async function GET() {
               ],
           })
         )
-        .filter(
-          (hour) =>
-            new Date(
-              hour.time
-            ).getTime() >
-            now.getTime()
-        )
-        .slice(0, 5);
+        .filter((hour) => {
+          const date = new Date(hour.time);
+          const dateString = `${date.getFullYear()}-${String(
+            date.getMonth() + 1
+          ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+          return (
+            dateString === today &&
+            date.getTime() > now.getTime()
+          );
+        });
 
     const maxRainProbability =
       todayHours.length > 0

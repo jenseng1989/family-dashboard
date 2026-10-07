@@ -2,6 +2,16 @@ import { NextResponse } from "next/server";
 
 const AQICN_BASE = "https://api.waqi.info";
 
+const REQUEST_TIMEOUT_MS = 8_000;
+const AIR_QUALITY_MEMORY_CACHE_MS = 5 * 60 * 1000;
+const AIR_QUALITY_STALE_CACHE_MS = 60 * 60 * 1000;
+const AQICN_COOLDOWN_MS = 10 * 60 * 1000;
+
+let cachedAirQuality: AqicnData | null = null;
+let cachedAt = 0;
+let inFlight: Promise<AqicnData> | null = null;
+let aqicnBlockedUntil = 0;
+
 type IaqiValue = {
   v?: number;
 };
@@ -104,41 +114,76 @@ async function aqicnFetch(
   path: string,
   token: string
 ): Promise<AqicnData> {
-  const response = await fetch(
-    `${AQICN_BASE}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`,
-    {
-      headers: {
-        Accept: "application/json",
-      },
-      next: {
-        revalidate: 5 * 60,
-      },
-    }
+  if (Date.now() < aqicnBlockedUntil) {
+    throw new Error("AQICN_COOLDOWN");
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS
   );
 
-  if (!response.ok) {
-    const body = await response.text();
-
-    throw new Error(
-      `AQICN svarade med ${response.status}: ${body.slice(0, 300)}`
+  try {
+    const response = await fetch(
+      `${AQICN_BASE}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
     );
-  }
 
-  const result = (await response.json()) as AqicnResponse;
+    if (response.status === 429) {
+      aqicnBlockedUntil =
+        Date.now() + AQICN_COOLDOWN_MS;
 
-  if (
-    result.status !== "ok" ||
-    !result.data ||
-    typeof result.data === "string"
-  ) {
-    throw new Error(
+      throw new Error("AQICN_RATE_LIMIT");
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+
+      throw new Error(
+        `AQICN svarade med ${response.status}: ${body.slice(0, 300)}`
+      );
+    }
+
+    const result =
+      (await response.json()) as AqicnResponse;
+
+    if (
+      result.status !== "ok" ||
+      !result.data ||
       typeof result.data === "string"
-        ? `AQICN: ${result.data}`
-        : "AQICN returnerade inget användbart luftkvalitetssvar."
-    );
-  }
+    ) {
+      throw new Error(
+        typeof result.data === "string"
+          ? `AQICN: ${result.data}`
+          : "AQICN returnerade inget användbart luftkvalitetssvar."
+      );
+    }
 
-  return result.data;
+    return result.data;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.name === "AbortError"
+    ) {
+      aqicnBlockedUntil =
+        Date.now() + AQICN_COOLDOWN_MS;
+
+      throw new Error(
+        `AQICN svarade inte inom ${REQUEST_TIMEOUT_MS / 1000} sekunder.`
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function getGothenburgAirQuality(
@@ -174,6 +219,67 @@ async function getGothenburgAirQuality(
       );
 }
 
+function isFreshCache() {
+  return (
+    cachedAirQuality !== null &&
+    Date.now() - cachedAt <
+      AIR_QUALITY_MEMORY_CACHE_MS
+  );
+}
+
+function canUseStaleCache() {
+  return (
+    cachedAirQuality !== null &&
+    Date.now() - cachedAt <
+      AIR_QUALITY_STALE_CACHE_MS
+  );
+}
+
+async function getAirQualityData(
+  token: string
+): Promise<{
+  data: AqicnData;
+  stale: boolean;
+}> {
+  if (isFreshCache() && cachedAirQuality) {
+    return {
+      data: cachedAirQuality,
+      stale: false,
+    };
+  }
+
+  if (!inFlight) {
+    inFlight = getGothenburgAirQuality(token);
+  }
+
+  try {
+    const data = await inFlight;
+
+    cachedAirQuality = data;
+    cachedAt = Date.now();
+
+    return {
+      data,
+      stale: false,
+    };
+  } catch (error) {
+    if (canUseStaleCache() && cachedAirQuality) {
+      console.warn(
+        "AQICN kunde inte uppdateras. Visar senast cacheade luftkvalitetsdata."
+      );
+
+      return {
+        data: cachedAirQuality,
+        stale: true,
+      };
+    }
+
+    throw error;
+  } finally {
+    inFlight = null;
+  }
+}
+
 export async function GET() {
   try {
     const token =
@@ -191,8 +297,10 @@ export async function GET() {
       );
     }
 
-    const data =
-      await getGothenburgAirQuality(token);
+    const {
+      data,
+      stale,
+    } = await getAirQualityData(token);
 
     const aqi =
       typeof data.aqi === "number"
@@ -240,6 +348,7 @@ export async function GET() {
         measuredAt,
         updatedAt:
           new Date().toISOString(),
+        stale,
         source:
           "World Air Quality Index Project",
         note:

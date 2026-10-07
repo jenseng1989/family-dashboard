@@ -1051,6 +1051,36 @@ export default function DailyAssistantWidget() {
       });
     }
 
+    if (
+      todaysSchoolTransfers.dropoffs.length > 0 ||
+      todaysSchoolTransfers.pickups.length > 0
+    ) {
+      const dropoffText =
+        todaysSchoolTransfers.dropoffs.length > 0
+          ? todaysSchoolTransfers.dropoffs
+              .map((transfer) => `${transfer.person} · ${transfer.time}`)
+              .join(", ")
+          : "Ingen lämning inlagd";
+      const pickupText =
+        todaysSchoolTransfers.pickups.length > 0
+          ? todaysSchoolTransfers.pickups
+              .map((transfer) => `${transfer.person} · ${transfer.time}`)
+              .join(", ")
+          : "Ingen hämtning inlagd";
+
+      items.push({
+        id: "school-transfer",
+        label: "Förskola idag",
+        title: `Lämning: ${dropoffText}`,
+        description: `Hämtning: ${pickupText}`,
+        icon: <CalendarCheck2 size={19} />,
+        iconClass:
+          "border-emerald-300/15 bg-emerald-400/[0.08] text-emerald-300",
+        labelClass: "text-emerald-300",
+        priority: 95,
+      });
+    }
+
     if (weather) {
       const rainProbability =
         weather.precipitationProbability;
@@ -1187,9 +1217,24 @@ export default function DailyAssistantWidget() {
       });
     }
 
-    return items
-      .sort((a, b) => b.priority - a.priority)
-      .slice(0, 3);
+    const priorityGridOrder = [
+      "calendar",
+      "school-transfer",
+      "outdoor",
+      "electricity",
+    ];
+
+    const priorityGridItems = items
+      .filter((item) => priorityGridOrder.includes(item.id))
+      .sort(
+        (a, b) =>
+          priorityGridOrder.indexOf(a.id) -
+          priorityGridOrder.indexOf(b.id)
+      );
+
+    return priorityGridItems.length > 0
+      ? priorityGridItems
+      : items.sort((a, b) => b.priority - a.priority).slice(0, 1);
   }, [
     activeCalendarEvents.length,
     calendarHeroEvents,
@@ -1200,6 +1245,8 @@ export default function DailyAssistantWidget() {
     nextCountdown,
     nextFamilyEvent,
     now,
+    todaysSchoolTransfers.dropoffs,
+    todaysSchoolTransfers.pickups,
     weather,
   ]);
 
@@ -1289,7 +1336,7 @@ export default function DailyAssistantWidget() {
               Prioriterat just nu
             </p>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               {assistantItems.map((item) => (
                 <article
                   key={item.id}
@@ -1359,12 +1406,13 @@ export default function DailyAssistantWidget() {
                 </div>
 
                 {weather.hourlyForecast.length > 0 && (
-                  <div className="grid min-w-0 flex-1 grid-cols-5 gap-1.5">
+                  <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]">
+                    <div className="flex min-w-full snap-x snap-mandatory gap-1.5">
                     {weather.hourlyForecast.map(
                       (hour) => (
                         <div
                           key={hour.time}
-                          className="min-w-0 rounded-xl border border-white/[0.07] bg-slate-950/20 px-1.5 py-2 text-center"
+                          className="min-w-0 shrink-0 basis-[calc((100%-1.875rem)/6)] snap-start rounded-xl border border-white/[0.07] bg-slate-950/20 px-1.5 py-2 text-center"
                         >
                           <p className="text-[10px] font-semibold text-slate-500">
                             {new Date(
@@ -1403,67 +1451,9 @@ export default function DailyAssistantWidget() {
                         </div>
                       )
                     )}
+                    </div>
                   </div>
                 )}
-              </div>
-            </article>
-          )}
-
-          {(todaysSchoolTransfers.dropoffs.length > 0 ||
-            todaysSchoolTransfers.pickups.length > 0) && (
-            <article className="mt-4 rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.045] p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-300/15 bg-emerald-400/[0.08] text-emerald-300">
-                  <CalendarCheck2 size={19} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-emerald-300">
-                    Förskola idag
-                  </p>
-
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">
-                        Lämning
-                      </p>
-                      {todaysSchoolTransfers.dropoffs.length > 0 ? (
-                        todaysSchoolTransfers.dropoffs.map((transfer) => (
-                          <p
-                            key={transfer.id}
-                            className="mt-0.5 text-sm font-semibold text-slate-200"
-                          >
-                            {transfer.person} · {transfer.time}
-                          </p>
-                        ))
-                      ) : (
-                        <p className="mt-0.5 text-sm text-slate-500">
-                          Ingen lämning inlagd
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">
-                        Hämtning
-                      </p>
-                      {todaysSchoolTransfers.pickups.length > 0 ? (
-                        todaysSchoolTransfers.pickups.map((transfer) => (
-                          <p
-                            key={transfer.id}
-                            className="mt-0.5 text-sm font-semibold text-slate-200"
-                          >
-                            {transfer.person} · {transfer.time}
-                          </p>
-                        ))
-                      ) : (
-                        <p className="mt-0.5 text-sm text-slate-500">
-                          Ingen hämtning inlagd
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
             </article>
           )}

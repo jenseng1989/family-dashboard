@@ -78,7 +78,7 @@ function getOpenMeteoUrl() {
     "https://api.open-meteo.com/v1/forecast" +
     `?latitude=${LATITUDE}` +
     `&longitude=${LONGITUDE}` +
-    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day" +
+    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,is_day" +
     "&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m" +
     "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum" +
     "&timezone=auto"
@@ -150,6 +150,15 @@ async function fetchOpenMeteo():
     windSpeed:
       data.current
         .wind_speed_10m,
+    windDirection:
+      data.current
+        .wind_direction_10m ?? 0,
+    windGusts:
+      data.current
+        .wind_gusts_10m ??
+      data.current
+        .wind_speed_10m ??
+      0,
     humidity:
       data.current
         .relative_humidity_2m,
@@ -221,6 +230,8 @@ type MetTimeseriesItem = {
         relative_humidity?: number;
         ultraviolet_index_clear_sky?: number;
         wind_speed?: number;
+        wind_from_direction?: number;
+        wind_speed_of_gust?: number;
       };
     };
     next_1_hours?: {
@@ -790,6 +801,16 @@ async function fetchMetNorway():
         .air_temperature ??
       0,
     windSpeed:
+      currentInstant
+        .wind_speed ??
+      0,
+    windDirection:
+      currentInstant
+        .wind_from_direction ??
+      0,
+    windGusts:
+      currentInstant
+        .wind_speed_of_gust ??
       currentInstant
         .wind_speed ??
       0,

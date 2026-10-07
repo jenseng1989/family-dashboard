@@ -3,6 +3,8 @@ export type WeatherData = {
   temperature: number;
   apparentTemperature: number;
   windSpeed: number;
+  windDirection: number;
+  windGusts: number;
   humidity: number;
   uvIndex: number;
   precipitation: number;
