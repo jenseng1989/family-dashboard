@@ -416,8 +416,7 @@ export default async function WeatherWidget() {
               const weatherCode = weather.daily.weatherCode[index];
               const precipitation =
                 weather.daily.precipitationSum[index] ?? 0;
-              const precipitationProbability =
-                weather.daily.precipitationProbability?.[index] ?? null;
+              const precipitationProbability = null;
 
               const date = new Date(`${day}T12:00:00`).toLocaleDateString(
                 "sv-SE",
