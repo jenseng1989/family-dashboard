@@ -31,6 +31,14 @@ import {
 
 type TabId = AppTabId;
 
+// Resor saknar ännu stöd i dashboardens statistiktyp.
+// Övriga flikar fortsätter att rapporteras som tidigare.
+function trackTabView(tabId: TabId): void {
+  if (tabId !== "resor") {
+    void trackDashboardEvent("tab_view", tabId);
+  }
+}
+
 type DashboardTabsProps = {
   initialSettings: AppSettings;
   startContent: ReactNode;
@@ -176,8 +184,7 @@ export default function DashboardTabs({
       "dashboard_view"
     );
 
-    void trackDashboardEvent(
-      "tab_view",
+    trackTabView(
       initialSettings.defaultTab === "resor" && !initialSettings.showResorTab
         ? "home"
         : initialSettings.defaultTab
@@ -185,6 +192,7 @@ export default function DashboardTabs({
   }, [
     initialSettings.dashboardName,
     initialSettings.defaultTab,
+    initialSettings.showResorTab,
   ]);
 
   function changeTab(
@@ -197,7 +205,7 @@ export default function DashboardTabs({
 
     setActiveTab(tabId);
 
-    void trackDashboardEvent("tab_view", tabId);
+    trackTabView(tabId);
   }
 
   function getActiveContent(): ReactNode {
