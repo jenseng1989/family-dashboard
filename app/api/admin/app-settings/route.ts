@@ -8,6 +8,7 @@ type AppSettings = {
   showAdminButton: boolean;
   dashboardName: string;
   schoolLunchUrl: string;
+  showResorTab: boolean;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
+  showResorTab: false,
 };
 
 const VALID_TABS = [
@@ -23,6 +25,7 @@ const VALID_TABS = [
   "family",
   "gothenburg",
   "fun",
+  "resor",
 ] as const;
 
 function rowsToSettings(
@@ -59,10 +62,18 @@ function rowsToSettings(
           row.setting_value || DEFAULT_SETTINGS.dashboardName;
         break;
 
+      case "show_resor_tab":
+        settings.showResorTab = row.setting_value === "true";
+        break;
+
       case "school_lunch_url":
         settings.schoolLunchUrl = row.setting_value || "";
         break;
     }
+  }
+
+  if (!settings.showResorTab && settings.defaultTab === "resor") {
+    settings.defaultTab = "home";
   }
 
   return settings;
@@ -142,6 +153,11 @@ export async function PUT(request: NextRequest) {
         ? body.dashboardName.trim()
         : null;
 
+    const showResorTab =
+      typeof body.showResorTab === "boolean"
+        ? body.showResorTab
+        : false;
+
     const schoolLunchUrl =
       typeof body.schoolLunchUrl === "string"
         ? body.schoolLunchUrl.trim()
@@ -152,7 +168,8 @@ export async function PUT(request: NextRequest) {
       showAdminButton === null ||
       dashboardName === null ||
       dashboardName.length === 0 ||
-      schoolLunchUrl === null
+      schoolLunchUrl === null ||
+      (defaultTab === "resor" && !showResorTab)
     ) {
       return NextResponse.json(
         {
@@ -204,6 +221,11 @@ export async function PUT(request: NextRequest) {
         updated_at: new Date().toISOString(),
       },
       {
+        setting_key: "show_resor_tab",
+        setting_value: String(showResorTab),
+        updated_at: new Date().toISOString(),
+      },
+      {
         setting_key: "school_lunch_url",
         setting_value: schoolLunchUrl,
         updated_at: new Date().toISOString(),
@@ -239,6 +261,7 @@ export async function PUT(request: NextRequest) {
         showAdminButton,
         dashboardName,
         schoolLunchUrl,
+        showResorTab,
       },
     });
   } catch (error) {

@@ -6,6 +6,7 @@ import {
   Home,
   LoaderCircle,
   MapPin,
+  Plane,
   Settings,
   Users,
 } from "lucide-react";
@@ -109,6 +110,11 @@ const ExploreDashboardTab = dynamic(
   }
 );
 
+const ResorDashboard = dynamic(
+  () => import("@/components/dashboard/resor/ResorDashboard"),
+  { loading: () => <TabLoading label="Resor" /> }
+);
+
 const tabs: TabButton[] = [
   {
     id: "home",
@@ -135,6 +141,12 @@ const tabs: TabButton[] = [
     icon: <MapPin size={20} />,
   },
   {
+    id: "resor",
+    label: "Resor",
+    shortLabel: "Resor",
+    icon: <Plane size={20} />,
+  },
+  {
     id: "fun",
     label: "Utforska",
     shortLabel: "Utforska",
@@ -147,9 +159,13 @@ export default function DashboardTabs({
   startContent,
   weatherContent,
 }: DashboardTabsProps) {
+  const visibleTabs = tabs.filter((tab) => tab.id !== "resor" || initialSettings.showResorTab);
+
   const [activeTab, setActiveTab] =
     useState<TabId>(
-      initialSettings.defaultTab
+      initialSettings.defaultTab === "resor" && !initialSettings.showResorTab
+        ? "home"
+        : initialSettings.defaultTab
     );
 
   useEffect(() => {
@@ -162,7 +178,9 @@ export default function DashboardTabs({
 
     void trackDashboardEvent(
       "tab_view",
-      initialSettings.defaultTab
+      initialSettings.defaultTab === "resor" && !initialSettings.showResorTab
+        ? "home"
+        : initialSettings.defaultTab
     );
   }, [
     initialSettings.dashboardName,
@@ -172,16 +190,14 @@ export default function DashboardTabs({
   function changeTab(
     tabId: TabId
   ) {
+    if (tabId === "resor" && !initialSettings.showResorTab) return;
     if (tabId === activeTab) {
       return;
     }
 
     setActiveTab(tabId);
 
-    void trackDashboardEvent(
-      "tab_view",
-      tabId
-    );
+    void trackDashboardEvent("tab_view", tabId);
   }
 
   function getActiveContent(): ReactNode {
@@ -202,6 +218,9 @@ export default function DashboardTabs({
           <GothenburgDashboardTab />
         );
 
+      case "resor":
+        return initialSettings.showResorTab ? <ResorDashboard /> : startContent;
+
       case "fun":
         return (
           <ExploreDashboardTab />
@@ -220,10 +239,10 @@ export default function DashboardTabs({
           className="min-w-0 flex-1 rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
         >
           <div
-            className="grid w-full grid-cols-5 gap-2"
+            className={`grid w-full gap-2 ${initialSettings.showResorTab ? "grid-cols-6" : "grid-cols-5"}`}
             role="tablist"
           >
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const isActive =
                 activeTab === tab.id;
 

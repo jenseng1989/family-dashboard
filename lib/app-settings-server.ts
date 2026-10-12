@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultTab: "home",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
+  showResorTab: false,
 };
 
 const VALID_TABS: AppTabId[] = [
@@ -19,6 +20,7 @@ const VALID_TABS: AppTabId[] = [
   "family",
   "gothenburg",
   "fun",
+  "resor",
 ];
 
 type SettingsRow = {
@@ -55,6 +57,11 @@ function rowsToSettings(
           row.setting_value === "true";
         break;
 
+      case "show_resor_tab":
+        settings.showResorTab =
+          row.setting_value === "true";
+        break;
+
       case "dashboard_name":
         if (row.setting_value.trim()) {
           settings.dashboardName =
@@ -62,6 +69,10 @@ function rowsToSettings(
         }
         break;
     }
+  }
+
+  if (settings.defaultTab === "resor" && !settings.showResorTab) {
+    settings.defaultTab = "home";
   }
 
   return settings;

@@ -5,12 +5,14 @@ export type AppTabId =
   | "weather"
   | "family"
   | "gothenburg"
-  | "fun";
+  | "fun"
+  | "resor";
 
 export type AppSettings = {
   defaultTab: AppTabId;
   showAdminButton: boolean;
   dashboardName: string;
+  showResorTab: boolean;
 };
 
 type AppSettingsResponse = {
@@ -22,6 +24,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultTab: "home",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
+  showResorTab: false,
 };
 
 const VALID_TABS: AppTabId[] = [
@@ -30,6 +33,7 @@ const VALID_TABS: AppTabId[] = [
   "family",
   "gothenburg",
   "fun",
+  "resor",
 ];
 
 const CACHE_TTL_MS = 10_000;
@@ -69,10 +73,16 @@ function normalizeSettings(
       ? settings.dashboardName.trim()
       : DEFAULT_APP_SETTINGS.dashboardName;
 
+  const showResorTab =
+    typeof settings?.showResorTab === "boolean"
+      ? settings.showResorTab
+      : DEFAULT_APP_SETTINGS.showResorTab;
+
   return {
-    defaultTab,
+    defaultTab: defaultTab === "resor" && !showResorTab ? "home" : defaultTab,
     showAdminButton,
     dashboardName,
+    showResorTab,
   };
 }
 

@@ -11,6 +11,7 @@ import {
   Save,
   Settings,
   School,
+  Plane,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -24,13 +25,15 @@ type TabId =
   | "weather"
   | "family"
   | "gothenburg"
-  | "fun";
+  | "fun"
+  | "resor";
 
 type AppSettings = {
   defaultTab: TabId;
   showAdminButton: boolean;
   dashboardName: string;
   schoolLunchUrl: string;
+  showResorTab: boolean;
 };
 
 type ApiResponse = {
@@ -43,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
+  showResorTab: false,
 };
 
 const tabOptions: {
@@ -69,6 +73,11 @@ const tabOptions: {
     id: "gothenburg",
     label: "Göteborg",
     description: "Lokala funktioner för Göteborg.",
+  },
+  {
+    id: "resor",
+    label: "Resor",
+    description: "Planering av familjens resor.",
   },
   {
     id: "fun",
@@ -125,8 +134,12 @@ export default function AppSettingsAdmin() {
         );
       }
 
-      setSettings(result.settings);
-      setSavedSettings(result.settings);
+      const loadedSettings = {
+        ...DEFAULT_SETTINGS,
+        ...result.settings,
+      };
+      setSettings(loadedSettings);
+      setSavedSettings(loadedSettings);
     } catch (err) {
       console.error(
         "Kunde inte läsa appinställningar:",
@@ -154,7 +167,8 @@ export default function AppSettingsAdmin() {
     settings.dashboardName !==
       savedSettings.dashboardName ||
     settings.schoolLunchUrl !==
-      savedSettings.schoolLunchUrl;
+      savedSettings.schoolLunchUrl ||
+    settings.showResorTab !== savedSettings.showResorTab;
 
   async function saveSettings() {
     const dashboardName =
@@ -187,6 +201,11 @@ export default function AppSettingsAdmin() {
         );
         return;
       }
+    }
+
+    if (!settings.showResorTab && settings.defaultTab === "resor") {
+      setError("Aktivera Resor innan du väljer den som standardflik.");
+      return;
     }
 
     setIsSaving(true);
@@ -371,7 +390,7 @@ export default function AppSettingsAdmin() {
           </p>
 
           <div className="mt-4 grid grid-cols-1 gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {tabOptions.map((tab) => {
+            {tabOptions.filter((tab) => tab.id !== "resor" || settings.showResorTab).map((tab) => {
               const selected =
                 settings.defaultTab === tab.id;
 
@@ -426,6 +445,49 @@ export default function AppSettingsAdmin() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        {/* RESOR */}
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+                <Plane size={21} />
+              </div>
+              <div>
+                <h2 className="font-bold text-white">Visa fliken Resor</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                  Aktivera eller dölj reseplaneringen i dashboardens huvudmeny.
+                  Resor är dold som standard.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Visa fliken Resor"
+              aria-checked={settings.showResorTab}
+              onClick={() => {
+                setSettings((current) => ({
+                  ...current,
+                  showResorTab: !current.showResorTab,
+                  defaultTab: current.showResorTab && current.defaultTab === "resor" ? "home" : current.defaultTab,
+                }));
+                setSuccessMessage(null);
+              }}
+              className={[
+                "relative h-8 w-14 shrink-0 rounded-full border transition",
+                settings.showResorTab
+                  ? "border-blue-400/40 bg-blue-500"
+                  : "border-white/10 bg-slate-700",
+              ].join(" ")}
+            >
+              <span className={[
+                "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform",
+                settings.showResorTab ? "translate-x-7" : "translate-x-1",
+              ].join(" ")} />
+            </button>
           </div>
         </section>
 
