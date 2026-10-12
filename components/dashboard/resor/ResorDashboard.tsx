@@ -9,8 +9,64 @@ import ItinerarySection from "@/components/dashboard/resor/ItinerarySection";
 import {
   ArrowLeft, BedDouble, CalendarDays, CheckCircle2, Clock3, Edit3,
   Lightbulb, LoaderCircle, MapPin, Plane, Plus, Save, Trash2, Wallet,
-  X, Compass, ChevronRight,
+  X, Compass, ChevronRight, ChevronDown, ChevronUp,
 } from "lucide-react";
+
+type TravelPanelProps = {
+  title: string;
+  tripId: string;
+  panelId: string;
+  children: React.ReactNode;
+};
+
+function TravelPanel({ title, tripId, panelId, children }: TravelPanelProps) {
+  // Varje resa och widget får sin egen inställning i webbläsaren.
+  const storageKey = `family-dashboard-resor-collapsed:${tripId}:${panelId}`;
+  const [expanded, setExpanded] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      // Tidigare sparat val gäller. Nya widgetar startar minimerade.
+      setExpanded(saved === "false");
+    } catch {
+      setExpanded(false);
+    }
+    setLoaded(true);
+  }, [storageKey]);
+
+  function toggleExpanded() {
+    const nextExpanded = !expanded;
+    setExpanded(nextExpanded);
+    try {
+      window.localStorage.setItem(storageKey, String(!nextExpanded));
+    } catch {
+      // Fungerar även om webbläsaren blockerar lokal lagring.
+    }
+  }
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.025]">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+        <button
+          type="button"
+          aria-label={`${expanded ? "Minimera" : "Expandera"} ${title}`}
+          aria-expanded={expanded}
+          disabled={!loaded}
+          onClick={toggleExpanded}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+        >
+          {expanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+        </button>
+      </div>
+      <div hidden={!expanded} className="min-w-0 px-2 pb-2 sm:px-3 sm:pb-3">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 type Status = "upcoming" | "idea" | "past";
 type Trip = {
@@ -151,12 +207,17 @@ export default function ResorDashboard() {
       </section>
       <section>
         <h2 className="mb-3 text-lg font-bold">Planera resan</h2>
-        <div className="grid gap-3 sm:grid-cols-2"><ItinerarySection key={`resplan-${selectedTrip.id}`} tripId={selectedTrip.id} startDate={selectedTrip.start_date} endDate={selectedTrip.end_date}/><TransportSection key={selectedTrip.id} tripId={selectedTrip.id}/><AccommodationSection key={`boende-${selectedTrip.id}`} tripId={selectedTrip.id}/><ActivitySection key={`aktivitet-${selectedTrip.id}`} tripId={selectedTrip.id}/><BudgetSection key={`budget-${selectedTrip.id}`} tripId={selectedTrip.id}/>{planning.map(({ title, subtitle, icon: Icon }) =>
-          <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.05] p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TravelPanel key={`resplan-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="itinerary" title="Resplan"><ItinerarySection key={`resplan-${selectedTrip.id}`} tripId={selectedTrip.id} startDate={selectedTrip.start_date} endDate={selectedTrip.end_date}/></TravelPanel>
+          <TravelPanel key={`transport-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="transport" title="Transport"><TransportSection key={selectedTrip.id} tripId={selectedTrip.id}/></TravelPanel>
+          <TravelPanel key={`boende-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="accommodation" title="Boende"><AccommodationSection key={`boende-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>
+          <TravelPanel key={`aktivitet-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="activities" title="Aktiviteter"><ActivitySection key={`aktivitet-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>
+          <TravelPanel key={`budget-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="budget" title="Budget"><BudgetSection key={`budget-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>{planning.map(({ title, subtitle, icon: Icon }) =>
+          <TravelPanel key={`${selectedTrip.id}-${title}`} tripId={selectedTrip.id} panelId={title} title={title}><div className="p-3">
             <div className="flex items-center gap-3"><span className="rounded-xl bg-blue-500/15 p-2.5 text-blue-300"><Icon size={21}/></span><h3 className="font-semibold">{title}</h3></div>
             <p className="mt-3 text-sm text-slate-400">{subtitle}</p>
             <p className="mt-4 text-xs text-slate-500">Kommer i ett senare steg</p>
-          </div>
+          </div></TravelPanel>
         )}</div>
       </section>
     </> : <>
