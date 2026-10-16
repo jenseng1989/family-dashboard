@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { getWidgetSettings, type WidgetSetting } from "@/lib/widget-settings";
 import TransportSection from "@/components/dashboard/resor/TransportSection";
 import AccommodationSection from "@/components/dashboard/resor/AccommodationSection";
 import ActivitySection from "@/components/dashboard/resor/ActivitySection";
@@ -105,6 +106,12 @@ function daysUntil(start: string | null): number | null {
 }
 
 export default function ResorDashboard() {
+  const [panelSettings, setPanelSettings] = useState<WidgetSetting[]>([]);
+  useEffect(() => { let live = true; getWidgetSettings().then(rows => { if (live) setPanelSettings(rows); }).catch(error => console.error("Kunde inte hämta resewidgetar:", error)); return () => { live = false; }; }, []);
+  const visiblePanel = (id: string) => panelSettings.find(row => row.widgetId === `resor-${id}`)?.isVisible ?? true;
+  const panelSize = (id: string) => panelSettings.find(row => row.widgetId === `resor-${id}`)?.size ?? "half";
+  const panelOrder = (id: string, fallback: number) => panelSettings.find(row => row.widgetId === `resor-${id}`)?.sortOrder ?? fallback;
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -208,16 +215,17 @@ export default function ResorDashboard() {
       <section>
         <h2 className="mb-3 text-lg font-bold">Planera resan</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <TravelPanel key={`resplan-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="itinerary" title="Resplan"><ItinerarySection key={`resplan-${selectedTrip.id}`} tripId={selectedTrip.id} startDate={selectedTrip.start_date} endDate={selectedTrip.end_date}/></TravelPanel>
-          <TravelPanel key={`transport-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="transport" title="Transport"><TransportSection key={selectedTrip.id} tripId={selectedTrip.id}/></TravelPanel>
-          <TravelPanel key={`boende-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="accommodation" title="Boende"><AccommodationSection key={`boende-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>
-          <TravelPanel key={`aktivitet-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="activities" title="Aktiviteter"><ActivitySection key={`aktivitet-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>
-          <TravelPanel key={`budget-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="budget" title="Budget"><BudgetSection key={`budget-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel>{planning.map(({ title, subtitle, icon: Icon }) =>
-          <TravelPanel key={`${selectedTrip.id}-${title}`} tripId={selectedTrip.id} panelId={title} title={title}><div className="p-3">
+          {visiblePanel("itinerary") && <div className={panelSize("itinerary") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("itinerary", 10) }}><TravelPanel key={`resplan-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="itinerary" title="Resplan"><ItinerarySection key={`resplan-${selectedTrip.id}`} tripId={selectedTrip.id} startDate={selectedTrip.start_date} endDate={selectedTrip.end_date}/></TravelPanel></div>}
+          {visiblePanel("transport") && <div className={panelSize("transport") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("transport", 20) }}><TravelPanel key={`transport-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="transport" title="Transport"><TransportSection key={selectedTrip.id} tripId={selectedTrip.id}/></TravelPanel></div>}
+          {visiblePanel("accommodation") && <div className={panelSize("accommodation") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("accommodation", 30) }}><TravelPanel key={`boende-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="accommodation" title="Boende"><AccommodationSection key={`boende-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel></div>}
+          {visiblePanel("activities") && <div className={panelSize("activities") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("activities", 40) }}><TravelPanel key={`aktivitet-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="activities" title="Aktiviteter"><ActivitySection key={`aktivitet-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel></div>}
+          {visiblePanel("budget") && <div className={panelSize("budget") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("budget", 50) }}><TravelPanel key={`budget-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="budget" title="Budget"><BudgetSection key={`budget-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel></div>}
+{planning.map(({ title, subtitle, icon: Icon }) =>
+          <div className="min-w-0" style={{ order: 1000 }}><TravelPanel key={`${selectedTrip.id}-${title}`} tripId={selectedTrip.id} panelId={title} title={title}><div className="p-3">
             <div className="flex items-center gap-3"><span className="rounded-xl bg-blue-500/15 p-2.5 text-blue-300"><Icon size={21}/></span><h3 className="font-semibold">{title}</h3></div>
             <p className="mt-3 text-sm text-slate-400">{subtitle}</p>
             <p className="mt-4 text-xs text-slate-500">Kommer i ett senare steg</p>
-          </div></TravelPanel>
+          </div></TravelPanel></div>
         )}</div>
       </section>
     </> : <>

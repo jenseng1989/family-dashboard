@@ -32,12 +32,8 @@ import {
 
 type TabId = AppTabId;
 
-// Resor saknar ännu stöd i dashboardens statistiktyp.
-// Övriga flikar fortsätter att rapporteras som tidigare.
 function trackTabView(tabId: TabId): void {
-  if (tabId !== "resor" && tabId !== "hemmet3d") {
-    void trackDashboardEvent("tab_view", tabId);
-  }
+  void trackDashboardEvent("tab_view", tabId);
 }
 
 type DashboardTabsProps = {

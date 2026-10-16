@@ -9,7 +9,9 @@ export type DashboardAnalyticsTabId =
   | "weather"
   | "family"
   | "gothenburg"
-  | "fun";
+  | "fun"
+  | "resor"
+  | "hemmet3d";
 
 export type DashboardAnalyticsEvent = {
   id: string;
