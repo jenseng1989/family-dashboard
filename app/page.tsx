@@ -5,6 +5,9 @@ import {
   getInitialAppSettings,
 } from "@/lib/app-settings-server";
 
+// Hämta aktuella appinställningar vid varje sidförfrågan på Vercel.
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const initialSettings =
     await getInitialAppSettings();
