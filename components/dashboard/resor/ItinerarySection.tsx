@@ -55,7 +55,7 @@ export default function ItinerarySection({ tripId, startDate, endDate }: { tripI
     const events: Event[] = [];
     for (const t of transports) {
       const detail = [t.provider, `${t.departure_place || "?"} → ${t.arrival_place || "?"}`].filter(Boolean).join(" · ");
-      events.push({ id: `t-${t.id}`, date: t.departure_at?.slice(0, 10) ?? null, time: t.departure_at?.slice(11, 16) ?? "", kind: "transport", name: "Transport: avresa", detail });
+      events.push({ id: `t-${t.id}`, date: t.departure_at?.slice(0, 10) ?? null, time: t.departure_at?.slice(11, 16) ?? "", kind: "transport", name: "Transport: Avresa", detail });
       if (t.arrival_at && t.arrival_at.slice(0, 10) !== t.departure_at?.slice(0, 10)) events.push({ id: `ta-${t.id}`, date: t.arrival_at.slice(0, 10), time: t.arrival_at.slice(11, 16), kind: "transport", name: "Transport: ankomst", detail: t.arrival_place });
     }
     for (const b of accommodations) {

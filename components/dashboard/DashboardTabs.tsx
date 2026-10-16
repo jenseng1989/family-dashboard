@@ -4,6 +4,7 @@ import {
   CloudSun,
   Compass,
   Home,
+  HousePlus,
   LoaderCircle,
   MapPin,
   Plane,
@@ -34,7 +35,7 @@ type TabId = AppTabId;
 // Resor saknar ännu stöd i dashboardens statistiktyp.
 // Övriga flikar fortsätter att rapporteras som tidigare.
 function trackTabView(tabId: TabId): void {
-  if (tabId !== "resor") {
+  if (tabId !== "resor" && tabId !== "hemmet3d") {
     void trackDashboardEvent("tab_view", tabId);
   }
 }
@@ -123,6 +124,11 @@ const ResorDashboard = dynamic(
   { loading: () => <TabLoading label="Resor" /> }
 );
 
+const Hemmet3DDashboard = dynamic(
+  () => import("@/components/dashboard/hemmet3d/Hemmet3DDashboard"),
+  { loading: () => <TabLoading label="Smarthem" /> }
+);
+
 const tabs: TabButton[] = [
   {
     id: "home",
@@ -155,6 +161,12 @@ const tabs: TabButton[] = [
     icon: <Plane size={20} />,
   },
   {
+    id: "hemmet3d",
+    label: "Smarthem",
+    shortLabel: "Smarthem",
+    icon: <HousePlus size={20} />,
+  },
+  {
     id: "fun",
     label: "Utforska",
     shortLabel: "Utforska",
@@ -167,14 +179,18 @@ export default function DashboardTabs({
   startContent,
   weatherContent,
 }: DashboardTabsProps) {
-  const visibleTabs = tabs.filter((tab) => tab.id !== "resor" || initialSettings.showResorTab);
+  const visibleTabs = tabs.filter((tab) =>
+    (tab.id !== "resor" || initialSettings.showResorTab) &&
+    (tab.id !== "hemmet3d" || initialSettings.showHemmet3DTab)
+  );
 
-  const [activeTab, setActiveTab] =
-    useState<TabId>(
-      initialSettings.defaultTab === "resor" && !initialSettings.showResorTab
-        ? "home"
-        : initialSettings.defaultTab
-    );
+  const initialTab: TabId =
+    (initialSettings.defaultTab === "resor" && !initialSettings.showResorTab) ||
+    (initialSettings.defaultTab === "hemmet3d" && !initialSettings.showHemmet3DTab)
+      ? "home"
+      : initialSettings.defaultTab;
+
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
   useEffect(() => {
     document.title =
@@ -184,21 +200,20 @@ export default function DashboardTabs({
       "dashboard_view"
     );
 
-    trackTabView(
-      initialSettings.defaultTab === "resor" && !initialSettings.showResorTab
-        ? "home"
-        : initialSettings.defaultTab
-    );
+    trackTabView(initialTab);
   }, [
     initialSettings.dashboardName,
     initialSettings.defaultTab,
     initialSettings.showResorTab,
+    initialSettings.showHemmet3DTab,
+    initialTab,
   ]);
 
   function changeTab(
     tabId: TabId
   ) {
     if (tabId === "resor" && !initialSettings.showResorTab) return;
+    if (tabId === "hemmet3d" && !initialSettings.showHemmet3DTab) return;
     if (tabId === activeTab) {
       return;
     }
@@ -229,6 +244,9 @@ export default function DashboardTabs({
       case "resor":
         return initialSettings.showResorTab ? <ResorDashboard /> : startContent;
 
+      case "hemmet3d":
+        return initialSettings.showHemmet3DTab ? <Hemmet3DDashboard /> : startContent;
+
       case "fun":
         return (
           <ExploreDashboardTab />
@@ -247,7 +265,7 @@ export default function DashboardTabs({
           className="min-w-0 flex-1 rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
         >
           <div
-            className={`grid w-full gap-2 ${initialSettings.showResorTab ? "grid-cols-6" : "grid-cols-5"}`}
+            className={`grid w-full gap-2 ${visibleTabs.length === 7 ? "grid-cols-7" : visibleTabs.length === 6 ? "grid-cols-6" : "grid-cols-5"}`}
             role="tablist"
           >
             {visibleTabs.map((tab) => {

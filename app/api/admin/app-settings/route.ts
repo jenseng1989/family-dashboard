@@ -9,6 +9,7 @@ type AppSettings = {
   dashboardName: string;
   schoolLunchUrl: string;
   showResorTab: boolean;
+  showHemmet3DTab: boolean;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
   showResorTab: false,
+  showHemmet3DTab: false,
 };
 
 const VALID_TABS = [
@@ -26,6 +28,7 @@ const VALID_TABS = [
   "gothenburg",
   "fun",
   "resor",
+  "hemmet3d",
 ] as const;
 
 function rowsToSettings(
@@ -66,6 +69,10 @@ function rowsToSettings(
         settings.showResorTab = row.setting_value === "true";
         break;
 
+      case "show_hemmet3d_tab":
+        settings.showHemmet3DTab = row.setting_value === "true";
+        break;
+
       case "school_lunch_url":
         settings.schoolLunchUrl = row.setting_value || "";
         break;
@@ -73,6 +80,10 @@ function rowsToSettings(
   }
 
   if (!settings.showResorTab && settings.defaultTab === "resor") {
+    settings.defaultTab = "home";
+  }
+
+  if (!settings.showHemmet3DTab && settings.defaultTab === "hemmet3d") {
     settings.defaultTab = "home";
   }
 
@@ -158,6 +169,11 @@ export async function PUT(request: NextRequest) {
         ? body.showResorTab
         : false;
 
+    const showHemmet3DTab =
+      typeof body.showHemmet3DTab === "boolean"
+        ? body.showHemmet3DTab
+        : false;
+
     const schoolLunchUrl =
       typeof body.schoolLunchUrl === "string"
         ? body.schoolLunchUrl.trim()
@@ -169,7 +185,8 @@ export async function PUT(request: NextRequest) {
       dashboardName === null ||
       dashboardName.length === 0 ||
       schoolLunchUrl === null ||
-      (defaultTab === "resor" && !showResorTab)
+      (defaultTab === "resor" && !showResorTab) ||
+      (defaultTab === "hemmet3d" && !showHemmet3DTab)
     ) {
       return NextResponse.json(
         {
@@ -226,6 +243,11 @@ export async function PUT(request: NextRequest) {
         updated_at: new Date().toISOString(),
       },
       {
+        setting_key: "show_hemmet3d_tab",
+        setting_value: String(showHemmet3DTab),
+        updated_at: new Date().toISOString(),
+      },
+      {
         setting_key: "school_lunch_url",
         setting_value: schoolLunchUrl,
         updated_at: new Date().toISOString(),
@@ -262,6 +284,7 @@ export async function PUT(request: NextRequest) {
         dashboardName,
         schoolLunchUrl,
         showResorTab,
+        showHemmet3DTab,
       },
     });
   } catch (error) {

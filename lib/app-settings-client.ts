@@ -6,13 +6,15 @@ export type AppTabId =
   | "family"
   | "gothenburg"
   | "fun"
-  | "resor";
+  | "resor"
+  | "hemmet3d";
 
 export type AppSettings = {
   defaultTab: AppTabId;
   showAdminButton: boolean;
   dashboardName: string;
   showResorTab: boolean;
+  showHemmet3DTab: boolean;
 };
 
 type AppSettingsResponse = {
@@ -25,6 +27,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   showResorTab: false,
+  showHemmet3DTab: false,
 };
 
 const VALID_TABS: AppTabId[] = [
@@ -34,6 +37,7 @@ const VALID_TABS: AppTabId[] = [
   "gothenburg",
   "fun",
   "resor",
+  "hemmet3d",
 ];
 
 const CACHE_TTL_MS = 10_000;
@@ -78,11 +82,18 @@ function normalizeSettings(
       ? settings.showResorTab
       : DEFAULT_APP_SETTINGS.showResorTab;
 
+  const showHemmet3DTab =
+    typeof settings?.showHemmet3DTab === "boolean"
+      ? settings.showHemmet3DTab
+      : DEFAULT_APP_SETTINGS.showHemmet3DTab;
+
   return {
-    defaultTab: defaultTab === "resor" && !showResorTab ? "home" : defaultTab,
+    defaultTab: (defaultTab === "resor" && !showResorTab) ||
+      (defaultTab === "hemmet3d" && !showHemmet3DTab) ? "home" : defaultTab,
     showAdminButton,
     dashboardName,
     showResorTab,
+    showHemmet3DTab,
   };
 }
 

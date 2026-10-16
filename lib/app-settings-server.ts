@@ -1,17 +1,14 @@
 import "server-only";
 
 import { supabase } from "@/lib/supabase";
-
-import type {
-  AppSettings,
-  AppTabId,
-} from "@/lib/app-settings-client";
+import type { AppSettings, AppTabId } from "@/lib/app-settings-client";
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultTab: "home",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   showResorTab: false,
+  showHemmet3DTab: false,
 };
 
 const VALID_TABS: AppTabId[] = [
@@ -21,6 +18,7 @@ const VALID_TABS: AppTabId[] = [
   "gothenburg",
   "fun",
   "resor",
+  "hemmet3d",
 ];
 
 type SettingsRow = {
@@ -28,50 +26,37 @@ type SettingsRow = {
   setting_value: string;
 };
 
-function isValidTab(
-  value: string
-): value is AppTabId {
-  return VALID_TABS.includes(
-    value as AppTabId
-  );
+function isValidTab(value: string): value is AppTabId {
+  return VALID_TABS.includes(value as AppTabId);
 }
 
-function rowsToSettings(
-  rows: SettingsRow[] | null
-): AppSettings {
-  const settings: AppSettings = {
-    ...DEFAULT_SETTINGS,
-  };
+function rowsToSettings(rows: SettingsRow[] | null): AppSettings {
+  const settings: AppSettings = { ...DEFAULT_SETTINGS };
 
   for (const row of rows ?? []) {
     switch (row.setting_key) {
       case "default_tab":
-        if (isValidTab(row.setting_value)) {
-          settings.defaultTab =
-            row.setting_value;
-        }
+        if (isValidTab(row.setting_value)) settings.defaultTab = row.setting_value;
         break;
-
       case "show_admin_button":
-        settings.showAdminButton =
-          row.setting_value === "true";
+        settings.showAdminButton = row.setting_value === "true";
         break;
-
-      case "show_resor_tab":
-        settings.showResorTab =
-          row.setting_value === "true";
-        break;
-
       case "dashboard_name":
-        if (row.setting_value.trim()) {
-          settings.dashboardName =
-            row.setting_value.trim();
-        }
+        if (row.setting_value.trim()) settings.dashboardName = row.setting_value.trim();
+        break;
+      case "show_resor_tab":
+        settings.showResorTab = row.setting_value === "true";
+        break;
+      case "show_hemmet3d_tab":
+        settings.showHemmet3DTab = row.setting_value === "true";
         break;
     }
   }
 
-  if (settings.defaultTab === "resor" && !settings.showResorTab) {
+  if (
+    (settings.defaultTab === "resor" && !settings.showResorTab) ||
+    (settings.defaultTab === "hemmet3d" && !settings.showHemmet3DTab)
+  ) {
     settings.defaultTab = "home";
   }
 
@@ -85,25 +70,13 @@ export async function getInitialAppSettings(): Promise<AppSettings> {
       .select("setting_key, setting_value");
 
     if (error) {
-      console.error(
-        "Kunde inte läsa initiala appinställningar:",
-        error
-      );
-
-      return {
-        ...DEFAULT_SETTINGS,
-      };
+      console.error("Kunde inte läsa initiala appinställningar:", error);
+      return { ...DEFAULT_SETTINGS };
     }
 
     return rowsToSettings(data);
   } catch (error) {
-    console.error(
-      "Oväntat fel vid hämtning av initiala appinställningar:",
-      error
-    );
-
-    return {
-      ...DEFAULT_SETTINGS,
-    };
+    console.error("Oväntat fel vid hämtning av initiala appinställningar:", error);
+    return { ...DEFAULT_SETTINGS };
   }
 }

@@ -12,6 +12,7 @@ import {
   Settings,
   School,
   Plane,
+  HousePlus,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -26,7 +27,8 @@ type TabId =
   | "family"
   | "gothenburg"
   | "fun"
-  | "resor";
+  | "resor"
+  | "hemmet3d";
 
 type AppSettings = {
   defaultTab: TabId;
@@ -34,6 +36,7 @@ type AppSettings = {
   dashboardName: string;
   schoolLunchUrl: string;
   showResorTab: boolean;
+  showHemmet3DTab: boolean;
 };
 
 type ApiResponse = {
@@ -47,6 +50,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
   showResorTab: false,
+  showHemmet3DTab: false,
 };
 
 const tabOptions: {
@@ -78,6 +82,11 @@ const tabOptions: {
     id: "resor",
     label: "Resor",
     description: "Planering av familjens resor.",
+  },
+  {
+    id: "hemmet3d",
+    label: "Smarthem",
+    description: "Rum och smarta enheter i 3D.",
   },
   {
     id: "fun",
@@ -168,7 +177,8 @@ export default function AppSettingsAdmin() {
       savedSettings.dashboardName ||
     settings.schoolLunchUrl !==
       savedSettings.schoolLunchUrl ||
-    settings.showResorTab !== savedSettings.showResorTab;
+    settings.showResorTab !== savedSettings.showResorTab ||
+    settings.showHemmet3DTab !== savedSettings.showHemmet3DTab;
 
   async function saveSettings() {
     const dashboardName =
@@ -205,6 +215,11 @@ export default function AppSettingsAdmin() {
 
     if (!settings.showResorTab && settings.defaultTab === "resor") {
       setError("Aktivera Resor innan du väljer den som standardflik.");
+      return;
+    }
+
+    if (!settings.showHemmet3DTab && settings.defaultTab === "hemmet3d") {
+      setError("Aktivera Smarthem innan du väljer den som standardflik.");
       return;
     }
 
@@ -390,7 +405,7 @@ export default function AppSettingsAdmin() {
           </p>
 
           <div className="mt-4 grid grid-cols-1 gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {tabOptions.filter((tab) => tab.id !== "resor" || settings.showResorTab).map((tab) => {
+            {tabOptions.filter((tab) => (tab.id !== "resor" || settings.showResorTab) && (tab.id !== "hemmet3d" || settings.showHemmet3DTab)).map((tab) => {
               const selected =
                 settings.defaultTab === tab.id;
 
@@ -486,6 +501,47 @@ export default function AppSettingsAdmin() {
               <span className={[
                 "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform",
                 settings.showResorTab ? "translate-x-7" : "translate-x-1",
+              ].join(" ")} />
+            </button>
+          </div>
+        </section>
+
+        {/* SMARTHEM */}
+        <section className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:mt-5 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+                <HousePlus size={21} />
+              </div>
+              <div>
+                <h2 className="font-bold text-white">Visa fliken Smarthem</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                  Aktivera eller dölj smarthemmet i dashboardens huvudmeny.
+                  Smarthem är dold som standard. Sparade rum och enheter påverkas inte.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-label="Visa fliken Smarthem"
+              aria-checked={settings.showHemmet3DTab}
+              onClick={() => {
+                setSettings((current) => ({
+                  ...current,
+                  showHemmet3DTab: !current.showHemmet3DTab,
+                  defaultTab: current.showHemmet3DTab && current.defaultTab === "hemmet3d" ? "home" : current.defaultTab,
+                }));
+                setSuccessMessage(null);
+              }}
+              className={[
+                "relative h-8 w-14 shrink-0 rounded-full border transition",
+                settings.showHemmet3DTab ? "border-blue-400/40 bg-blue-500" : "border-white/10 bg-slate-700",
+              ].join(" ")}
+            >
+              <span className={[
+                "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform",
+                settings.showHemmet3DTab ? "translate-x-7" : "translate-x-1",
               ].join(" ")} />
             </button>
           </div>
