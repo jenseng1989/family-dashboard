@@ -69,6 +69,91 @@ function TravelPanel({ title, tripId, panelId, children }: TravelPanelProps) {
   );
 }
 
+type SummaryItem = { cost_sek?: number | null; reference?: string | null; booking_reference?: string | null };
+type TravelSummary = {
+  transport: SummaryItem[];
+  accommodation: SummaryItem[];
+  activities: SummaryItem[];
+  budget: { target_sek: number | null; totals: { transport: number; accommodation: number; activity: number } } | null;
+};
+
+function NextTripPlanning({ tripId }: { tripId: string }) {
+  const [summary, setSummary] = useState<TravelSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const paths = ["transports", "accommodations", "activities", "budget"] as const;
+      const responses = await Promise.all(paths.map((path) =>
+        fetch(`/api/resor/${path}?tripId=${encodeURIComponent(tripId)}`, { cache: "no-store" })
+      ));
+      const results = await Promise.all(responses.map(async (response) => {
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || "Kunde inte läsa reseplaneringen.");
+        return json;
+      }));
+      setSummary({
+        transport: results[0].transports ?? [],
+        accommodation: results[1].accommodations ?? [],
+        activities: results[2].activities ?? [],
+        budget: results[3],
+      });
+    } catch (cause) {
+      setSummary(null);
+      setError(cause instanceof Error ? cause.message : "Kunde inte läsa reseplaneringen.");
+    } finally {
+      setLoading(false);
+    }
+  }, [tripId]);
+
+  useEffect(() => {
+    void refresh();
+    const onFocus = () => { void refresh(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refresh]);
+
+  if (loading) return <p className="mt-4 flex items-center gap-2 text-sm text-slate-300"><LoaderCircle size={16} className="animate-spin"/> Hämtar planeringsstatus…</p>;
+  if (error || !summary) return <div className="mt-4 text-sm text-amber-200">{error || "Planeringsstatus saknas."} <button type="button" className="underline" onClick={() => void refresh()}>Försök igen</button></div>;
+
+  const groups = [
+    { label: "Transport", count: summary.transport.length, icon: Plane },
+    { label: "Boende", count: summary.accommodation.length, icon: BedDouble },
+    { label: "Aktiviteter", count: summary.activities.length, icon: Compass },
+  ];
+  const bookedTransport = summary.transport.filter((item) => Boolean(item.reference?.trim())).length;
+  const bookedAccommodation = summary.accommodation.filter((item) => Boolean(item.booking_reference?.trim())).length;
+  const total = summary.budget?.totals
+    ? summary.budget.totals.transport + summary.budget.totals.accommodation + summary.budget.totals.activity
+    : null;
+  const money = (value: number) => new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(value);
+
+  return <div className="mt-5 space-y-3">
+    <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+      <h3 className="text-sm font-semibold text-slate-100">Planeringsstatus</h3>
+      <p className="mt-1 text-xs text-slate-400">Antal registrerade poster – inte automatiskt bekräftade bokningar.</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {groups.map(({ label, count, icon: Icon }) => <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+          <Icon size={18} className="mx-auto text-blue-300"/>
+          <p className="mt-2 text-xl font-bold tabular-nums">{count}</p>
+          <p className="text-xs text-slate-400">{label}</p>
+        </div>)}
+      </div>
+      <p className="mt-3 text-xs text-slate-400">Bokningsreferens angiven: {bookedTransport} transporter och {bookedAccommodation} boenden. Referens betyder inte att bokningen har verifierats.</p>
+    </div>
+    <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h3 className="flex items-center gap-2 text-sm font-semibold"><Wallet size={17} className="text-blue-300"/> Resekostnader</h3><p className="mt-1 text-xs text-slate-400">Summering av registrerade kostnader</p></div>
+        <p className="text-lg font-bold tabular-nums">{total === null ? "Ej tillgängligt" : money(total)}</p>
+      </div>
+      {summary.budget?.target_sek != null && <p className="mt-2 text-xs text-slate-300">Budgetmål: {money(summary.budget.target_sek)} · Kvar: {money(summary.budget.target_sek - (total ?? 0))}</p>}
+      <p className="mt-2 text-xs text-slate-500">Kostnader utan angivet belopp ingår inte i summan.</p>
+    </div>
+  </div>;
+}
+
 type Status = "upcoming" | "idea" | "past";
 type Trip = {
   id: string; title: string; destination: string; start_date: string | null;
@@ -180,6 +265,26 @@ export default function ResorDashboard() {
   };
 
   const selectedTrip = trips.find((t) => t.id === selectedId);
+  // Visa alltid en registrerad kommande resa, även när avresedatum saknas.
+  // Prioritera pågående resor, därefter framtida avresor, därefter odaterade resor.
+  const upcomingTrips = trips.filter((trip) => trip.status === "upcoming");
+  const activeOrFutureTrips = upcomingTrips.filter((trip) =>
+    (trip.start_date && (daysUntil(trip.start_date) ?? -1) >= 0) ||
+    (trip.end_date && (daysUntil(trip.end_date) ?? -1) >= 0)
+  );
+  const nextTrip = [...(activeOrFutureTrips.length ? activeOrFutureTrips : upcomingTrips)]
+    .sort((a, b) => {
+      const aDays = a.start_date ? daysUntil(a.start_date) : null;
+      const bDays = b.start_date ? daysUntil(b.start_date) : null;
+      const aRank = aDays !== null && aDays >= 0 ? 0 : a.end_date && (daysUntil(a.end_date) ?? -1) >= 0 ? 1 : aDays === null ? 2 : 3;
+      const bRank = bDays !== null && bDays >= 0 ? 0 : b.end_date && (daysUntil(b.end_date) ?? -1) >= 0 ? 1 : bDays === null ? 2 : 3;
+      if (aRank !== bRank) return aRank - bRank;
+      if (aRank === 0) return (aDays ?? 0) - (bDays ?? 0);
+      return (a.start_date ?? "").localeCompare(b.start_date ?? "");
+    })[0];
+  const nextTripDays = nextTrip ? daysUntil(nextTrip.start_date) : null;
+  const isOngoingTrip = !!nextTrip && nextTripDays !== null && nextTripDays < 0 &&
+    !!nextTrip.end_date && (daysUntil(nextTrip.end_date) ?? -1) >= 0;
   const planning: { title: string; subtitle: string; icon: typeof Wallet }[] = [];
 
   return <div className="w-full min-w-0 space-y-5 text-white">
@@ -233,7 +338,75 @@ export default function ResorDashboard() {
         <div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><span className="rounded-2xl bg-blue-400/15 p-3 text-blue-200"><Plane size={25}/></span><div><p className="text-xs font-semibold uppercase tracking-widest text-blue-300">Familjens reseplanering</p><h1 className="mt-1 text-2xl font-bold sm:text-3xl">Resor</h1><p className="mt-2 text-sm text-slate-300">Samla idéer, planera resor och spara era minnen.</p></div></div><button type="button" onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold hover:bg-blue-400"><Plus size={17}/> Ny resa</button></div>
         <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">{sections.map((s) => { const Icon = s.icon; return <div key={s.status} className="rounded-2xl border border-white/10 bg-slate-950/25 p-3 sm:p-4"><Icon size={18} className="text-blue-300"/><p className="mt-2 text-2xl font-bold">{trips.filter((t) => t.status === s.status).length}</p><p className="mt-1 text-xs text-slate-400">{s.title}</p></div>; })}</div>
       </header>
-      {!loading && sections.map((s) => { const Icon = s.icon; const items = trips.filter((t) => t.status === s.status); return <section key={s.status} className="rounded-3xl border border-white/10 bg-white/[0.05] p-4 sm:p-6"><div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-blue-500/15 p-2.5 text-blue-300"><Icon size={20}/></div><h2 className="text-lg font-bold">{s.title}</h2></div>{items.length ? <div className="grid gap-3 md:grid-cols-2">{items.map((t) => <article key={t.id} className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"><h3 className="font-semibold">{t.title}</h3><p className="mt-2 flex items-center gap-2 text-sm text-slate-300"><MapPin size={15}/>{t.destination}</p><p className="mt-1 flex items-center gap-2 text-sm text-slate-400"><Clock3 size={15}/>{dateText(t)}</p>{t.description && <p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-sm text-slate-300">{t.description}</p>}<div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => setSelectedId(t.id)} className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold hover:bg-blue-400">Öppna resa <ChevronRight size={14}/></button><button type="button" onClick={() => openEdit(t)} className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10"><Edit3 size={14}/> Redigera</button><button type="button" onClick={() => setDeleteTarget(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10"><Trash2 size={14}/> Ta bort</button></div></article>)}</div> : <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">{s.empty}</p>}</section>; })}
+      {!loading && nextTrip && (
+        <section aria-label="Nästa resa" className="rounded-3xl border border-blue-300/20 bg-gradient-to-br from-blue-500/15 via-white/[0.04] to-cyan-500/10 p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-blue-300"><Plane size={16}/> Nästa resa</p>
+              <h2 className="mt-3 break-words text-2xl font-bold">{nextTrip.title}</h2>
+              <p className="mt-2 flex items-center gap-2 text-sm text-slate-200"><MapPin size={16}/>{nextTrip.destination}</p>
+              <p className="mt-2 flex items-center gap-2 text-sm text-slate-300"><CalendarDays size={16}/>{dateText(nextTrip)}</p>
+            </div>
+            {nextTripDays !== null && nextTripDays >= 0 && (
+              <div className="rounded-2xl border border-blue-300/20 bg-blue-400/10 px-5 py-3 text-center">
+                <p className="text-3xl font-bold tabular-nums text-blue-100">{nextTripDays}</p>
+                <p className="text-xs text-blue-200">{nextTripDays === 0 ? "Avresa idag!" : nextTripDays === 1 ? "dag kvar" : "dagar kvar"}</p>
+              </div>
+            )}
+          </div>
+          {isOngoingTrip && <p className="mt-3 text-sm text-blue-200">Resan pågår.</p>}
+          {nextTripDays === null && <p className="mt-3 text-sm text-slate-300">Avresedatum är inte bestämt ännu. Lägg till ett datum för att visa nedräkningen.</p>}
+          {nextTripDays !== null && nextTripDays < 0 && !isOngoingTrip && <p className="mt-3 text-sm text-slate-300">Resans avresedatum har passerat. Kontrollera datum eller flytta resan till Tidigare resor.</p>}
+          <NextTripPlanning tripId={nextTrip.id}/>
+          <button type="button" onClick={() => setSelectedId(nextTrip.id)} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400">
+            Öppna nästa resa <ChevronRight size={17}/>
+          </button>
+        </section>
+      )}
+      {!loading && !nextTrip && (
+        <section aria-label="Nästa resa" className="rounded-2xl border border-dashed border-white/15 px-5 py-4 text-sm text-slate-400">
+          Inga resor är markerade som Kommande resor ännu. Skapa en resa eller ändra status för en befintlig resa.
+        </section>
+      )}
+      {!loading && <div className="grid gap-3 sm:grid-cols-2">
+         {sections.map((s, index) => {
+           const Icon = s.icon;
+           const items = trips.filter((t) => t.status === s.status);
+           const widgetId = `overview-${s.status}`;
+           if (!visiblePanel(widgetId)) return null;
+           return (
+             <div
+               key={s.status}
+               className={panelSize(widgetId) === "full" ? "min-w-0 sm:col-span-2" : "min-w-0"}
+               style={{ order: panelOrder(widgetId, (index + 1) * 10) }}
+             >
+               <TravelPanel title={`${s.title} (${items.length})`} tripId="overview" panelId={widgetId}>
+                 <div className="mb-4 flex items-center gap-3 px-2 pt-2">
+                   <span className="rounded-xl bg-blue-500/15 p-2.5 text-blue-300"><Icon size={20}/></span>
+                   <span className="text-sm text-slate-300">{s.title}</span>
+                 </div>
+                 {items.length ? (
+                   <div className="grid gap-3 md:grid-cols-2">
+                     {items.map((t) => (
+                       <article key={t.id} className="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
+                         <h3 className="font-semibold">{t.title}</h3>
+                         <p className="mt-2 flex items-center gap-2 text-sm text-slate-300"><MapPin size={15}/>{t.destination}</p>
+                         <p className="mt-1 flex items-center gap-2 text-sm text-slate-400"><Clock3 size={15}/>{dateText(t)}</p>
+                         {t.description && <p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-sm text-slate-300">{t.description}</p>}
+                         <div className="mt-4 flex flex-wrap gap-2">
+                           <button type="button" onClick={() => setSelectedId(t.id)} className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold hover:bg-blue-400">Öppna resa <ChevronRight size={14}/></button>
+                           <button type="button" onClick={() => openEdit(t)} className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10"><Edit3 size={14}/> Redigera</button>
+                           <button type="button" onClick={() => setDeleteTarget(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10"><Trash2 size={14}/> Ta bort</button>
+                         </div>
+                       </article>
+                     ))}
+                   </div>
+                 ) : <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">{s.empty}</p>}
+               </TravelPanel>
+             </div>
+           );
+         })}
+       </div>}
     </>}
     {error && !formOpen && !deleteTarget && <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error} <button type="button" onClick={() => void load()} className="ml-2 underline">Försök igen</button></div>}
     {loading && <div className="flex items-center gap-2 p-8 text-sm text-slate-300"><LoaderCircle className="animate-spin" size={18}/> Hämtar resor…</div>}

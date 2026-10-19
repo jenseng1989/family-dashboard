@@ -30,6 +30,8 @@ import {
   TramFront,
   Users,
   Wind,
+  CheckCircle2,
+  Lightbulb,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -343,6 +345,9 @@ export const widgetGroups: WidgetGroup[] = [
     subtitle: "Planeringspaneler för varje resa.",
     icon: Plane,
     widgets: [
+      { id: "resor-overview-upcoming", name: "Kommande resor", description: "Planerade och bokade resor på reseöversikten.", icon: CalendarDays, defaultSize: "full" },
+      { id: "resor-overview-idea", name: "Reseidéer", description: "Idéer för framtida resor på reseöversikten.", icon: Lightbulb, defaultSize: "full" },
+      { id: "resor-overview-past", name: "Tidigare resor", description: "Genomförda resor på reseöversikten.", icon: CheckCircle2, defaultSize: "full" },
       { id: "resor-itinerary", name: "Resplan", description: "Resans dag-för-dag-planering.", icon: Route, defaultSize: "half" },
       { id: "resor-transport", name: "Transport", description: "Flyg, tåg, färja, buss och bil.", icon: Bus, defaultSize: "half" },
       { id: "resor-accommodation", name: "Boende", description: "Resans boenden och bokningar.", icon: BedDouble, defaultSize: "half" },
