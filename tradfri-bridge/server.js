@@ -1,7 +1,5 @@
 // tradfri-bridge/server.js
 
-const http = require("http");
-
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.TRADFRI_BRIDGE_PORT || 4310);
 
@@ -117,180 +115,179 @@ function getDeviceIdFromUrl(url) {
   return decodeURIComponent(match[1]);
 }
 
-const server = http.createServer(async (req, res) => {
-  /*
-   * GET /health
-   */
-  if (req.method === "GET" && req.url === "/health") {
-    sendJson(res, 200, {
-      ok: true,
-      service: "family-dashboard-tradfri-bridge",
-      status: "running",
-      tradfriConnected: bridgeState.tradfriConnected,
-      timestamp: new Date().toISOString(),
-    });
+void import("node:http").then(({ createServer }) => {
+  const server = createServer(async (req, res) => {
+    /*
+     * GET /health
+     */
+    if (req.method === "GET" && req.url === "/health") {
+      sendJson(res, 200, {
+        ok: true,
+        service: "family-dashboard-tradfri-bridge",
+        status: "running",
+        tradfriConnected: bridgeState.tradfriConnected,
+        timestamp: new Date().toISOString(),
+      });
 
-    return;
-  }
+      return;
+    }
 
-  /*
-   * GET /devices
-   */
-  if (req.method === "GET" && req.url === "/devices") {
-    sendJson(res, 200, {
-      ok: true,
-      mode: bridgeState.tradfriConnected ? "live" : "demo",
-      devices,
-      timestamp: new Date().toISOString(),
-    });
+    /*
+     * GET /devices
+     */
+    if (req.method === "GET" && req.url === "/devices") {
+      sendJson(res, 200, {
+        ok: true,
+        mode: bridgeState.tradfriConnected ? "live" : "demo",
+        devices,
+        timestamp: new Date().toISOString(),
+      });
 
-    return;
-  }
+      return;
+    }
 
-  /*
-   * PATCH /devices/:id
-   *
-   * Exempel:
-   *
-   * {
-   *   "isOn": false
-   * }
-   *
-   * eller:
-   *
-   * {
-   *   "brightness": 50
-   * }
-   */
-  if (req.method === "PATCH") {
-    const deviceId = getDeviceIdFromUrl(req.url);
+    /*
+     * PATCH /devices/:id
+     *
+     * Exempel:
+     *
+     * {
+     *   "isOn": false
+     * }
+     *
+     * eller:
+     *
+     * {
+     *   "brightness": 50
+     * }
+     */
+    if (req.method === "PATCH") {
+      const deviceId = getDeviceIdFromUrl(req.url);
 
-    if (deviceId) {
-      const device = devices.find((item) => item.id === deviceId);
+      if (deviceId) {
+        const device = devices.find((item) => item.id === deviceId);
 
-      if (!device) {
-        sendJson(res, 404, {
-          ok: false,
-          error: "Enheten kunde inte hittas.",
-        });
-
-        return;
-      }
-
-      if (!device.online) {
-        sendJson(res, 409, {
-          ok: false,
-          error: "Enheten är offline.",
-        });
-
-        return;
-      }
-
-      try {
-        const body = await readJsonBody(req);
-
-        const hasIsOn = Object.prototype.hasOwnProperty.call(
-          body,
-          "isOn"
-        );
-
-        const hasBrightness = Object.prototype.hasOwnProperty.call(
-          body,
-          "brightness"
-        );
-
-        if (!hasIsOn && !hasBrightness) {
-          sendJson(res, 400, {
+        if (!device) {
+          sendJson(res, 404, {
             ok: false,
-            error: "Ingen ändring angavs.",
+            error: "Enheten kunde inte hittas.",
           });
 
           return;
         }
 
-        if (hasIsOn && typeof body.isOn !== "boolean") {
-          sendJson(res, 400, {
+        if (!device.online) {
+          sendJson(res, 409, {
             ok: false,
-            error: "isOn måste vara true eller false.",
+            error: "Enheten är offline.",
           });
 
           return;
         }
 
-        if (hasBrightness) {
-          if (
-            typeof body.brightness !== "number" ||
-            !Number.isFinite(body.brightness)
-          ) {
+        try {
+          const body = await readJsonBody(req);
+
+          const hasIsOn = Object.prototype.hasOwnProperty.call(body, "isOn");
+
+          const hasBrightness = Object.prototype.hasOwnProperty.call(
+            body,
+            "brightness",
+          );
+
+          if (!hasIsOn && !hasBrightness) {
             sendJson(res, 400, {
               ok: false,
-              error: "brightness måste vara ett nummer.",
+              error: "Ingen ändring angavs.",
             });
 
             return;
           }
 
-          if (body.brightness < 1 || body.brightness > 100) {
+          if (hasIsOn && typeof body.isOn !== "boolean") {
             sendJson(res, 400, {
               ok: false,
-              error: "brightness måste vara mellan 1 och 100.",
+              error: "isOn måste vara true eller false.",
             });
 
             return;
           }
+
+          if (hasBrightness) {
+            if (
+              typeof body.brightness !== "number" ||
+              !Number.isFinite(body.brightness)
+            ) {
+              sendJson(res, 400, {
+                ok: false,
+                error: "brightness måste vara ett nummer.",
+              });
+
+              return;
+            }
+
+            if (body.brightness < 1 || body.brightness > 100) {
+              sendJson(res, 400, {
+                ok: false,
+                error: "brightness måste vara mellan 1 och 100.",
+              });
+
+              return;
+            }
+          }
+
+          if (hasIsOn) {
+            device.isOn = body.isOn;
+          }
+
+          if (hasBrightness && device.type === "light") {
+            device.brightness = Math.round(body.brightness);
+          }
+
+          sendJson(res, 200, {
+            ok: true,
+            mode: bridgeState.tradfriConnected ? "live" : "demo",
+            device,
+            timestamp: new Date().toISOString(),
+          });
+
+          return;
+        } catch (error) {
+          sendJson(res, 400, {
+            ok: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Kunde inte läsa kommandot.",
+          });
+
+          return;
         }
-
-        if (hasIsOn) {
-          device.isOn = body.isOn;
-        }
-
-        if (hasBrightness && device.type === "light") {
-          device.brightness = Math.round(body.brightness);
-        }
-
-        sendJson(res, 200, {
-          ok: true,
-          mode: bridgeState.tradfriConnected ? "live" : "demo",
-          device,
-          timestamp: new Date().toISOString(),
-        });
-
-        return;
-      } catch (error) {
-        sendJson(res, 400, {
-          ok: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Kunde inte läsa kommandot.",
-        });
-
-        return;
       }
     }
-  }
 
-  sendJson(res, 404, {
-    ok: false,
-    error: "Not found",
+    sendJson(res, 404, {
+      ok: false,
+      error: "Not found",
+    });
   });
-});
 
-server.listen(PORT, HOST, () => {
-  console.log("");
-  console.log("🏠 Family Dashboard – TRÅDFRI Bridge");
-  console.log("------------------------------------");
-  console.log(`✓ Servern kör på http://${HOST}:${PORT}`);
-  console.log(`✓ Health:  http://${HOST}:${PORT}/health`);
-  console.log(`✓ Devices: http://${HOST}:${PORT}/devices`);
-  console.log("✓ Styrning: PATCH /devices/:id");
+  server.listen(PORT, HOST, () => {
+    console.log("");
+    console.log("🏠 Family Dashboard – TRÅDFRI Bridge");
+    console.log("------------------------------------");
+    console.log(`✓ Servern kör på http://${HOST}:${PORT}`);
+    console.log(`✓ Health:  http://${HOST}:${PORT}/health`);
+    console.log(`✓ Devices: http://${HOST}:${PORT}/devices`);
+    console.log("✓ Styrning: PATCH /devices/:id");
 
-  if (bridgeState.tradfriConnected) {
-    console.log("✓ TRÅDFRI Gateway är ansluten");
-  } else {
-    console.log("○ TRÅDFRI Gateway är inte ansluten ännu");
-    console.log("○ /devices använder testdata");
-  }
+    if (bridgeState.tradfriConnected) {
+      console.log("✓ TRÅDFRI Gateway är ansluten");
+    } else {
+      console.log("○ TRÅDFRI Gateway är inte ansluten ännu");
+      console.log("○ /devices använder testdata");
+    }
 
-  console.log("");
+    console.log("");
+  });
 });

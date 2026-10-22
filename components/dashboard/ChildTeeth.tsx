@@ -107,39 +107,48 @@ export default function ChildTeeth({
     null
   );
 
-  const loadTeeth = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchTeeth = useCallback(() => {
+    return supabase
       .from("signe_teeth")
-      .select(
-        "id, member_id, tooth_code, tooth_name, eruption_date, created_at"
-      )
+      .select("id, member_id, tooth_code, tooth_name, eruption_date, created_at")
       .eq("member_id", memberId)
-      .order("eruption_date", { ascending: true });
+      .order("eruption_date", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(`Kunde inte hämta tänder för ${displayName}:`, error);
 
-    if (error) {
-      console.error(
-        `Kunde inte hämta tänder för ${displayName}:`,
-        error
-      );
+          setErrorMessage("Kunde inte hämta tandinformationen från databasen.");
 
-      setErrorMessage(
-        "Kunde inte hämta tandinformationen från databasen."
-      );
-
-      setIsLoading(false);
-      return;
-    }
-
-    setTeeth((data ?? []) as ToothRow[]);
-    setIsLoading(false);
+          setIsLoading(false);
+          return;
+        }
+        setTeeth((data ?? []) as ToothRow[]);
+        setIsLoading(false);
+      });
   }, [memberId, displayName]);
 
+  const loadTeeth = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchTeeth();
+  }, [fetchTeeth]);
+
+  const [previousFetchTeethKey, setPreviousFetchTeethKey] = useState(() => [
+    memberId,
+    displayName,
+  ]);
+  if (
+    previousFetchTeethKey[0] !== memberId ||
+    previousFetchTeethKey[1] !== displayName
+  ) {
+    setPreviousFetchTeethKey([memberId, displayName]);
+    setIsLoading(true);
+    setErrorMessage(null);
+  }
+
   useEffect(() => {
-    void loadTeeth();
-  }, [loadTeeth]);
+    void fetchTeeth();
+  }, [fetchTeeth]);
 
   const registeredCodes = useMemo(
     () => new Set(teeth.map((tooth) => tooth.tooth_code)),

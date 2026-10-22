@@ -117,61 +117,44 @@ export default function VasttrafikWidget() {
       null
     );
 
-  const loadData =
-    useCallback(
-      async (
-        showLoader = true
-      ) => {
-        if (showLoader) {
-          setIsLoading(true);
+  const fetchData = useCallback(() => {
+    return fetch("/api/vasttrafik", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error ?? `API-fel ${response.status}`);
         }
+        setData(result as VasttrafikResponse);
+      })
+      .catch((fetchError) => {
+        console.error("Kunde inte hämta Västtrafik:", fetchError);
 
-        setError(null);
+        setError(
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Västtrafik kunde inte hämtas.",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
-        try {
-          const response =
-            await fetch(
-              "/api/vasttrafik",
-              {
-                cache: "no-store",
-              }
-            );
-
-          const result =
-            await response.json();
-
-          if (!response.ok) {
-            throw new Error(
-              result.error ??
-                `API-fel ${response.status}`
-            );
-          }
-
-          setData(
-            result as VasttrafikResponse
-          );
-        } catch (
-          fetchError
-        ) {
-          console.error(
-            "Kunde inte hämta Västtrafik:",
-            fetchError
-          );
-
-          setError(
-            fetchError instanceof Error
-              ? fetchError.message
-              : "Västtrafik kunde inte hämtas."
-          );
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      []
-    );
+  const loadData = useCallback(
+    (showLoader = true) => {
+      if (showLoader) {
+        setIsLoading(true);
+      }
+      setError(null);
+      return fetchData();
+    },
+    [fetchData],
+  );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId =
       window.setInterval(
@@ -186,7 +169,7 @@ export default function VasttrafikWidget() {
         intervalId
       );
     };
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   return (
     <Card

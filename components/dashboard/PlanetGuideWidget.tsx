@@ -38,45 +38,36 @@ export default function PlanetGuideWidget() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch(
-        "/api/fun",
-        {
-          cache: "no-store",
+  const fetchData = useCallback(() => {
+    return fetch("/api/fun", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`API-fel ${response.status}`);
         }
-      );
+        const result = (await response.json()) as FunData;
+        setData(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta planetdata:", error);
 
-      if (!response.ok) {
-        throw new Error(
-          `API-fel ${response.status}`
-        );
-      }
-
-      const result =
-        (await response.json()) as FunData;
-
-      setData(result);
-    } catch (error) {
-      console.error(
-        "Kunde inte hämta planetdata:",
-        error
-      );
-
-      setErrorMessage(
-        "Planetdata kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+        setErrorMessage("Planetdata kunde inte hämtas.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void fetchData();
+  }, [fetchData]);
 
   const visiblePlanets = useMemo(
     () =>

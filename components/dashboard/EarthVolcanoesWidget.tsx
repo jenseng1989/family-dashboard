@@ -60,7 +60,7 @@ export default function EarthVolcanoesWidget({
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Smithsonian använder "continuing eruption" för utbrott med åtminstone intermittent eruptiv aktivitet utan ett uppehåll på tre månader eller mer.
+                  Smithsonian använder &quot;continuing eruption&quot; för utbrott med åtminstone intermittent eruptiv aktivitet utan ett uppehåll på tre månader eller mer.
                 </p>
               </div>
 

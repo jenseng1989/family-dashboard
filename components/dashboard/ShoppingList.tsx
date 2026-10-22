@@ -34,35 +34,33 @@ export default function ShoppingList() {
     string | null
   >(null);
 
-  const loadItems = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchItems = useCallback(() => {
+    return supabase
       .from("shopping_items")
       .select("id, name, created_at")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta inköpslistan:", error);
 
-    if (error) {
-      console.error(
-        "Kunde inte hämta inköpslistan:",
-        error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta inköpslistan från databasen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    setItems(data ?? []);
-    setIsLoading(false);
+          setErrorMessage("Kunde inte hämta inköpslistan från databasen.");
+          setIsLoading(false);
+          return;
+        }
+        setItems(data ?? []);
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadItems = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchItems();
+  }, [fetchItems]);
+
   useEffect(() => {
-    void loadItems();
-  }, [loadItems]);
+    void fetchItems();
+  }, [fetchItems]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>

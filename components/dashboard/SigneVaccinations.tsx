@@ -121,36 +121,37 @@ export default function SigneVaccinations() {
     null
   );
 
-  const loadVaccinations = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchVaccinations = useCallback(() => {
+    return supabase
       .from("signe_vaccinations")
-      .select(
-        "id, vaccine_name, vaccination_date, dose, notes, created_at"
-      )
+      .select("id, vaccine_name, vaccination_date, dose, notes, created_at")
       .order("vaccination_date", {
         ascending: true,
       })
       .order("created_at", {
         ascending: true,
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta vaccinationerna:", error);
+          setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
+          setIsLoading(false);
+          return;
+        }
+        setVaccinations(data ?? []);
+        setIsLoading(false);
       });
-
-    if (error) {
-      console.error("Kunde inte hämta vaccinationerna:", error);
-      setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
-      setIsLoading(false);
-      return;
-    }
-
-    setVaccinations(data ?? []);
-    setIsLoading(false);
   }, []);
 
+  const loadVaccinations = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchVaccinations();
+  }, [fetchVaccinations]);
+
   useEffect(() => {
-    void loadVaccinations();
-  }, [loadVaccinations]);
+    void fetchVaccinations();
+  }, [fetchVaccinations]);
 
   const today = getTodayDateString();
 

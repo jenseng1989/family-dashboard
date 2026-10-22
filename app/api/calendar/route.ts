@@ -1,5 +1,3 @@
-import ICAL from "ical.js";
-
 export async function GET() {
   try {
     const icsUrl = process.env.CALENDAR_ICS_URL;

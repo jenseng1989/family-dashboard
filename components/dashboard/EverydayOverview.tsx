@@ -1,4 +1,5 @@
 "use client";
+import { useClientClock } from "@/lib/hooks/use-client-clock";
 
 import {
   CalendarDays,
@@ -440,7 +441,7 @@ function getElectricityAdvice(
 }
 
 export default function EverydayOverview() {
-  const [now, setNow] = useState<Date | null>(null);
+  const now = useClientClock();
   const [calendarEvents, setCalendarEvents] = useState<
     GoogleCalendarEvent[]
   >([]);
@@ -456,137 +457,133 @@ export default function EverydayOverview() {
   // Ökas även när komponenten avmonteras.
   const requestIdRef = useRef(0);
 
-  const loadData = useCallback(
-    async (showLoader = true, forceRefresh = false) => {
-      const requestId = ++requestIdRef.current;
-      const isCurrent = () => requestIdRef.current === requestId;
+  const fetchData = useCallback((forceRefresh = false) => {
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestIdRef.current === requestId;
 
+    // Varje källa behandlas direkt när den är klar. Ett fel i en
+    // källa hindrar inte de andra från att uppdatera sin del.
+    const calendarTask = fetch("/api/google-calendar", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Google Kalender svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as GoogleCalendarResponse;
+        if (data.connected !== true) {
+          throw new Error(data.error ?? "Google Kalender är inte ansluten.");
+        }
+        if (isCurrent()) setCalendarEvents(data.events ?? []);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta Google Kalender:", error);
+        if (isCurrent()) {
+          setCalendarEvents([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const countdownTask = Promise.resolve(
+      supabase
+        .from("countdowns")
+        .select("id, title, event_date, created_at")
+        .gte("event_date", getTodayDateString())
+        .order("event_date", { ascending: true })
+        .order("created_at", { ascending: true }),
+    )
+      .then((result) => {
+        if (result.error) throw result.error;
+        if (isCurrent()) {
+          setCountdowns((result.data ?? []) as CountdownRow[]);
+        }
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta nedräkningar:", error);
+        if (isCurrent()) {
+          setCountdowns([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const familyTask = getFamilyMembersFromDatabase()
+      .then((members) => {
+        const events = createUpcomingFamilyEvents(members);
+        if (isCurrent()) setFamilyEvents(events);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta familjehändelser:", error);
+        if (isCurrent()) {
+          setFamilyEvents([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const weatherTask = fetch(
+      "/api/everyday-weather",
+      forceRefresh ? { cache: "reload" } : undefined,
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Väder-API svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as EverydayWeather;
+        if (isCurrent()) setWeather(data);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta väder:", error);
+        if (isCurrent()) {
+          setWeather(null);
+          setHasPartialError(true);
+        }
+      });
+
+    const electricityTask = fetch(
+      "/api/electricity",
+      forceRefresh ? { cache: "reload" } : undefined,
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Elpris-API svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as ElectricityData;
+        if (!Array.isArray(data.prices)) {
+          throw new Error("Elpris-API returnerade ogiltiga priser.");
+        }
+        if (isCurrent()) setElectricity(data);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta elpriser:", error);
+        if (isCurrent()) {
+          setElectricity(null);
+          setHasPartialError(true);
+        }
+      });
+
+    // Laddningsindikatorn och uppdateringsknappen återställs
+    // när samtliga källor har avslutats, precis som tidigare.
+    return Promise.all([
+      calendarTask,
+      countdownTask,
+      familyTask,
+      weatherTask,
+      electricityTask,
+    ]).then(() => {
+      if (isCurrent()) setIsLoading(false);
+    });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
       if (showLoader) setIsLoading(true);
       setHasPartialError(false);
-
-      // Varje källa behandlas direkt när den är klar. Ett fel i en
-      // källa hindrar inte de andra från att uppdatera sin del.
-      const calendarTask = (async () => {
-        try {
-          const response = await fetch("/api/google-calendar", {
-            cache: "no-store",
-          });
-          if (!response.ok) {
-            throw new Error(`Google Kalender svarade ${response.status}.`);
-          }
-
-          const data =
-            (await response.json()) as GoogleCalendarResponse;
-          if (data.connected !== true) {
-            throw new Error(data.error ?? "Google Kalender är inte ansluten.");
-          }
-
-          if (isCurrent()) setCalendarEvents(data.events ?? []);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta Google Kalender:", error);
-          if (isCurrent()) {
-            setCalendarEvents([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const countdownTask = (async () => {
-        try {
-          const result = await supabase
-            .from("countdowns")
-            .select("id, title, event_date, created_at")
-            .gte("event_date", getTodayDateString())
-            .order("event_date", { ascending: true })
-            .order("created_at", { ascending: true });
-
-          if (result.error) throw result.error;
-          if (isCurrent()) {
-            setCountdowns((result.data ?? []) as CountdownRow[]);
-          }
-        } catch (error) {
-          console.error("Idag: kunde inte hämta nedräkningar:", error);
-          if (isCurrent()) {
-            setCountdowns([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const familyTask = (async () => {
-        try {
-          const members = await getFamilyMembersFromDatabase();
-          const events = createUpcomingFamilyEvents(members);
-          if (isCurrent()) setFamilyEvents(events);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta familjehändelser:", error);
-          if (isCurrent()) {
-            setFamilyEvents([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const weatherTask = (async () => {
-        try {
-          const response = await fetch(
-            "/api/everyday-weather",
-            forceRefresh ? { cache: "reload" } : undefined
-          );
-          if (!response.ok) {
-            throw new Error(`Väder-API svarade ${response.status}.`);
-          }
-          const data = (await response.json()) as EverydayWeather;
-          if (isCurrent()) setWeather(data);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta väder:", error);
-          if (isCurrent()) {
-            setWeather(null);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const electricityTask = (async () => {
-        try {
-          const response = await fetch(
-            "/api/electricity",
-            forceRefresh ? { cache: "reload" } : undefined
-          );
-          if (!response.ok) {
-            throw new Error(`Elpris-API svarade ${response.status}.`);
-          }
-          const data = (await response.json()) as ElectricityData;
-          if (!Array.isArray(data.prices)) {
-            throw new Error("Elpris-API returnerade ogiltiga priser.");
-          }
-          if (isCurrent()) setElectricity(data);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta elpriser:", error);
-          if (isCurrent()) {
-            setElectricity(null);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      // Laddningsindikatorn och uppdateringsknappen återställs
-      // när samtliga källor har avslutats, precis som tidigare.
-      await Promise.all([
-        calendarTask,
-        countdownTask,
-        familyTask,
-        weatherTask,
-        electricityTask,
-      ]);
-
-      if (isCurrent()) setIsLoading(false);
+      return fetchData(forceRefresh);
     },
-    []
+    [fetchData],
   );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const refreshId = window.setInterval(() => {
       void loadData(false);
@@ -596,17 +593,7 @@ export default function EverydayOverview() {
       window.clearInterval(refreshId);
       requestIdRef.current += 1;
     };
-  }, [loadData]);
-
-  useEffect(() => {
-    setNow(new Date());
-
-    const clockId = window.setInterval(() => {
-      setNow(new Date());
-    }, 60_000);
-
-    return () => window.clearInterval(clockId);
-  }, []);
+  }, [fetchData, loadData]);
 
   const nextFamilyEvent = useMemo(
     () =>

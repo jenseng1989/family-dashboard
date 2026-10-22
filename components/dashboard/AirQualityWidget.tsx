@@ -262,60 +262,49 @@ export default function AirQualityWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadData = useCallback(
-    async (
-      showLoader = true,
-      forceRefresh = false
-    ) => {
-      if (showLoader) {
-        setIsLoading(true);
-      }
-
-      setError(null);
-
-      try {
-        const response = await fetch(
-          "/api/air-quality",
-          forceRefresh
-            ? {
-                cache: "reload",
-              }
-            : undefined
-        );
-
-        const result =
-          await response.json();
-
+  const fetchData = useCallback((forceRefresh = false) => {
+    return fetch(
+      "/api/air-quality",
+      forceRefresh
+        ? {
+            cache: "reload",
+          }
+        : undefined,
+    )
+      .then(async (response) => {
+        const result = await response.json();
         if (!response.ok) {
-          throw new Error(
-            result.error ??
-              `API-fel ${response.status}`
-          );
+          throw new Error(result.error ?? `API-fel ${response.status}`);
         }
-
-        setData(
-          result as AirQualityResponse
-        );
-      } catch (fetchError) {
-        console.error(
-          "Kunde inte hämta luftkvalitet:",
-          fetchError
-        );
+        setData(result as AirQualityResponse);
+      })
+      .catch((fetchError) => {
+        console.error("Kunde inte hämta luftkvalitet:", fetchError);
 
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "Luftkvaliteten kunde inte hämtas."
+            : "Luftkvaliteten kunde inte hämtas.",
         );
-      } finally {
+      })
+      .finally(() => {
         setIsLoading(false);
+      });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
       }
+      setError(null);
+      return fetchData(forceRefresh);
     },
-    []
+    [fetchData],
   );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId =
       window.setInterval(
@@ -328,7 +317,7 @@ export default function AirQualityWidget() {
         intervalId
       );
     };
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   const dominantPollutant =
     getDominantLabel(

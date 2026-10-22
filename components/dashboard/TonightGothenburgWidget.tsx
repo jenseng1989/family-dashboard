@@ -286,90 +286,57 @@ export default function TonightGothenburgWidget() {
     string | null
   >(null);
 
-  const loadData =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+  const fetchData = useCallback(() => {
+    return Promise.all([
+      fetch("/api/fun", {
+        cache: "no-store",
+      }),
 
-      try {
-        const [
-          funResponse,
-          spaceResponse,
-          satelliteResponse,
-        ] = await Promise.all([
-          fetch("/api/fun", {
-            cache: "no-store",
-          }),
+      fetch("/api/space-weather", {
+        cache: "no-store",
+      }),
 
-          fetch(
-            "/api/space-weather",
-            {
-              cache: "no-store",
-            }
-          ),
-
-          fetch(
-            "/api/satellites",
-            {
-              cache: "no-store",
-            }
-          ),
-        ]);
-
-        if (
-          !funResponse.ok
-        ) {
-          throw new Error(
-            "Grundläggande rymddata kunde inte hämtas."
-          );
+      fetch("/api/satellites", {
+        cache: "no-store",
+      }),
+    ])
+      .then(async ([funResponse, spaceResponse, satelliteResponse]) => {
+        if (!funResponse.ok) {
+          throw new Error("Grundläggande rymddata kunde inte hämtas.");
         }
-
-        const fun =
-          (await funResponse.json()) as FunData;
-
-        let spaceWeather:
-          SpaceWeatherData | null =
-          null;
-
-        let satellites:
-          SatellitesData | null =
-          null;
-
-        if (
-          spaceResponse.ok
-        ) {
-          spaceWeather =
-            (await spaceResponse.json()) as SpaceWeatherData;
+        const fun = (await funResponse.json()) as FunData;
+        let spaceWeather: SpaceWeatherData | null = null;
+        let satellites: SatellitesData | null = null;
+        if (spaceResponse.ok) {
+          spaceWeather = (await spaceResponse.json()) as SpaceWeatherData;
         }
-
-        if (
-          satelliteResponse.ok
-        ) {
-          satellites =
-            (await satelliteResponse.json()) as SatellitesData;
+        if (satelliteResponse.ok) {
+          satellites = (await satelliteResponse.json()) as SatellitesData;
         }
-
         setData({
           fun,
           spaceWeather,
           satellites,
         });
-      } catch (error) {
-        console.error(
-          "Kunde inte skapa kvällsöversikten:",
-          error
-        );
+      })
+      .catch((error) => {
+        console.error("Kunde inte skapa kvällsöversikten:", error);
 
-        setErrorMessage(
-          "Kvällens rymdöversikt kunde inte hämtas."
-        );
-      } finally {
+        setErrorMessage("Kvällens rymdöversikt kunde inte hämtas.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId =
       window.setInterval(
@@ -384,7 +351,7 @@ export default function TonightGothenburgWidget() {
         intervalId
       );
     };
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   const visiblePlanets =
     useMemo(() => {

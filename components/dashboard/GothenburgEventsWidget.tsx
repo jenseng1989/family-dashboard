@@ -52,42 +52,38 @@ export default function GothenburgEventsWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadData = useCallback(
-    async (
-      showLoader = true,
-      forceRefresh = false
-    ) => {
-      if (showLoader) {
-        setIsLoading(true);
-      }
-
-      setError(null);
-
-      try {
-        const result =
-          await getGothenburgEvents(forceRefresh);
-
+  const fetchData = useCallback((forceRefresh = false) => {
+    return getGothenburgEvents(forceRefresh)
+      .then((result) => {
         setData(result);
-      } catch (fetchError) {
-        console.error(
-          "Kunde inte hämta Göteborgsevenemang:",
-          fetchError
-        );
+      })
+      .catch((fetchError) => {
+        console.error("Kunde inte hämta Göteborgsevenemang:", fetchError);
 
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "Evenemangen kunde inte hämtas."
+            : "Evenemangen kunde inte hämtas.",
         );
-      } finally {
+      })
+      .finally(() => {
         setIsLoading(false);
+      });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
       }
+      setError(null);
+      return fetchData(forceRefresh);
     },
-    []
+    [fetchData],
   );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId = window.setInterval(
       () => void loadData(false),
@@ -95,7 +91,7 @@ export default function GothenburgEventsWidget() {
     );
 
     return () => window.clearInterval(intervalId);
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   return (
     <Card

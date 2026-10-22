@@ -2,7 +2,6 @@
 
 import {
   ReactNode,
-  useEffect,
   useState,
 } from "react";
 
@@ -34,20 +33,13 @@ export default function FamilyTabs({
   const [activeTab, setActiveTab] =
     useState<string>("shared");
 
-  useEffect(() => {
-    if (activeTab === "shared") {
-      return;
-    }
-
-    const tabStillExists =
-      personTabs.some(
-        (tab) => tab.id === activeTab
-      );
-
-    if (!tabStillExists) {
-      setActiveTab("shared");
-    }
-  }, [activeTab, personTabs]);
+  // Reset a removed selection before committing the next render.
+  if (
+    activeTab !== "shared" &&
+    !personTabs.some((tab) => tab.id === activeTab)
+  ) {
+    setActiveTab("shared");
+  }
 
   const activePersonTab =
     personTabs.find(

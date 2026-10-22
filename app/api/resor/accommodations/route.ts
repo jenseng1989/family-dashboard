@@ -6,7 +6,6 @@ const TABLE = "resor_accommodations";
 const fields = "id,trip_id,name,kind,address,booking_reference,check_in,check_out,cost_sek,notes,created_at";
 const noCache = { "Cache-Control": "no-store" };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const kinds = ["flight", "train", "ferry", "bus", "car", "other"] as const;
 function fail(message: string, status: number) { return NextResponse.json({ error: message }, { status, headers: noCache }); }
 function authorize(request: NextRequest, mutation = false): NextResponse | null {
   const token = process.env.DASHBOARD_SESSION_TOKEN;

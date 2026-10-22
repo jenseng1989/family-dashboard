@@ -98,34 +98,29 @@ export default function FamilyTimelineWidget() {
       string | null
     >(null);
 
-  const loadFamily =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+  const fetchFamily = useCallback(() => {
+    return getFamilyMembersFromDatabase()
+      .then((result) => {
+        setMembers(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta familjedata:", error);
 
-      try {
-        const result =
-          await getFamilyMembersFromDatabase();
-
-        setMembers(
-          result
-        );
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta familjedata:",
-          error
-        );
-
-        setErrorMessage(
-          "Familjedata kunde inte hämtas från databasen."
-        );
-      } finally {
+        setErrorMessage("Familjedata kunde inte hämtas från databasen.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
+  const loadFamily = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchFamily();
+  }, [fetchFamily]);
 
   useEffect(() => {
-    void loadFamily();
+    void fetchFamily();
 
     function handleFamilyDataChanged() {
       void loadFamily();
@@ -142,7 +137,7 @@ export default function FamilyTimelineWidget() {
         handleFamilyDataChanged
       );
     };
-  }, [loadFamily]);
+  }, [fetchFamily, loadFamily]);
 
   const timeline =
     useMemo(

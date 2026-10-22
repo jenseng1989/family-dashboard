@@ -229,65 +229,42 @@ export default function StatisticsAdmin() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const loadStatistics =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const [
-          settings,
-          members,
-          analyticsEvents,
-        ] = await Promise.all([
-          getWidgetSettings(),
-          getFamilyMembersFromDatabase(),
-          getDashboardAnalytics(30),
-        ]);
-
-        const familyGroups =
-          buildFamilyAdminGroups(members);
-
-        const nextGroups =
-          mergeFamilyGroups(familyGroups);
-
-        const nextVisibility:
-          Record<string, boolean> = {};
-
+  const fetchStatistics = useCallback(() => {
+    return Promise.all([
+      getWidgetSettings(),
+      getFamilyMembersFromDatabase(),
+      getDashboardAnalytics(30),
+    ])
+      .then(([settings, members, analyticsEvents]) => {
+        const familyGroups = buildFamilyAdminGroups(members);
+        const nextGroups = mergeFamilyGroups(familyGroups);
+        const nextVisibility: Record<string, boolean> = {};
         for (const group of nextGroups) {
           for (const widget of group.widgets) {
-            const setting =
-              settings.find(
-                (item) =>
-                  item.widgetId === widget.id
-              );
+            const setting = settings.find((item) => item.widgetId === widget.id);
 
-            nextVisibility[widget.id] =
-              setting?.isVisible ?? true;
+            nextVisibility[widget.id] = setting?.isVisible ?? true;
           }
         }
-
         setAvailableGroups(nextGroups);
         setVisibility(nextVisibility);
         setFamilyMembers(members);
         setAnalytics(analyticsEvents);
-      } catch (error) {
-        console.error(
-          "Kunde inte läsa statistik i Admin:",
-          error
-        );
+      })
+      .catch((error) => {
+        console.error("Kunde inte läsa statistik i Admin:", error);
 
-        setErrorMessage(
-          "Statistiken kunde inte hämtas."
-        );
-      } finally {
+        setErrorMessage("Statistiken kunde inte hämtas.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
 
   useEffect(() => {
-    void loadStatistics();
-  }, [loadStatistics]);
+    void fetchStatistics();
+  }, [fetchStatistics]);
 
   const statistics = useMemo(() => {
     const totalWidgets =

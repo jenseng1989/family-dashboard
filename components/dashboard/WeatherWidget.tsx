@@ -100,7 +100,6 @@ function getWeatherHighlights(weather: WeatherData): Array<{
   const highlights: Array<{ label: string; text: string }> = [];
 
   if (nextHours.length > 0) {
-    const first = nextHours[0];
     const rainingNow =
       isRainCode(weather.weatherCode) ||
       weather.precipitation > 0;

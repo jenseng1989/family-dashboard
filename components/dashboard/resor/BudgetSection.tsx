@@ -14,17 +14,38 @@ export default function BudgetSection({ tripId }: { tripId: string }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    try {
-      const response = await fetch(`/api/resor/budget?tripId=${encodeURIComponent(tripId)}`, { cache: "no-store" });
-      const json = await response.json() as BudgetResponse;
-      if (!response.ok) throw new Error(json.error || "Kunde inte läsa budgeten.");
-      setBudget(json); setTarget(json.target_sek == null ? "" : String(json.target_sek));
-    } catch (e) { setError(e instanceof Error ? e.message : "Ett fel uppstod."); }
-    finally { setLoading(false); }
+  const fetchItems = useCallback(() => {
+    return fetch(`/api/resor/budget?tripId=${encodeURIComponent(tripId)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const json = (await response.json()) as BudgetResponse;
+        if (!response.ok)
+          throw new Error(json.error || "Kunde inte läsa budgeten.");
+        setBudget(json);
+        setTarget(json.target_sek == null ? "" : String(json.target_sek));
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Ett fel uppstod.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [tripId]);
-  useEffect(() => { void load(); }, [load]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchItems();
+  }, [fetchItems]);
+
+  const [previousFetchKey, setPreviousFetchKey] = useState(() => [tripId]);
+  if (previousFetchKey[0] !== tripId) {
+    setPreviousFetchKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setSaving(true); setError(""); setMessage("");
     const parsed = target.trim() === "" ? null : Number(target.replace(",", "."));

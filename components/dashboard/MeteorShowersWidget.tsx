@@ -1,4 +1,5 @@
 "use client";
+import { useClientClock } from "@/lib/hooks/use-client-clock";
 
 import {
   CalendarDays,
@@ -7,9 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  useEffect,
   useMemo,
-  useState,
 } from "react";
 import Card from "@/components/ui/Card";
 import {
@@ -127,26 +126,7 @@ function ActiveShowerCard({
 }
 
 export default function MeteorShowersWidget() {
-  const [now, setNow] =
-    useState<Date | null>(null);
-
-  useEffect(() => {
-    setNow(new Date());
-
-    const intervalId =
-      window.setInterval(
-        () => {
-          setNow(new Date());
-        },
-        60 * 60 * 1000
-      );
-
-    return () => {
-      window.clearInterval(
-        intervalId
-      );
-    };
-  }, []);
+  const now = useClientClock();
 
   const overview =
     useMemo(

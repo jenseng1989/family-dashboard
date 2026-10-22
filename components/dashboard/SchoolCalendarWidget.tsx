@@ -1,6 +1,7 @@
 "use client";
+import { useClientClock } from "@/lib/hooks/use-client-clock";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -156,57 +157,53 @@ export default function SchoolCalendarWidget() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [now, setNow] = useState<Date | null>(null);
+  const now = useClientClock();
 
-  const loadEvents = async (showRefreshing = false) => {
-    if (showRefreshing) {
-      setIsRefreshing(true);
-    }
+  const fetchEvents = useCallback(() => {
+    return fetch("/api/google-school-calendar", { cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json()) as SchoolCalendarResponse;
 
-    try {
-      const response = await fetch("/api/google-school-calendar", {
-        cache: "no-store",
-      });
+        if (!response.ok || !data.connected) {
+          throw new Error(data.error || "Skolkalendern kunde inte hämtas.");
+        }
 
-      const data = (await response.json()) as SchoolCalendarResponse;
-
-      if (!response.ok || !data.connected) {
-        throw new Error(
-          data.error || "Skolkalendern kunde inte hämtas."
+        setEvents(data.events ?? []);
+        setErrorMessage(null);
+      })
+      .catch((error) => {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Skolkalendern kunde inte hämtas.",
         );
-      }
+      })
+      .finally(() => {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      });
+  }, []);
 
-      setEvents(data.events ?? []);
-      setErrorMessage(null);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Skolkalendern kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  const loadEvents = useCallback(
+    (showRefreshing = false) => {
+      if (showRefreshing) setIsRefreshing(true);
+      return fetchEvents();
+    },
+    [fetchEvents],
+  );
 
   useEffect(() => {
-    setNow(new Date());
-    void loadEvents();
+    void fetchEvents();
 
-    const clockInterval = window.setInterval(() => {
-      setNow(new Date());
-    }, 60_000);
 
     const refreshInterval = window.setInterval(() => {
       void loadEvents();
     }, 15 * 60_000);
 
     return () => {
-      window.clearInterval(clockInterval);
       window.clearInterval(refreshInterval);
     };
-  }, []);
+  }, [fetchEvents, loadEvents]);
 
   const todaysEvents = useMemo(() => {
     if (!now) {

@@ -29,36 +29,26 @@ export default function WidgetGate({
     setHasLoaded,
   ] = useState(false);
 
-  const loadVisibility =
-    useCallback(async () => {
-      try {
-        const settings =
-          await getWidgetSettings();
-
-        const setting =
-          settings.find(
-            (item) =>
-              item.widgetId ===
-              widgetId
-          );
-
-        setIsVisible(
-          setting?.isVisible ??
-            true
-        );
-      } catch (error) {
+  const loadVisibility = useCallback(() => {
+    return getWidgetSettings()
+      .then((settings) => {
+        const setting = settings.find((item) => item.widgetId === widgetId);
+        setIsVisible(setting?.isVisible ?? true);
+      })
+      .catch((error) => {
         console.error(
           `Kunde inte läsa synlighet för widget "${widgetId}":`,
-          error
+          error,
         );
 
         // Dashboarden ska fortsätta fungera även om
         // widget_settings tillfälligt inte kan läsas.
         setIsVisible(true);
-      } finally {
+      })
+      .finally(() => {
         setHasLoaded(true);
-      }
-    }, [widgetId]);
+      });
+  }, [widgetId]);
 
   useEffect(() => {
     void loadVisibility();

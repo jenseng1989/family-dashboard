@@ -1,4 +1,5 @@
 "use client";
+import { useHydrated } from "@/lib/hooks/use-client-clock";
 
 import {
   type ReactNode,
@@ -20,6 +21,7 @@ export default function LazyViewport({
   rootMargin = "500px 0px",
   minHeightClassName = "min-h-48",
 }: LazyViewportProps) {
+  const hydrated = useHydrated();
   const ref =
     useRef<HTMLDivElement | null>(null);
 
@@ -27,6 +29,8 @@ export default function LazyViewport({
     shouldRender,
     setShouldRender,
   ] = useState(false);
+
+  const shouldShow = shouldRender || (hydrated && !("IntersectionObserver" in window));
 
   useEffect(() => {
     if (shouldRender) {
@@ -46,7 +50,6 @@ export default function LazyViewport({
         window
       )
     ) {
-      setShouldRender(true);
       return;
     }
 
@@ -84,12 +87,12 @@ export default function LazyViewport({
     <div
       ref={ref}
       className={
-        shouldRender
+        shouldShow
           ? undefined
           : minHeightClassName
       }
     >
-      {shouldRender
+      {shouldShow
         ? children
         : fallback ?? null}
     </div>

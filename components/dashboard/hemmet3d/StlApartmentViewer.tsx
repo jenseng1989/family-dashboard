@@ -1,4 +1,5 @@
 "use client";
+import { useStoredState } from "@/lib/hooks/use-stored-state";
 
 import { Suspense, useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
@@ -141,19 +142,21 @@ function FitTopCamera() {
     if (!(camera instanceof OrthographicCamera) || !size.width || !size.height) return;
     const aspect = size.width / size.height;
     const halfHeight = Math.max(7.8, 5.2 / aspect);
-    camera.left = -halfHeight * aspect;
-    camera.right = halfHeight * aspect;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
-    camera.zoom = 1;
-    camera.position.set(0, 22, 0.001);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
+    const nextCamera = camera.clone();
+    nextCamera.left = -halfHeight * aspect;
+    nextCamera.right = halfHeight * aspect;
+    nextCamera.top = halfHeight;
+    nextCamera.bottom = -halfHeight;
+    nextCamera.zoom = 1;
+    nextCamera.position.set(0, 22, 0.001);
+    nextCamera.lookAt(0, 0, 0);
+    nextCamera.updateProjectionMatrix();
+    camera.copy(nextCamera);
   }, [camera, size.width, size.height]);
   return null;
 }
 
-function Scene({ shown, topView, rooms, selectedId, placing, onPlace, onSelect, devices, showDevices, selectedDeviceId, onSelectDevice, devicePlacing, onPlaceDevice, demoLights, controlDeviceId, onLightChange, onCloseControl, roomNames, controlRoomId, onAllRoomLights, onDimRoomLights, onCloseRoom }: {
+function Scene({ shown, topView, rooms, selectedId, placing, onPlace, onSelect, devices, showDevices, onSelectDevice, devicePlacing, onPlaceDevice, demoLights, controlDeviceId, onLightChange, onCloseControl, roomNames, controlRoomId, onAllRoomLights, onDimRoomLights, onCloseRoom }: {
   shown: Record<PartName, boolean>; topView: boolean; rooms: Room[]; selectedId: string | null;
   placing: boolean; onPlace: (x: number, z: number) => void; onSelect: (id: string) => void;
   devices: SmartDevice[]; showDevices: boolean; selectedDeviceId: string | null;
@@ -186,12 +189,72 @@ function Scene({ shown, topView, rooms, selectedId, placing, onPlace, onSelect, 
   </>;
 }
 
+
+function decodeRooms(raw: string): Room[] {
+  const stored: unknown = JSON.parse(raw);
+  return Array.isArray(stored)
+    ? stored.filter(
+        (item: Room) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.x === "number" &&
+          typeof item.z === "number",
+      )
+    : [];
+}
+function decodeDevices(raw: string): SmartDevice[] {
+  const stored: unknown = JSON.parse(raw);
+  return Array.isArray(stored)
+    ? stored.filter(
+        (item: SmartDevice) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.x === "number" &&
+          typeof item.z === "number" &&
+          typeof item.name === "string",
+      )
+    : [];
+}
+function decodeScenes(raw: string): LightScene[] {
+  const stored: unknown = JSON.parse(raw);
+  return Array.isArray(stored)
+    ? stored.filter(
+        (item: LightScene) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.name === "string" &&
+          item.lights &&
+          typeof item.lights === "object",
+      )
+    : [];
+}
+function decodeDemoLights(raw: string): LightStates {
+  const stored: unknown = JSON.parse(raw);
+  const valid: LightStates = {};
+  if (!stored || typeof stored !== "object" || Array.isArray(stored))
+    return valid;
+  for (const [id, raw] of Object.entries(stored)) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const value = raw as Record<string, unknown>;
+    if (
+      typeof value.on !== "boolean" ||
+      typeof value.brightness !== "number" ||
+      !Number.isFinite(value.brightness)
+    )
+      continue;
+    valid[id] = {
+      on: value.on,
+      brightness: Math.max(1, Math.min(100, Math.round(value.brightness))),
+    };
+  }
+  return valid;
+}
+
 export default function StlApartmentViewer() {
   const [shown, setShown] = useState<Record<PartName, boolean>>({ vaggar: true, dorrar: true, fonster: true, balkong: true, golv: true });
   const [topView, setTopView] = useState(true);
   const [cameraReset, setCameraReset] = useState(0);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [rooms, setRooms, roomsLoaded] = useStoredState<Room[]>(KEY, [], decodeRooms);
   const [placing, setPlacing] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
   const [roomsExpanded, setRoomsExpanded] = useState(true);
@@ -200,7 +263,7 @@ export default function StlApartmentViewer() {
   const [draftName, setDraftName] = useState("");
   const [draftArea, setDraftArea] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
-  const [devices, setDevices] = useState<SmartDevice[]>([]);
+  const [devices, setDevices, devicesLoaded] = useStoredState<SmartDevice[]>(DEVICES_KEY, [], decodeDevices);
   const [showDevices, setShowDevices] = useState(true);
   const [placingDevice, setPlacingDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -212,16 +275,16 @@ export default function StlApartmentViewer() {
   const [deviceSearch, setDeviceSearch] = useState("");
   const [deviceRoomFilter, setDeviceRoomFilter] = useState("all");
   // Endast demonstrationsläge: tillstånden lagras i minnet och skickas aldrig till lampor.
-  const [demoLights, setDemoLights] = useState<LightStates>({});
+  const [demoLights, setDemoLights, demoLightsLoaded] = useStoredState<LightStates>(DEMO_LIGHTS_KEY, {}, decodeDemoLights);
   const [controlError, setControlError] = useState<string | null>(null);
   const [controlDeviceId, setControlDeviceId] = useState<string | null>(null);
   const [controlRoomId, setControlRoomId] = useState<string | null>(null);
-  const [scenes, setScenes] = useState<LightScene[]>([]);
+  const [scenes, setScenes, scenesLoaded] = useStoredState<LightScene[]>(SCENES_KEY, [], decodeScenes);
   const [sceneName, setSceneName] = useState("");
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
-  const [scenesLoaded, setScenesLoaded] = useState(false);
-  const [demoLightsLoaded, setDemoLightsLoaded] = useState(false);
+
+
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const lightDevices = devices.filter(device => device.type === "light");
   function saveScene() {
@@ -285,36 +348,7 @@ export default function StlApartmentViewer() {
     runLightCommand(previous => demoLightController.updateLight(previous, id, update));
   }
 
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(KEY) || "[]");
-      if (Array.isArray(stored)) setRooms(stored.filter((item: Room) => item && typeof item.id === "string" && typeof item.x === "number" && typeof item.z === "number"));
-    } catch { /* Keep an empty room list when saved data is invalid. */ }
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(DEVICES_KEY) || "[]");
-      if (Array.isArray(stored)) setDevices(stored.filter((item: SmartDevice) => item && typeof item.id === "string" && typeof item.x === "number" && typeof item.z === "number" && typeof item.name === "string"));
-    } catch { /* Invalid device data: leave empty. */ }
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(SCENES_KEY) || "[]");
-      if (Array.isArray(stored)) setScenes(stored.filter((item: LightScene) => item && typeof item.id === "string" && typeof item.name === "string" && item.lights && typeof item.lights === "object"));
-    } catch { /* Ogiltiga ljusscener ignoreras. */ }
-    try {
-      const stored: unknown = JSON.parse(window.localStorage.getItem(DEMO_LIGHTS_KEY) || "{}");
-      if (stored && typeof stored === "object" && !Array.isArray(stored)) {
-        const valid: LightStates = {};
-        for (const [id, raw] of Object.entries(stored)) {
-          if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
-          const value = raw as Record<string, unknown>;
-          if (typeof value.on !== "boolean" || typeof value.brightness !== "number" || !Number.isFinite(value.brightness)) continue;
-          valid[id] = { on: value.on, brightness: Math.max(1, Math.min(100, Math.round(value.brightness))) };
-        }
-        setDemoLights(valid);
-      }
-    } catch { /* Ogiltig sparad lampstatus ignoreras. */ }
-    setDemoLightsLoaded(true);
-    setScenesLoaded(true);
-    setLoaded(true);
-  }, []);
+  const loaded = roomsLoaded && devicesLoaded;
   useEffect(() => { if (loaded) window.localStorage.setItem(KEY, JSON.stringify(rooms)); }, [rooms, loaded]);
   useEffect(() => { if (loaded) window.localStorage.setItem(DEVICES_KEY, JSON.stringify(devices)); }, [devices, loaded]);
   useEffect(() => { if (scenesLoaded) window.localStorage.setItem(SCENES_KEY, JSON.stringify(scenes)); }, [scenes, scenesLoaded]);

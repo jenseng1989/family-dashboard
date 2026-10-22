@@ -92,56 +92,46 @@ export default function SatellitesWidget() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const loadData = useCallback(
-    async (
-      showLoader = true,
-      forceRefresh = false
-    ) => {
-      if (showLoader) {
-        setIsLoading(true);
-      }
-
-      setErrorMessage(null);
-
-      try {
-        const response = await fetch(
-          "/api/satellites",
-          forceRefresh
-            ? { cache: "reload" }
-            : undefined
-        );
-
-        const result =
-          (await response.json()) as SatellitesResponse;
-
+  const fetchData = useCallback((forceRefresh = false) => {
+    return fetch(
+      "/api/satellites",
+      forceRefresh ? { cache: "reload" } : undefined,
+    )
+      .then(async (response) => {
+        const result = (await response.json()) as SatellitesResponse;
         if (!response.ok) {
-          throw new Error(
-            result.error ?? `API-fel ${response.status}`
-          );
+          throw new Error(result.error ?? `API-fel ${response.status}`);
         }
-
         setData(result);
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta satellitpassager:",
-          error
-        );
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta satellitpassager:", error);
 
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Satellitdata kunde inte hämtas."
+            : "Satellitdata kunde inte hämtas.",
         );
-      } finally {
+      })
+      .finally(() => {
         setIsLoading(false);
+      });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
       }
+      setErrorMessage(null);
+      return fetchData(forceRefresh);
     },
-    []
+    [fetchData],
   );
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void fetchData();
+  }, [fetchData]);
 
   return (
     <Card

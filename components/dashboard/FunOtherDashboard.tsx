@@ -186,90 +186,68 @@ export default function FunOtherDashboard() {
     null
   );
 
-  const [clock, setClock] =
+  const [, setClock] =
     useState(0);
 
-  const loadData =
-    useCallback(
-      async (
-        showLoader = true,
-        forceRefresh = false
-      ) => {
-        if (showLoader) {
-          setIsLoading(true);
-        }
-
-        setErrorMessage(null);
-        setVolcanoError(null);
-
-        try {
-          const [
-            earthResponse,
-            volcanoResponse,
-          ] = await Promise.all([
-            fetch(
-              "/api/earth",
-              forceRefresh
-                ? {
-                    cache:
-                      "reload",
-                  }
-                : undefined
-            ),
-            fetch(
-              "/api/volcanoes",
-              forceRefresh
-                ? {
-                    cache:
-                      "reload",
-                  }
-                : undefined
-            ),
-          ]);
-
+  const fetchData = useCallback((forceRefresh = false) => {
+    return Promise.all([
+      fetch(
+        "/api/earth",
+        forceRefresh
+          ? {
+              cache: "reload",
+            }
+          : undefined,
+      ),
+      fetch(
+        "/api/volcanoes",
+        forceRefresh
+          ? {
+              cache: "reload",
+            }
+          : undefined,
+      ),
+    ])
+      .then(async ([earthResponse, volcanoResponse]) => {
         if (!earthResponse.ok) {
-          throw new Error(
-            `Jordbävnings-API ${earthResponse.status}`
-          );
+          throw new Error(`Jordbävnings-API ${earthResponse.status}`);
         }
-
-        const earthResult =
-          (await earthResponse.json()) as EarthData;
-
+        const earthResult = (await earthResponse.json()) as EarthData;
         setData(earthResult);
-
         if (volcanoResponse.ok) {
-          const volcanoResult =
-            (await volcanoResponse.json()) as VolcanoData;
+          const volcanoResult = (await volcanoResponse.json()) as VolcanoData;
 
-          setVolcanoData(
-            volcanoResult
-          );
+          setVolcanoData(volcanoResult);
         } else {
           setVolcanoData(null);
 
-          setVolcanoError(
-            "Vulkandata kunde inte hämtas just nu."
-          );
+          setVolcanoError("Vulkandata kunde inte hämtas just nu.");
         }
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta jorddata:",
-          error
-        );
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta jorddata:", error);
 
-        setErrorMessage(
-          "Jorddata kunde inte hämtas just nu."
-        );
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      []
-    );
+        setErrorMessage("Jorddata kunde inte hämtas just nu.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
+      }
+      setErrorMessage(null);
+      setVolcanoError(null);
+      return fetchData(forceRefresh);
+    },
+    [fetchData],
+  );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId =
       window.setInterval(() => {
@@ -280,7 +258,7 @@ export default function FunOtherDashboard() {
       window.clearInterval(
         intervalId
       );
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   useEffect(() => {
     const intervalId =
@@ -300,7 +278,7 @@ export default function FunOtherDashboard() {
     useMemo(
       () =>
         data?.earthquakes ?? [],
-      [data, clock]
+      [data]
     );
 
   if (isLoading && !data) {

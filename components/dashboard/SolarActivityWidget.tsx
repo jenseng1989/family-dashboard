@@ -310,58 +310,45 @@ export default function SolarActivityWidget() {
       null
     );
 
-  const loadData =
-    useCallback(
-      async (
-        showLoader = true,
-        forceRefresh = false
-      ) => {
-        if (showLoader) {
-          setIsLoading(true);
-        }
-
-        setErrorMessage(null);
-
-        try {
-          const response =
-            await fetch(
-              "/api/space-weather",
-              forceRefresh
-                ? {
-                    cache:
-                      "reload",
-                  }
-                : undefined
-            );
-
-          if (!response.ok) {
-            throw new Error(
-              `API-fel ${response.status}`
-            );
+  const fetchData = useCallback((forceRefresh = false) => {
+    return fetch(
+      "/api/space-weather",
+      forceRefresh
+        ? {
+            cache: "reload",
           }
-
-          const result =
-            (await response.json()) as SpaceWeatherData;
-
-          setData(result);
-        } catch (error) {
-          console.error(
-            "Kunde inte hämta rymdväder:",
-            error
-          );
-
-          setErrorMessage(
-            "Rymdväderdata kunde inte hämtas."
-          );
-        } finally {
-          setIsLoading(false);
+        : undefined,
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`API-fel ${response.status}`);
         }
-      },
-      []
-    );
+        const result = (await response.json()) as SpaceWeatherData;
+        setData(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta rymdväder:", error);
+
+        setErrorMessage("Rymdväderdata kunde inte hämtas.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
+      }
+      setErrorMessage(null);
+      return fetchData(forceRefresh);
+    },
+    [fetchData],
+  );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const intervalId =
       window.setInterval(
@@ -376,7 +363,7 @@ export default function SolarActivityWidget() {
         intervalId
       );
     };
-  }, [loadData]);
+  }, [fetchData, loadData]);
 
   const bzIsFavourable =
     data?.bz !== null &&

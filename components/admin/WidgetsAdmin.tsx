@@ -1,10 +1,10 @@
 "use client";
+import { useStoredState } from "@/lib/hooks/use-stored-state";
 
 import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Activity,
@@ -233,11 +233,8 @@ export default function WidgetsAdmin() {
   const [orderedGroups, setOrderedGroups] =
     useState<WidgetGroup[]>(groups);
 
-  const [collapsedGroups, setCollapsedGroups] =
-    useState<Record<string, boolean>>({});
-
-  const [collapseStateLoaded, setCollapseStateLoaded] =
-    useState(false);
+  const [collapsedGroups, setCollapsedGroups, collapseStateLoaded] =
+    useStoredState<Record<string, boolean>>(COLLAPSED_STORAGE_KEY, {});
 
   const totalWidgets = useMemo(
     () =>
@@ -265,29 +262,6 @@ export default function WidgetsAdmin() {
   );
 
   useEffect(() => {
-    try {
-      const storedValue = window.localStorage.getItem(
-        COLLAPSED_STORAGE_KEY
-      );
-
-      if (storedValue) {
-        const parsed = JSON.parse(
-          storedValue
-        ) as Record<string, boolean>;
-
-        setCollapsedGroups(parsed);
-      }
-    } catch (error) {
-      console.error(
-        "Kunde inte läsa minimeringsläget för Admin → Widgets:",
-        error
-      );
-    } finally {
-      setCollapseStateLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!collapseStateLoaded) {
       return;
     }
@@ -308,97 +282,58 @@ export default function WidgetsAdmin() {
     collapseStateLoaded,
   ]);
 
-  const loadSettings =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const [
-          settings,
-          familyMembers,
-        ] = await Promise.all([
-          getWidgetSettings(),
-          getFamilyMembersFromDatabase(),
-        ]);
-
-        const familyGroups =
-          buildFamilyAdminGroups(
-            familyMembers
-          );
-
-        const nextGroups =
-          mergeFamilyGroups(
-            familyGroups
-          );
-
-        const nextVisibility:
-          Record<string, boolean> = {};
-
-        const nextSizes:
-          Record<string, WidgetSize> = {};
-
+  const fetchSettings = useCallback(() => {
+    return Promise.all([getWidgetSettings(), getFamilyMembersFromDatabase()])
+      .then(([settings, familyMembers]) => {
+        const familyGroups = buildFamilyAdminGroups(familyMembers);
+        const nextGroups = mergeFamilyGroups(familyGroups);
+        const nextVisibility: Record<string, boolean> = {};
+        const nextSizes: Record<string, WidgetSize> = {};
         for (const group of nextGroups) {
           for (const widget of group.widgets) {
-            const setting =
-              settings.find(
-                (item) =>
-                  item.widgetId === widget.id
-              );
+            const setting = settings.find((item) => item.widgetId === widget.id);
 
-            nextVisibility[widget.id] =
-              setting?.isVisible ?? true;
+            nextVisibility[widget.id] = setting?.isVisible ?? true;
 
-            nextSizes[widget.id] =
-              setting?.size ??
-              widget.defaultSize;
+            nextSizes[widget.id] = setting?.size ?? widget.defaultSize;
           }
         }
-
         setVisibility(nextVisibility);
         setSizes(nextSizes);
-        setAvailableGroups(
-          nextGroups
-        );
-
+        setAvailableGroups(nextGroups);
         const orderMap = new Map(
-          settings.map((item) => [
-            item.widgetId,
-            item.sortOrder,
-          ])
+          settings.map((item) => [item.widgetId, item.sortOrder]),
         );
-
         setOrderedGroups(
           nextGroups.map((group) => ({
             ...group,
-            widgets: [
-              ...group.widgets,
-            ].sort(
+            widgets: [...group.widgets].sort(
               (a, b) =>
-                (orderMap.get(a.id) ??
-                  Number.MAX_SAFE_INTEGER) -
-                (orderMap.get(b.id) ??
-                  Number.MAX_SAFE_INTEGER)
+                (orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+                (orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER),
             ),
-          }))
+          })),
         );
-      } catch (error) {
-        console.error(
-          "Kunde inte läsa widgetinställningar i Admin:",
-          error
-        );
+      })
+      .catch((error) => {
+        console.error("Kunde inte läsa widgetinställningar i Admin:", error);
 
-        setErrorMessage(
-          "Widgetinställningarna kunde inte hämtas."
-        );
-      } finally {
+        setErrorMessage("Widgetinställningarna kunde inte hämtas.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
+  const loadSettings = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
+    void fetchSettings();
+  }, [fetchSettings]);
 
   function toggleGroup(
     groupTitle: string

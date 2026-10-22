@@ -1,4 +1,7 @@
 "use client";
+import { useStoredState } from "@/lib/hooks/use-stored-state";
+
+const decodeMinimized = (raw: string) => raw !== "false";
 
 import {
   AlertTriangle,
@@ -78,25 +81,15 @@ function createCountdownNotice(
   };
 }
 
-function getNoticeIcon(
-  type: TodayNoticeType
-) {
-  switch (type) {
-    case "weather":
-      return AlertTriangle;
+const NOTICE_ICONS = {
+  weather: AlertTriangle,
+  birthday: Cake,
+  nameDay: Gift,
+  countdown: PartyPopper,
+};
 
-    case "birthday":
-      return Cake;
-
-    case "nameDay":
-      return Gift;
-
-    case "countdown":
-      return PartyPopper;
-
-    default:
-      return CalendarClock;
-  }
+function getNoticeIcon(type: TodayNoticeType) {
+  return NOTICE_ICONS[type] ?? CalendarClock;
 }
 
 function getWeatherClasses(
@@ -367,11 +360,8 @@ export default function TodayStatus() {
   ] =
     useState(false);
 
-  const [
-    isMinimized,
-    setIsMinimized,
-  ] =
-    useState(true);
+  const [isMinimized, setIsMinimized] =
+    useStoredState(STORAGE_KEY, true, decodeMinimized);
 
   const summary =
     useMemo(
@@ -384,143 +374,62 @@ export default function TodayStatus() {
       ]
     );
 
-  const loadStatus =
-    useCallback(
-      async (
-        showLoader = true,
-        forceRefresh = false
-      ) => {
-        if (
-          showLoader
-        ) {
-          setIsLoading(
-            true
-          );
+  const fetchStatus = useCallback((forceRefresh = false) => {
+    const today = getTodayDateString();
+    return Promise.all([
+      getTodayStatus(forceRefresh),
+
+      supabase
+        .from("countdowns")
+        .select("id, title, event_date")
+        .eq("event_date", today)
+        .order("created_at", {
+          ascending: true,
+        }),
+    ])
+      .then(([statusData, countdownResponse]) => {
+        const apiNotices = statusData.notices ?? [];
+        if (statusData.partialError) {
+          setHasError(true);
         }
-
-        setHasError(
-          false
-        );
-
-        try {
-          const today =
-            getTodayDateString();
-
-          const [
-            statusData,
-            countdownResponse,
-          ] =
-            await Promise.all([
-              getTodayStatus(
-                forceRefresh
-              ),
-
-              supabase
-                .from(
-                  "countdowns"
-                )
-                .select(
-                  "id, title, event_date"
-                )
-                .eq(
-                  "event_date",
-                  today
-                )
-                .order(
-                  "created_at",
-                  {
-                    ascending:
-                      true,
-                  }
-                ),
-            ]);
-
-          const apiNotices =
-            statusData.notices ??
-            [];
-
-          if (
-            statusData.partialError
-          ) {
-            setHasError(
-              true
-            );
-          }
-
-          if (
-            countdownResponse.error
-          ) {
-            console.error(
-              "Kunde inte hämta dagens nedräkningar:",
-              countdownResponse.error
-            );
-
-            setHasError(
-              true
-            );
-          }
-
-          const countdownRows =
-            (
-              countdownResponse.data ??
-              []
-            ) as CountdownDatabaseRow[];
-
-          const countdownNotices =
-            countdownRows.map(
-              createCountdownNotice
-            );
-
-          setNotices([
-            ...apiNotices,
-            ...countdownNotices,
-          ]);
-        } catch (
-          error
-        ) {
+        if (countdownResponse.error) {
           console.error(
-            "Kunde inte hämta dagens status:",
-            error
+            "Kunde inte hämta dagens nedräkningar:",
+            countdownResponse.error,
           );
 
-          setHasError(
-            true
-          );
-
-          setNotices(
-            []
-          );
-        } finally {
-          setIsLoading(
-            false
-          );
+          setHasError(true);
         }
-      },
-      []
-    );
+        const countdownRows = (countdownResponse.data ??
+          []) as CountdownDatabaseRow[];
+        const countdownNotices = countdownRows.map(createCountdownNotice);
+        setNotices([...apiNotices, ...countdownNotices]);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta dagens status:", error);
 
-  useEffect(() => {
-    const savedValue =
-      window.localStorage.getItem(
-        STORAGE_KEY
-      );
+        setHasError(true);
 
-    if (
-      savedValue ===
-      "false"
-    ) {
-      setIsMinimized(
-        false
-      );
-    } else {
-      setIsMinimized(
-        true
-      );
-    }
+        setNotices([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadStatus = useCallback(
+    (showLoader = true, forceRefresh = false) => {
+      if (showLoader) {
+        setIsLoading(true);
+      }
+      setHasError(false);
+      return fetchStatus(forceRefresh);
+    },
+    [fetchStatus],
+  );
+
   useEffect(() => {
-    void loadStatus();
+    void fetchStatus();
 
     const intervalId =
       window.setInterval(
@@ -537,9 +446,7 @@ export default function TodayStatus() {
         intervalId
       );
     };
-  }, [
-    loadStatus,
-  ]);
+  }, [fetchStatus, loadStatus]);
 
   function toggleMinimized() {
     setIsMinimized(
@@ -591,9 +498,7 @@ export default function TodayStatus() {
 
   const PrimaryIcon =
     primaryNotice
-      ? getNoticeIcon(
-          primaryNotice.type
-        )
+      ? (NOTICE_ICONS[primaryNotice.type] ?? CalendarClock)
       : CheckCircle2;
 
   const primaryIconClasses =

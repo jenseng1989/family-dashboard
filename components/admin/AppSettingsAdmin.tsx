@@ -114,60 +114,44 @@ export default function AppSettingsAdmin() {
   const [successMessage, setSuccessMessage] =
     useState<string | null>(null);
 
-  const loadSettings = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        "/api/admin/app-settings",
-        {
-          method: "GET",
-          cache: "no-store",
+  const fetchSettings = useCallback(() => {
+    return fetch("/api/admin/app-settings", {
+      method: "GET",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result = (await response.json()) as ApiResponse;
+        if (!response.ok) {
+          throw new Error(result.error ?? `API-fel ${response.status}`);
         }
-      );
+        if (!result.settings) {
+          throw new Error("API:t returnerade inga appinställningar.");
+        }
+        const loadedSettings = {
+          ...DEFAULT_SETTINGS,
+          ...result.settings,
+        };
+        setSettings(loadedSettings);
+        setSavedSettings(loadedSettings);
+      })
+      .catch((err) => {
+        console.error("Kunde inte läsa appinställningar:", err);
 
-      const result =
-        (await response.json()) as ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            `API-fel ${response.status}`
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Appinställningarna kunde inte hämtas.",
         );
-      }
-
-      if (!result.settings) {
-        throw new Error(
-          "API:t returnerade inga appinställningar."
-        );
-      }
-
-      const loadedSettings = {
-        ...DEFAULT_SETTINGS,
-        ...result.settings,
-      };
-      setSettings(loadedSettings);
-      setSavedSettings(loadedSettings);
-    } catch (err) {
-      console.error(
-        "Kunde inte läsa appinställningar:",
-        err
-      );
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Appinställningarna kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
+
   useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
+    void fetchSettings();
+  }, [fetchSettings]);
 
   const hasChanges =
     settings.defaultTab !== savedSettings.defaultTab ||

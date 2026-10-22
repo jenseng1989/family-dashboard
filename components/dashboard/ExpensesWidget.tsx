@@ -187,70 +187,57 @@ export default function ExpensesWidget() {
     string | null
   >(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const [groupsResult, expensesResult] = await Promise.all([
+  const fetchData = useCallback(() => {
+    return Promise.all([
       supabase
         .from("expense_groups")
         .select(
-          "id, name, sort_order, created_at, group_type, is_archived, archived_at"
+          "id, name, sort_order, created_at, group_type, is_archived, archived_at",
         )
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true }),
       supabase
         .from("shopping_ledger")
-        .select(
-          "id, item, price, created_at, group_id, paid_by, category"
-        )
+        .select("id, item, price, created_at, group_id, paid_by, category")
         .order("created_at", { ascending: false }),
-    ]);
+    ]).then(([groupsResult, expensesResult]) => {
+      if (groupsResult.error || expensesResult.error) {
+        console.error("Kunde inte hämta utgiftsdata:", {
+          groups: groupsResult.error,
+          expenses: expensesResult.error,
+        });
 
-    if (groupsResult.error || expensesResult.error) {
-      console.error("Kunde inte hämta utgiftsdata:", {
-        groups: groupsResult.error,
-        expenses: expensesResult.error,
-      });
-
-      setErrorMessage(
-        "Kunde inte hämta utgifterna från databasen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    const loadedGroups = (groupsResult.data ??
-      []) as ExpenseGroup[];
-    const loadedExpenses = (expensesResult.data ??
-      []) as Expense[];
-
-    setGroups(loadedGroups);
-    setExpenses(loadedExpenses);
-
-    setActiveGroupId((current) => {
-      if (
-        current &&
-        loadedGroups.some(
-          (group) =>
-            group.id === current && !group.is_archived
-        )
-      ) {
-        return current;
+        setErrorMessage("Kunde inte hämta utgifterna från databasen.");
+        setIsLoading(false);
+        return;
       }
+      const loadedGroups = (groupsResult.data ?? []) as ExpenseGroup[];
+      const loadedExpenses = (expensesResult.data ?? []) as Expense[];
+      setGroups(loadedGroups);
+      setExpenses(loadedExpenses);
+      setActiveGroupId((current) => {
+        if (
+          current &&
+          loadedGroups.some((group) => group.id === current && !group.is_archived)
+        ) {
+          return current;
+        }
 
-      return (
-        loadedGroups.find((group) => !group.is_archived)?.id ??
-        null
-      );
+        return loadedGroups.find((group) => !group.is_archived)?.id ?? null;
+      });
+      setIsLoading(false);
     });
-
-    setIsLoading(false);
   }, []);
 
+  const loadData = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void fetchData();
+  }, [fetchData]);
 
   const activeGroups = useMemo(
     () => groups.filter((group) => !group.is_archived),

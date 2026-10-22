@@ -36,21 +36,41 @@ export default function ItinerarySection({ tripId, startDate, endDate }: { tripI
   const [noteError, setNoteError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    try {
-      const q = `?tripId=${encodeURIComponent(tripId)}`;
-      const [t, b, a, n] = await Promise.all([
-        read<Transport>(`/api/resor/transports${q}`, "transports"),
-        read<Accommodation>(`/api/resor/accommodations${q}`, "accommodations"),
-        read<Activity>(`/api/resor/activities${q}`, "activities"),
-        read<DayNote>(`/api/resor/day-notes${q}`, "notes"),
-      ]);
-      setTransports(t); setAccommodations(b); setActivities(a); setDayNotes(n);
-    } catch (e) { setError(e instanceof Error ? e.message : "Kunde inte hämta resplanen."); }
-    finally { setLoading(false); }
+  const fetchItems = useCallback(() => {
+    const q = `?tripId=${encodeURIComponent(tripId)}`;
+    return Promise.all([
+      read<Transport>(`/api/resor/transports${q}`, "transports"),
+      read<Accommodation>(`/api/resor/accommodations${q}`, "accommodations"),
+      read<Activity>(`/api/resor/activities${q}`, "activities"),
+      read<DayNote>(`/api/resor/day-notes${q}`, "notes"),
+    ])
+      .then(([t, b, a, n]) => {
+        setTransports(t);
+        setAccommodations(b);
+        setActivities(a);
+        setDayNotes(n);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Kunde inte hämta resplanen.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [tripId]);
-  useEffect(() => { void load(); }, [load]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchItems();
+  }, [fetchItems]);
+
+  const [previousFetchKey, setPreviousFetchKey] = useState(() => [tripId]);
+  if (previousFetchKey[0] !== tripId) {
+    setPreviousFetchKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
   const { groups, undated, calendar } = useMemo(() => {
     const events: Event[] = [];
     for (const t of transports) {

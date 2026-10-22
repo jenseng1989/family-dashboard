@@ -1,4 +1,7 @@
 "use client";
+import { useStoredState } from "@/lib/hooks/use-stored-state";
+
+const decodeExpanded = (raw: string) => raw === "false";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { getWidgetSettings, type WidgetSetting } from "@/lib/widget-settings";
@@ -23,19 +26,7 @@ type TravelPanelProps = {
 function TravelPanel({ title, tripId, panelId, children }: TravelPanelProps) {
   // Varje resa och widget får sin egen inställning i webbläsaren.
   const storageKey = `family-dashboard-resor-collapsed:${tripId}:${panelId}`;
-  const [expanded, setExpanded] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      // Tidigare sparat val gäller. Nya widgetar startar minimerade.
-      setExpanded(saved === "false");
-    } catch {
-      setExpanded(false);
-    }
-    setLoaded(true);
-  }, [storageKey]);
+  const [expanded, setExpanded, loaded] = useStoredState(storageKey, false, decodeExpanded);
 
   function toggleExpanded() {
     const nextExpanded = !expanded;
@@ -81,39 +72,70 @@ function NextTripPlanning({ tripId }: { tripId: string }) {
   const [summary, setSummary] = useState<TravelSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const paths = ["transports", "accommodations", "activities", "budget"] as const;
-      const responses = await Promise.all(paths.map((path) =>
-        fetch(`/api/resor/${path}?tripId=${encodeURIComponent(tripId)}`, { cache: "no-store" })
-      ));
-      const results = await Promise.all(responses.map(async (response) => {
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.error || "Kunde inte läsa reseplaneringen.");
-        return json;
-      }));
-      setSummary({
-        transport: results[0].transports ?? [],
-        accommodation: results[1].accommodations ?? [],
-        activities: results[2].activities ?? [],
-        budget: results[3],
+  const fetchRefresh = useCallback(() => {
+    const paths = [
+      "transports",
+      "accommodations",
+      "activities",
+      "budget",
+    ] as const;
+    return Promise.all(
+      paths.map((path) =>
+        fetch(`/api/resor/${path}?tripId=${encodeURIComponent(tripId)}`, {
+          cache: "no-store",
+        }),
+      ),
+    )
+      .then(async (responses) => {
+        const results = await Promise.all(
+          responses.map(async (response) => {
+            const json = await response.json();
+            if (!response.ok)
+              throw new Error(json.error || "Kunde inte läsa reseplaneringen.");
+            return json;
+          }),
+        );
+        setSummary({
+          transport: results[0].transports ?? [],
+          accommodation: results[1].accommodations ?? [],
+          activities: results[2].activities ?? [],
+          budget: results[3],
+        });
+      })
+      .catch((cause) => {
+        setSummary(null);
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Kunde inte läsa reseplaneringen.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
       });
-    } catch (cause) {
-      setSummary(null);
-      setError(cause instanceof Error ? cause.message : "Kunde inte läsa reseplaneringen.");
-    } finally {
-      setLoading(false);
-    }
   }, [tripId]);
 
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchRefresh();
+  }, [fetchRefresh]);
+
+  const [previousFetchRefreshKey, setPreviousFetchRefreshKey] = useState(() => [
+    tripId,
+  ]);
+  if (previousFetchRefreshKey[0] !== tripId) {
+    setPreviousFetchRefreshKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+
   useEffect(() => {
-    void refresh();
+    void fetchRefresh();
     const onFocus = () => { void refresh(); };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [refresh]);
+  }, [fetchRefresh, refresh]);
 
   if (loading) return <p className="mt-4 flex items-center gap-2 text-sm text-slate-300"><LoaderCircle size={16} className="animate-spin"/> Hämtar planeringsstatus…</p>;
   if (error || !summary) return <div className="mt-4 text-sm text-amber-200">{error || "Planeringsstatus saknas."} <button type="button" className="underline" onClick={() => void refresh()}>Försök igen</button></div>;
@@ -207,21 +229,27 @@ export default function ResorDashboard() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
 
-  const load = useCallback(async () => {
+  const fetchItems = useCallback(() => {
+    return fetch("/api/resor/trips", { cache: "no-store" })
+      .then(async (response) => {
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.error || "Kunde inte läsa resor.");
+        setTrips(json.trips ?? []);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Ett fel uppstod.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const load = useCallback(() => {
     setLoading(true);
     setError("");
-    try {
-      const response = await fetch("/api/resor/trips", { cache: "no-store" });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Kunde inte läsa resor.");
-      setTrips(json.trips ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ett fel uppstod.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => { void load(); }, [load]);
+    return fetchItems();
+  }, [fetchItems]);
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
 
   const openCreate = () => { setDraft({ ...EMPTY }); setEditingId(null); setFormOpen(true); setError(""); };
   const openEdit = (t: Trip) => {
@@ -326,7 +354,7 @@ export default function ResorDashboard() {
           {visiblePanel("activities") && <div className={panelSize("activities") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("activities", 40) }}><TravelPanel key={`aktivitet-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="activities" title="Aktiviteter"><ActivitySection key={`aktivitet-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel></div>}
           {visiblePanel("budget") && <div className={panelSize("budget") === "full" ? "sm:col-span-2 min-w-0" : "min-w-0"} style={{ order: panelOrder("budget", 50) }}><TravelPanel key={`budget-panel-${selectedTrip.id}`} tripId={selectedTrip.id} panelId="budget" title="Budget"><BudgetSection key={`budget-${selectedTrip.id}`} tripId={selectedTrip.id}/></TravelPanel></div>}
 {planning.map(({ title, subtitle, icon: Icon }) =>
-          <div className="min-w-0" style={{ order: 1000 }}><TravelPanel key={`${selectedTrip.id}-${title}`} tripId={selectedTrip.id} panelId={title} title={title}><div className="p-3">
+          <div key={`${selectedTrip.id}-${title}`} className="min-w-0" style={{ order: 1000 }}><TravelPanel key={`${selectedTrip.id}-${title}`} tripId={selectedTrip.id} panelId={title} title={title}><div className="p-3">
             <div className="flex items-center gap-3"><span className="rounded-xl bg-blue-500/15 p-2.5 text-blue-300"><Icon size={21}/></span><h3 className="font-semibold">{title}</h3></div>
             <p className="mt-3 text-sm text-slate-400">{subtitle}</p>
             <p className="mt-4 text-xs text-slate-500">Kommer i ett senare steg</p>

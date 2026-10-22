@@ -370,35 +370,30 @@ export default function FamilyAdmin() {
       [members]
     );
 
-  const loadMembers =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+  const fetchMembers = useCallback(() => {
+    return getFamilyMembersFromDatabase()
+      .then((result) => {
+        setMembers(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta familjedata i Admin:", error);
 
-      try {
-        const result =
-          await getFamilyMembersFromDatabase();
-
-        setMembers(
-          result
-        );
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta familjedata i Admin:",
-          error
-        );
-
-        setErrorMessage(
-          "Familjeuppgifterna kunde inte hämtas från databasen."
-        );
-      } finally {
+        setErrorMessage("Familjeuppgifterna kunde inte hämtas från databasen.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
+  const loadMembers = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchMembers();
+  }, [fetchMembers]);
 
   useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
+    void fetchMembers();
+  }, [fetchMembers]);
 
   function dispatchFamilyChange() {
     window.dispatchEvent(

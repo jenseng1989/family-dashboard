@@ -359,47 +359,48 @@ export default function PersonOverview({
       () => new Date()
     );
 
-  const loadPerson =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const members =
-          await getFamilyMembersFromDatabase();
-
-        const result =
-          members.find(
-            (member) =>
-              member.id === memberId
-          ) ??
-          null;
-
+  const fetchPerson = useCallback(() => {
+    return getFamilyMembersFromDatabase()
+      .then((members) => {
+        const result = members.find((member) => member.id === memberId) ?? null;
         if (!result) {
           throw new Error(
-            `${displayName} kunde inte hittas bland familjemedlemmarna.`
+            `${displayName} kunde inte hittas bland familjemedlemmarna.`,
           );
         }
+        setPerson(result);
+      })
+      .catch((error) => {
+        console.error(`Kunde inte hämta ${displayName}s uppgifter:`, error);
 
-        setPerson(
-          result
-        );
-      } catch (error) {
-        console.error(
-          `Kunde inte hämta ${displayName}s uppgifter:`,
-          error
-        );
-
-        setErrorMessage(
-          `${displayName}s uppgifter kunde inte hämtas.`
-        );
-      } finally {
+        setErrorMessage(`${displayName}s uppgifter kunde inte hämtas.`);
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, [displayName, memberId]);
+      });
+  }, [displayName, memberId]);
+
+  const loadPerson = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchPerson();
+  }, [fetchPerson]);
+
+  const [previousFetchPersonKey, setPreviousFetchPersonKey] = useState(() => [
+    displayName,
+    memberId,
+  ]);
+  if (
+    previousFetchPersonKey[0] !== displayName ||
+    previousFetchPersonKey[1] !== memberId
+  ) {
+    setPreviousFetchPersonKey([displayName, memberId]);
+    setIsLoading(true);
+    setErrorMessage(null);
+  }
 
   useEffect(() => {
-    void loadPerson();
+    void fetchPerson();
 
     function handleFamilyDataChanged() {
       void loadPerson();
@@ -416,7 +417,7 @@ export default function PersonOverview({
         handleFamilyDataChanged
       );
     };
-  }, [loadPerson]);
+  }, [fetchPerson, loadPerson]);
 
   useEffect(() => {
     const intervalId =

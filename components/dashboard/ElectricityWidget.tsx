@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback,  useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -223,46 +223,43 @@ export default function ElectricityWidget() {
   const [selectedHours, setSelectedHours] =
     useState(3);
 
-  async function loadElectricity() {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const fetchElectricity = useCallback(() => {
+    return fetch("/api/electricity", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Kunde inte hämta elpriser");
+        }
+        if (!Array.isArray(data.prices)) {
+          throw new Error("Elpris-API:t returnerade ett oväntat svar");
+        }
+        setElectricity(data as ElectricityData);
+      })
+      .catch((caughtError) => {
+        setElectricity(null);
 
-      const response = await fetch("/api/electricity", {
-        cache: "no-store",
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Ett okänt fel uppstod",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
+  }, []);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ?? "Kunde inte hämta elpriser"
-        );
-      }
-
-      if (!Array.isArray(data.prices)) {
-        throw new Error(
-          "Elpris-API:t returnerade ett oväntat svar"
-        );
-      }
-
-      setElectricity(data as ElectricityData);
-    } catch (caughtError) {
-      setElectricity(null);
-
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Ett okänt fel uppstod"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const loadElectricity = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    return fetchElectricity();
+  }, [fetchElectricity]);
 
   useEffect(() => {
-    void loadElectricity();
-  }, []);
+    void fetchElectricity();
+  }, [fetchElectricity]);
 
   const chartData = useMemo(() => {
     if (!electricity) {

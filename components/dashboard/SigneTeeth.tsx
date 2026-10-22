@@ -98,33 +98,32 @@ export default function SigneTeeth() {
     null
   );
 
-  const loadTeeth = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchTeeth = useCallback(() => {
+    return supabase
       .from("signe_teeth")
-      .select(
-        "id, tooth_code, tooth_name, eruption_date, created_at"
-      )
-      .order("eruption_date", { ascending: true });
-
-    if (error) {
-      console.error("Kunde inte hämta Signes tänder:", error);
-      setErrorMessage(
-        "Kunde inte hämta tandinformationen från databasen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    setTeeth((data ?? []) as ToothRow[]);
-    setIsLoading(false);
+      .select("id, tooth_code, tooth_name, eruption_date, created_at")
+      .order("eruption_date", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta Signes tänder:", error);
+          setErrorMessage("Kunde inte hämta tandinformationen från databasen.");
+          setIsLoading(false);
+          return;
+        }
+        setTeeth((data ?? []) as ToothRow[]);
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadTeeth = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchTeeth();
+  }, [fetchTeeth]);
+
   useEffect(() => {
-    void loadTeeth();
-  }, [loadTeeth]);
+    void fetchTeeth();
+  }, [fetchTeeth]);
 
   const registeredCodes = useMemo(
     () => new Set(teeth.map((tooth) => tooth.tooth_code)),

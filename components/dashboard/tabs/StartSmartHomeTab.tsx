@@ -577,9 +577,14 @@ function DeviceRow({
     null
   );
 
-  useEffect(() => {
+  const [previousBrightness, setPreviousBrightness] =
+    useState(device.brightness);
+
+  // Keep a local draft, but reset it when the device reports a new value.
+  if (previousBrightness !== device.brightness) {
+    setPreviousBrightness(device.brightness);
     setLocalBrightness(device.brightness ?? 100);
-  }, [device.brightness]);
+  }
 
   const controlsDisabled =
     !device.online || updating;

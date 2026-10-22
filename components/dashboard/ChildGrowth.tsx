@@ -184,49 +184,58 @@ export default function ChildGrowth({
 
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const loadMeasurements = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchMeasurements = useCallback(() => {
+    return supabase
       .from("signe_growth")
-      .select(
-        "id, member_id, measurement_date, weight_kg, height_cm, created_at"
-      )
+      .select("id, member_id, measurement_date, weight_kg, height_cm, created_at")
       .eq("member_id", memberId)
       .order("measurement_date", {
         ascending: true,
-      });
-
-    if (error) {
-      console.error(
-        `Kunde inte hämta tillväxtdata för ${displayName}:`,
-        error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta mätningarna från databasen."
-      );
-
-      setIsLoading(false);
-      return;
-    }
-
-    const normalizedData: GrowthMeasurement[] = (data ?? []).map(
-      (measurement) => ({
-        ...measurement,
-        weight_kg: toNumber(measurement.weight_kg),
-        height_cm: toNumber(measurement.height_cm),
       })
-    );
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(
+            `Kunde inte hämta tillväxtdata för ${displayName}:`,
+            error,
+          );
 
-    setMeasurements(normalizedData);
-    setIsLoading(false);
+          setErrorMessage("Kunde inte hämta mätningarna från databasen.");
+
+          setIsLoading(false);
+          return;
+        }
+        const normalizedData: GrowthMeasurement[] = (data ?? []).map(
+          (measurement) => ({
+            ...measurement,
+            weight_kg: toNumber(measurement.weight_kg),
+            height_cm: toNumber(measurement.height_cm),
+          }),
+        );
+        setMeasurements(normalizedData);
+        setIsLoading(false);
+      });
   }, [memberId, displayName]);
 
+  const loadMeasurements = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchMeasurements();
+  }, [fetchMeasurements]);
+
+  const [previousFetchMeasurementsKey, setPreviousFetchMeasurementsKey] =
+    useState(() => [memberId, displayName]);
+  if (
+    previousFetchMeasurementsKey[0] !== memberId ||
+    previousFetchMeasurementsKey[1] !== displayName
+  ) {
+    setPreviousFetchMeasurementsKey([memberId, displayName]);
+    setIsLoading(true);
+    setErrorMessage(null);
+  }
+
   useEffect(() => {
-    void loadMeasurements();
-  }, [loadMeasurements]);
+    void fetchMeasurements();
+  }, [fetchMeasurements]);
 
   const chartData = useMemo<ChartRow[]>(
     () =>

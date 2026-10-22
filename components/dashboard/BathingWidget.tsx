@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback,  useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ExternalLink,
@@ -129,47 +129,43 @@ export default function BathingWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  async function loadBathingPlaces() {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const fetchBathingPlaces = useCallback(() => {
+    return fetch("/api/bathing", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error ?? "Kunde inte hämta badtemperaturerna");
+        }
+        if (!Array.isArray(data.places)) {
+          throw new Error("Badtemperatur-API:t gav ett oväntat svar");
+        }
+        setBathingData(data as BathingData);
+      })
+      .catch((caughtError) => {
+        setBathingData(null);
 
-      const response = await fetch("/api/bathing", {
-        cache: "no-store",
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Ett okänt fel uppstod",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
+  }, []);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ??
-            "Kunde inte hämta badtemperaturerna"
-        );
-      }
-
-      if (!Array.isArray(data.places)) {
-        throw new Error(
-          "Badtemperatur-API:t gav ett oväntat svar"
-        );
-      }
-
-      setBathingData(data as BathingData);
-    } catch (caughtError) {
-      setBathingData(null);
-
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Ett okänt fel uppstod"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const loadBathingPlaces = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    return fetchBathingPlaces();
+  }, [fetchBathingPlaces]);
 
   useEffect(() => {
-    void loadBathingPlaces();
-  }, []);
+    void fetchBathingPlaces();
+  }, [fetchBathingPlaces]);
 
   const measuredPlaces = useMemo(
     () =>

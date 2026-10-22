@@ -1,4 +1,5 @@
 "use client";
+import { useClientClock } from "@/lib/hooks/use-client-clock";
 
 import {
   CalendarDays,
@@ -238,66 +239,6 @@ function isCalendarEventActiveNow(
   return start <= now.getTime() && end > now.getTime();
 }
 
-function formatShortCalendarDateKey(key: string): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    day: "numeric",
-    month: "short",
-    timeZone: STOCKHOLM_TIME_ZONE,
-  }).format(new Date(`${key}T12:00:00Z`));
-}
-
-function getCalendarEventRangeLabel(
-  event: GoogleCalendarEvent,
-  today: string
-): string | null {
-  const range = getEventDateRange(event);
-
-  if (!range || range.totalDays <= 1) {
-    return null;
-  }
-
-  if (today < range.startKey) {
-    return `${formatShortCalendarDateKey(
-      range.startKey
-    )}–${formatShortCalendarDateKey(range.endKey)} · ${range.totalDays} dagar`;
-  }
-
-  const start = new Date(`${range.startKey}T12:00:00Z`);
-  const current = new Date(`${today}T12:00:00Z`);
-  const dayNumber =
-    Math.round((current.getTime() - start.getTime()) / 86_400_000) + 1;
-
-  if (today === range.startKey) {
-    if (!event.allDay && event.startTime && event.endTime) {
-      return `Startar idag ${formatCalendarTime(
-        event.startTime
-      )} · ${range.totalDays} dagar · till ${formatShortCalendarDateKey(
-        range.endKey
-      )} ${formatCalendarTime(event.endTime)}.`;
-    }
-
-    return `Startar idag · ${range.totalDays} dagar · till ${formatShortCalendarDateKey(
-      range.endKey
-    )}.`;
-  }
-
-  if (today >= range.startKey && today <= range.endKey) {
-    if (!event.allDay && event.endTime) {
-      return `Pågår · dag ${dayNumber} av ${range.totalDays} · till ${formatShortCalendarDateKey(
-        range.endKey
-      )} ${formatCalendarTime(event.endTime)}.`;
-    }
-
-    return `Pågår · dag ${dayNumber} av ${range.totalDays} · till ${formatShortCalendarDateKey(
-      range.endKey
-    )}.`;
-  }
-
-  return `${formatShortCalendarDateKey(
-    range.startKey
-  )}–${formatShortCalendarDateKey(range.endKey)} · ${range.totalDays} dagar`;
-}
-
 function formatCalendarTime(dateString: string): string {
   return new Intl.DateTimeFormat("sv-SE", {
     hour: "2-digit",
@@ -478,25 +419,6 @@ function getAssistantLead(
   };
 }
 
-function getRelativeTime(event: GoogleCalendarEvent, now: Date): string {
-  if (event.allDay) return "Hela dagen";
-
-  if (!event.startTime) return "";
-
-  const diffMs = new Date(event.startTime).getTime() - now.getTime();
-
-  if (diffMs <= 0) return "Pågår nu";
-
-  const totalMinutes = Math.max(1, Math.round(diffMs / 60_000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) return `Om ${minutes} min`;
-  if (minutes === 0) return `Om ${hours} h`;
-
-  return `Om ${hours} h ${minutes} min`;
-}
-
 function getEventTime(event: GoogleCalendarEvent): string {
   if (event.allDay) return "Hela dagen";
   if (!event.startTime) return "";
@@ -601,7 +523,7 @@ function getSchoolTransfer(
 }
 
 export default function DailyAssistantWidget() {
-  const [now, setNow] = useState<Date | null>(null);
+  const now = useClientClock();
   const [calendarEvents, setCalendarEvents] = useState<
     GoogleCalendarEvent[]
   >([]);
@@ -620,172 +542,157 @@ export default function DailyAssistantWidget() {
   // Ökas även när komponenten avmonteras.
   const requestIdRef = useRef(0);
 
-  const loadData = useCallback(
-    async (showLoader = true, forceRefresh = false) => {
-      const requestId = ++requestIdRef.current;
-      const isCurrent = () => requestIdRef.current === requestId;
+  const fetchData = useCallback((forceRefresh = false) => {
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestIdRef.current === requestId;
 
+    // Varje källa behandlas direkt när den är klar. Ett fel i en
+    // källa hindrar inte de andra från att uppdatera sin del.
+    const calendarTask = fetch("/api/google-calendar", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Google Kalender svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as GoogleCalendarResponse;
+        if (data.connected !== true) {
+          throw new Error(data.error ?? "Google Kalender är inte ansluten.");
+        }
+        if (isCurrent()) setCalendarEvents(data.events ?? []);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta Google Kalender:", error);
+        if (isCurrent()) {
+          setCalendarEvents([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const schoolCalendarTask = fetch("/api/google-school-calendar", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Google Skolkalender svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as GoogleCalendarResponse;
+        if (data.connected !== true) {
+          throw new Error(data.error ?? "Google Skolkalender är inte ansluten.");
+        }
+        if (isCurrent()) {
+          setSchoolCalendarEvents(data.events ?? []);
+        }
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta Google Skolkalender:", error);
+        if (isCurrent()) {
+          setSchoolCalendarEvents([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const countdownTask = Promise.resolve(
+      supabase
+        .from("countdowns")
+        .select("id, title, event_date, created_at")
+        .gte("event_date", getTodayDateString())
+        .order("event_date", { ascending: true })
+        .order("created_at", { ascending: true }),
+    )
+      .then((result) => {
+        if (result.error) throw result.error;
+        if (isCurrent()) {
+          setCountdowns((result.data ?? []) as CountdownRow[]);
+        }
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta nedräkningar:", error);
+        if (isCurrent()) {
+          setCountdowns([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const familyTask = getFamilyMembersFromDatabase()
+      .then((members) => {
+        const events = createUpcomingFamilyEvents(members);
+        if (isCurrent()) setFamilyEvents(events);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta familjehändelser:", error);
+        if (isCurrent()) {
+          setFamilyEvents([]);
+          setHasPartialError(true);
+        }
+      });
+
+    const weatherTask = fetch(
+      "/api/everyday-weather",
+      forceRefresh ? { cache: "reload" } : undefined,
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Väder-API svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as EverydayWeather;
+        if (isCurrent()) setWeather(data);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta väder:", error);
+        if (isCurrent()) {
+          setWeather(null);
+          setHasPartialError(true);
+        }
+      });
+
+    const electricityTask = fetch(
+      "/api/electricity",
+      forceRefresh ? { cache: "reload" } : undefined,
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Elpris-API svarade ${response.status}.`);
+        }
+        const data = (await response.json()) as ElectricityData;
+        if (!Array.isArray(data.prices)) {
+          throw new Error("Elpris-API returnerade ogiltiga priser.");
+        }
+        if (isCurrent()) setElectricity(data);
+      })
+      .catch((error) => {
+        console.error("Idag: kunde inte hämta elpriser:", error);
+        if (isCurrent()) {
+          setElectricity(null);
+          setHasPartialError(true);
+        }
+      });
+
+    // Laddningsindikatorn och uppdateringsknappen återställs
+    // när samtliga källor har avslutats, precis som tidigare.
+    return Promise.all([
+      calendarTask,
+      schoolCalendarTask,
+      countdownTask,
+      familyTask,
+      weatherTask,
+      electricityTask,
+    ]).then(() => {
+      if (isCurrent()) setIsLoading(false);
+    });
+  }, []);
+
+  const loadData = useCallback(
+    (showLoader = true, forceRefresh = false) => {
       if (showLoader) setIsLoading(true);
       setHasPartialError(false);
-
-      // Varje källa behandlas direkt när den är klar. Ett fel i en
-      // källa hindrar inte de andra från att uppdatera sin del.
-      const calendarTask = (async () => {
-        try {
-          const response = await fetch("/api/google-calendar", {
-            cache: "no-store",
-          });
-          if (!response.ok) {
-            throw new Error(`Google Kalender svarade ${response.status}.`);
-          }
-
-          const data =
-            (await response.json()) as GoogleCalendarResponse;
-          if (data.connected !== true) {
-            throw new Error(data.error ?? "Google Kalender är inte ansluten.");
-          }
-
-          if (isCurrent()) setCalendarEvents(data.events ?? []);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta Google Kalender:", error);
-          if (isCurrent()) {
-            setCalendarEvents([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const schoolCalendarTask = (async () => {
-        try {
-          const response = await fetch("/api/google-school-calendar", {
-            cache: "no-store",
-          });
-          if (!response.ok) {
-            throw new Error(
-              `Google Skolkalender svarade ${response.status}.`
-            );
-          }
-
-          const data =
-            (await response.json()) as GoogleCalendarResponse;
-          if (data.connected !== true) {
-            throw new Error(
-              data.error ?? "Google Skolkalender är inte ansluten."
-            );
-          }
-
-          if (isCurrent()) {
-            setSchoolCalendarEvents(data.events ?? []);
-          }
-        } catch (error) {
-          console.error(
-            "Idag: kunde inte hämta Google Skolkalender:",
-            error
-          );
-          if (isCurrent()) {
-            setSchoolCalendarEvents([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const countdownTask = (async () => {
-        try {
-          const result = await supabase
-            .from("countdowns")
-            .select("id, title, event_date, created_at")
-            .gte("event_date", getTodayDateString())
-            .order("event_date", { ascending: true })
-            .order("created_at", { ascending: true });
-
-          if (result.error) throw result.error;
-          if (isCurrent()) {
-            setCountdowns((result.data ?? []) as CountdownRow[]);
-          }
-        } catch (error) {
-          console.error("Idag: kunde inte hämta nedräkningar:", error);
-          if (isCurrent()) {
-            setCountdowns([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const familyTask = (async () => {
-        try {
-          const members = await getFamilyMembersFromDatabase();
-          const events = createUpcomingFamilyEvents(members);
-          if (isCurrent()) setFamilyEvents(events);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta familjehändelser:", error);
-          if (isCurrent()) {
-            setFamilyEvents([]);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const weatherTask = (async () => {
-        try {
-          const response = await fetch(
-            "/api/everyday-weather",
-            forceRefresh ? { cache: "reload" } : undefined
-          );
-          if (!response.ok) {
-            throw new Error(`Väder-API svarade ${response.status}.`);
-          }
-          const data = (await response.json()) as EverydayWeather;
-          if (isCurrent()) setWeather(data);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta väder:", error);
-          if (isCurrent()) {
-            setWeather(null);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      const electricityTask = (async () => {
-        try {
-          const response = await fetch(
-            "/api/electricity",
-            forceRefresh ? { cache: "reload" } : undefined
-          );
-          if (!response.ok) {
-            throw new Error(`Elpris-API svarade ${response.status}.`);
-          }
-          const data = (await response.json()) as ElectricityData;
-          if (!Array.isArray(data.prices)) {
-            throw new Error("Elpris-API returnerade ogiltiga priser.");
-          }
-          if (isCurrent()) setElectricity(data);
-        } catch (error) {
-          console.error("Idag: kunde inte hämta elpriser:", error);
-          if (isCurrent()) {
-            setElectricity(null);
-            setHasPartialError(true);
-          }
-        }
-      })();
-
-      // Laddningsindikatorn och uppdateringsknappen återställs
-      // när samtliga källor har avslutats, precis som tidigare.
-      await Promise.all([
-        calendarTask,
-        schoolCalendarTask,
-        countdownTask,
-        familyTask,
-        weatherTask,
-        electricityTask,
-      ]);
-
-      if (isCurrent()) setIsLoading(false);
+      return fetchData(forceRefresh);
     },
-    []
+    [fetchData],
   );
 
   useEffect(() => {
-    void loadData();
+    void fetchData();
 
     const refreshId = window.setInterval(() => {
       void loadData(false);
@@ -795,17 +702,7 @@ export default function DailyAssistantWidget() {
       window.clearInterval(refreshId);
       requestIdRef.current += 1;
     };
-  }, [loadData]);
-
-  useEffect(() => {
-    setNow(new Date());
-
-    const clockId = window.setInterval(() => {
-      setNow(new Date());
-    }, 60_000);
-
-    return () => window.clearInterval(clockId);
-  }, []);
+  }, [fetchData, loadData]);
 
   const nextFamilyEvent = useMemo(
     () =>
@@ -883,23 +780,6 @@ export default function DailyAssistantWidget() {
     ? getStockholmDateKey(now.toISOString())
     : "";
 
-  const calendarHeroIds = useMemo(
-    () => new Set(calendarHeroEvents.map((event) => event.id)),
-    [calendarHeroEvents]
-  );
-
-  const remainingTodayEvents = useMemo(() => {
-    if (!now) return [];
-
-    return todaysCalendarEvents.filter((event) => {
-      if (calendarHeroIds.has(event.id)) return false;
-      if (event.allDay) return true;
-      if (!event.endTime) return true;
-
-      return new Date(event.endTime).getTime() > now.getTime();
-    });
-  }, [calendarHeroIds, now, todaysCalendarEvents]);
-
   const todaysSchoolTransfers = useMemo(() => {
     if (!now) {
       return { dropoffs: [] as SchoolTransfer[], pickups: [] as SchoolTransfer[] };
@@ -957,10 +837,6 @@ export default function DailyAssistantWidget() {
       weather,
     ]
   );
-
-  const electricitySummary = electricity?.currentPrice
-    ? `${formatPrice(electricity.currentPrice.SEK_per_kWh)} kr/kWh`
-    : "Pris saknas";
 
   const tomorrowCalendarEvents = useMemo(() => {
     if (!now) return [];

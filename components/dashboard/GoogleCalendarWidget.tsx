@@ -376,29 +376,36 @@ export default function GoogleCalendarWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadEvents = useCallback(async (forceRefresh = false) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await getGoogleCalendarData({ forceRefresh });
-
-      setEvents(data.events ?? []);
-    } catch (loadError) {
-      setEvents([]);
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Google Kalender kunde inte hämtas."
-      );
-    } finally {
-      setLoading(false);
-    }
+  const fetchEvents = useCallback((forceRefresh = false) => {
+    return getGoogleCalendarData({ forceRefresh })
+      .then((data) => {
+        setEvents(data.events ?? []);
+      })
+      .catch((loadError) => {
+        setEvents([]);
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Google Kalender kunde inte hämtas.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
+  const loadEvents = useCallback(
+    (forceRefresh = false) => {
+      setLoading(true);
+      setError(null);
+      return fetchEvents(forceRefresh);
+    },
+    [fetchEvents],
+  );
+
   useEffect(() => {
-    void loadEvents();
-  }, [loadEvents]);
+    void fetchEvents();
+  }, [fetchEvents]);
 
   const groups = useMemo<EventGroup[]>(() => {
     const grouped = new Map<

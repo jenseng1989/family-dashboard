@@ -119,14 +119,11 @@ export default function ChildVaccinations({
     null
   );
 
-  const loadVaccinations = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchVaccinations = useCallback(() => {
+    return supabase
       .from("signe_vaccinations")
       .select(
-        "id, member_id, vaccine_name, vaccination_date, dose, notes, created_at"
+        "id, member_id, vaccine_name, vaccination_date, dose, notes, created_at",
       )
       .eq("member_id", memberId)
       .order("vaccination_date", {
@@ -134,26 +131,43 @@ export default function ChildVaccinations({
       })
       .order("created_at", {
         ascending: true,
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(
+            `Kunde inte hämta vaccinationerna för ${displayName}:`,
+            error,
+          );
+
+          setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
+          setIsLoading(false);
+          return;
+        }
+        setVaccinations((data ?? []) as Vaccination[]);
+        setIsLoading(false);
       });
-
-    if (error) {
-      console.error(
-        `Kunde inte hämta vaccinationerna för ${displayName}:`,
-        error
-      );
-
-      setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
-      setIsLoading(false);
-      return;
-    }
-
-    setVaccinations((data ?? []) as Vaccination[]);
-    setIsLoading(false);
   }, [memberId, displayName]);
 
+  const loadVaccinations = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchVaccinations();
+  }, [fetchVaccinations]);
+
+  const [previousFetchVaccinationsKey, setPreviousFetchVaccinationsKey] =
+    useState(() => [memberId, displayName]);
+  if (
+    previousFetchVaccinationsKey[0] !== memberId ||
+    previousFetchVaccinationsKey[1] !== displayName
+  ) {
+    setPreviousFetchVaccinationsKey([memberId, displayName]);
+    setIsLoading(true);
+    setErrorMessage(null);
+  }
+
   useEffect(() => {
-    void loadVaccinations();
-  }, [loadVaccinations]);
+    void fetchVaccinations();
+  }, [fetchVaccinations]);
 
   const today = getTodayDateString();
 

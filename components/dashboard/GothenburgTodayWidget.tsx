@@ -41,34 +41,37 @@ export default function GothenburgTodayWidget() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    setIsLoading(true);
-    setError(null);
+  const fetchData = useCallback((forceRefresh = false) => {
+    return getGothenburgEvents(forceRefresh)
+      .then((result) => {
+        setData(result);
+      })
+      .catch((fetchError) => {
+        console.error("Kunde inte hämta Göteborg idag:", fetchError);
 
-    try {
-      const result =
-        await getGothenburgEvents(forceRefresh);
-
-      setData(result);
-    } catch (fetchError) {
-      console.error(
-        "Kunde inte hämta Göteborg idag:",
-        fetchError
-      );
-
-      setError(
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Göteborg idag kunde inte hämtas."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+        setError(
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Göteborg idag kunde inte hämtas.",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadData = useCallback(
+    (forceRefresh = false) => {
+      setIsLoading(true);
+      setError(null);
+      return fetchData(forceRefresh);
+    },
+    [fetchData],
+  );
+
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void fetchData();
+  }, [fetchData]);
 
   const highlighted = useMemo(() => {
     if (!data?.today) {

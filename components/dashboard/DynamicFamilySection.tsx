@@ -344,45 +344,29 @@ export default function DynamicFamilySection({
       string | null
     >(null);
 
-  const loadMembers =
-    useCallback(
-      async () => {
-        setIsLoading(
-          true
-        );
-        setErrorMessage(
-          null
-        );
+  const fetchMembers = useCallback(() => {
+    return getFamilyMembersFromDatabase()
+      .then((result) => {
+        setMembers(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta familjemedlemmar:", error);
 
-        try {
-          const result =
-            await getFamilyMembersFromDatabase();
+        setErrorMessage("Familjemedlemmarna kunde inte hämtas.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
-          setMembers(
-            result
-          );
-        } catch (
-          error
-        ) {
-          console.error(
-            "Kunde inte hämta familjemedlemmar:",
-            error
-          );
-
-          setErrorMessage(
-            "Familjemedlemmarna kunde inte hämtas."
-          );
-        } finally {
-          setIsLoading(
-            false
-          );
-        }
-      },
-      []
-    );
+  const loadMembers = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchMembers();
+  }, [fetchMembers]);
 
   useEffect(() => {
-    void loadMembers();
+    void fetchMembers();
 
     function handleFamilyChange() {
       void loadMembers();
@@ -399,9 +383,7 @@ export default function DynamicFamilySection({
         handleFamilyChange
       );
     };
-  }, [
-    loadMembers,
-  ]);
+  }, [fetchMembers, loadMembers]);
 
   const activeMembers =
     useMemo(

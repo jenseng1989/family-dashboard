@@ -184,14 +184,8 @@ export default function FamilyManagerWidget() {
     setShowArchivedMembers,
   ] = useState(false);
 
-  const loadFamily = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const [
-      membersResult,
-      nameDaysResult,
-    ] = await Promise.all([
+  const fetchFamily = useCallback(() => {
+    return Promise.all([
       supabase
         .from("family_members")
         .select(
@@ -206,7 +200,7 @@ export default function FamilyManagerWidget() {
             "is_active",
             "created_at",
             "updated_at",
-          ].join(", ")
+          ].join(", "),
         )
         .order("sort_order", {
           ascending: true,
@@ -217,69 +211,54 @@ export default function FamilyManagerWidget() {
 
       supabase
         .from("family_name_days")
-        .select(
-          "id, member_id, name, month, day, created_at"
-        )
+        .select("id, member_id, name, month, day, created_at")
         .order("month", {
           ascending: true,
         })
         .order("day", {
           ascending: true,
         }),
-    ]);
+    ]).then(([membersResult, nameDaysResult]) => {
+      if (membersResult.error) {
+        console.error("Kunde inte hämta familjemedlemmar:", membersResult.error);
 
-    if (membersResult.error) {
-      console.error(
-        "Kunde inte hämta familjemedlemmar:",
-        membersResult.error
-      );
+        setErrorMessage("Kunde inte hämta familjemedlemmarna.");
 
-      setErrorMessage(
-        "Kunde inte hämta familjemedlemmarna."
-      );
+        setIsLoading(false);
+        return;
+      }
+      if (nameDaysResult.error) {
+        console.error("Kunde inte hämta namnsdagar:", nameDaysResult.error);
 
-      setIsLoading(false);
-      return;
-    }
+        setErrorMessage("Kunde inte hämta namnsdagarna.");
 
-    if (nameDaysResult.error) {
-      console.error(
-        "Kunde inte hämta namnsdagar:",
-        nameDaysResult.error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta namnsdagarna."
-      );
-
-      setIsLoading(false);
-      return;
-    }
-
-    const memberRows =
-      (membersResult.data ??
+        setIsLoading(false);
+        return;
+      }
+      const memberRows = (membersResult.data ??
         []) as unknown as FamilyMemberRow[];
-
-    const nameDayRows =
-      (nameDaysResult.data ??
-        []) as unknown as NameDayRow[];
-
-    setMembers(
-      memberRows.map((member) => ({
-        ...member,
-        nameDays: nameDayRows.filter(
-          (nameDay) =>
-            nameDay.member_id === member.id
-        ),
-      }))
-    );
-
-    setIsLoading(false);
+      const nameDayRows = (nameDaysResult.data ?? []) as unknown as NameDayRow[];
+      setMembers(
+        memberRows.map((member) => ({
+          ...member,
+          nameDays: nameDayRows.filter(
+            (nameDay) => nameDay.member_id === member.id,
+          ),
+        })),
+      );
+      setIsLoading(false);
+    });
   }, []);
 
+  const loadFamily = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchFamily();
+  }, [fetchFamily]);
+
   useEffect(() => {
-    void loadFamily();
-  }, [loadFamily]);
+    void fetchFamily();
+  }, [fetchFamily]);
 
   const activeMembers = useMemo(
     () =>
@@ -829,7 +808,7 @@ export default function FamilyManagerWidget() {
     dispatchFamilyChange();
   }
 
-  function MemberForm({
+  function renderMemberForm({
     title,
   }: {
     title: string;
@@ -1044,7 +1023,7 @@ export default function FamilyManagerWidget() {
     );
   }
 
-  function MemberCard({
+  function renderMemberCard({
     member,
     index,
   }: {
@@ -1064,9 +1043,7 @@ export default function FamilyManagerWidget() {
       <div key={member.id}>
         {editingMemberId ===
         member.id ? (
-          <MemberForm
-            title={`Redigera ${member.display_name}`}
-          />
+          renderMemberForm({ title: `Redigera ${member.display_name}` })
         ) : (
           <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1488,7 +1465,7 @@ export default function FamilyManagerWidget() {
 
       {showAddMember && (
         <div className="mb-5">
-          <MemberForm title="Ny familjemedlem" />
+          {renderMemberForm({ title: "Ny familjemedlem" })}
         </div>
       )}
 
@@ -1544,11 +1521,7 @@ export default function FamilyManagerWidget() {
             <div className="grid gap-4">
               {activeMembers.map(
                 (member, index) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    index={index}
-                  />
+                  renderMemberCard({ member, index })
                 )
               )}
             </div>

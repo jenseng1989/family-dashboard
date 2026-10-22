@@ -540,33 +540,30 @@ export default function SystemStatusAdmin() {
     setIsChecking,
   ] = useState(true);
 
-  const runChecks =
-    useCallback(async () => {
-      setIsChecking(true);
+  const fetchRunChecks = useCallback(() => {
+    return Promise.all(services.map((service) => checkService(service))).then(
+      (results) => {
+        setStatuses(results);
+        setIsChecking(false);
+      },
+    );
+  }, []);
 
-      setStatuses((current) =>
-        current.map((service) => ({
-          ...service,
-          status: "checking",
-          message: null,
-        }))
-      );
-
-      const results =
-        await Promise.all(
-          services.map(
-            (service) =>
-              checkService(service)
-          )
-        );
-
-      setStatuses(results);
-      setIsChecking(false);
-    }, []);
+  const runChecks = useCallback(() => {
+    setIsChecking(true);
+    setStatuses((current) =>
+      current.map((service) => ({
+        ...service,
+        status: "checking",
+        message: null,
+      })),
+    );
+    return fetchRunChecks();
+  }, [fetchRunChecks]);
 
   useEffect(() => {
-    void runChecks();
-  }, [runChecks]);
+    void fetchRunChecks();
+  }, [fetchRunChecks]);
 
   const healthyCount =
     useMemo(

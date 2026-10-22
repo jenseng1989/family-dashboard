@@ -99,66 +99,61 @@ export default function PersonalCenter({
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const loadPersonalCenter = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const fetchPersonalCenter = useCallback(() => {
+    return Promise.all([
+      supabase
+        .from("personal_todos")
+        .select("id, member_id, task, created_at")
+        .eq("member_id", memberId)
+        .order("created_at", {
+          ascending: true,
+        }),
 
-    const [todosResult, notesResult] =
-      await Promise.all([
-        supabase
-          .from("personal_todos")
-          .select(
-            "id, member_id, task, created_at"
-          )
-          .eq("member_id", memberId)
-          .order("created_at", {
-            ascending: true,
-          }),
+      supabase
+        .from("personal_notes")
+        .select("id, member_id, title, content, created_at, updated_at")
+        .eq("member_id", memberId)
+        .order("updated_at", {
+          ascending: false,
+        }),
+    ]).then(([todosResult, notesResult]) => {
+      if (todosResult.error || notesResult.error) {
+        console.error(
+          "Kunde inte hämta personligt center:",
+          todosResult.error ?? notesResult.error,
+        );
 
-        supabase
-          .from("personal_notes")
-          .select(
-            "id, member_id, title, content, created_at, updated_at"
-          )
-          .eq("member_id", memberId)
-          .order("updated_at", {
-            ascending: false,
-          }),
-      ]);
+        setErrorMessage(`Kunde inte hämta innehållet för ${displayName}.`);
 
-    if (
-      todosResult.error ||
-      notesResult.error
-    ) {
-      console.error(
-        "Kunde inte hämta personligt center:",
-        todosResult.error ?? notesResult.error
-      );
-
-      setErrorMessage(
-        `Kunde inte hämta innehållet för ${displayName}.`
-      );
-
+        setIsLoading(false);
+        return;
+      }
+      setTodos((todosResult.data ?? []) as unknown as PersonalTodo[]);
+      setNotes((notesResult.data ?? []) as unknown as PersonalNote[]);
       setIsLoading(false);
-      return;
-    }
-
-    setTodos(
-      (todosResult.data ??
-        []) as unknown as PersonalTodo[]
-    );
-
-    setNotes(
-      (notesResult.data ??
-        []) as unknown as PersonalNote[]
-    );
-
-    setIsLoading(false);
+    });
   }, [displayName, memberId]);
 
+  const loadPersonalCenter = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchPersonalCenter();
+  }, [fetchPersonalCenter]);
+
+  const [previousFetchPersonalCenterKey, setPreviousFetchPersonalCenterKey] =
+    useState(() => [displayName, memberId]);
+  if (
+    previousFetchPersonalCenterKey[0] !== displayName ||
+    previousFetchPersonalCenterKey[1] !== memberId
+  ) {
+    setPreviousFetchPersonalCenterKey([displayName, memberId]);
+    setIsLoading(true);
+    setErrorMessage(null);
+  }
+
   useEffect(() => {
-    void loadPersonalCenter();
-  }, [loadPersonalCenter]);
+    void fetchPersonalCenter();
+  }, [fetchPersonalCenter]);
 
   async function addTodo(
     event: FormEvent<HTMLFormElement>

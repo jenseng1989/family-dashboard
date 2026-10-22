@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { CalendarDays, Clock3, Edit3, LoaderCircle, MapPin, Plus, Save, Trash2, X, Plane } from "lucide-react";
+import { CalendarDays, Clock3, Edit3, LoaderCircle, Plus, Save, Trash2, X, Plane } from "lucide-react";
 
 type TransportKind = "flight" | "train" | "ferry" | "bus" | "car" | "other";
 type Transport = {
@@ -38,17 +38,37 @@ export default function TransportSection({ tripId }: { tripId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>({ ...EMPTY });
   const [deleteTarget, setDeleteTarget] = useState<Transport | null>(null);
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    try {
-      const response = await fetch(`/api/resor/transports?tripId=${encodeURIComponent(tripId)}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Kunde inte läsa transporter.");
-      setItems(data.transports ?? []);
-    } catch (e) { setError(e instanceof Error ? e.message : "Ett fel uppstod."); }
-    finally { setLoading(false); }
+  const fetchItems = useCallback(() => {
+    return fetch(`/api/resor/transports?tripId=${encodeURIComponent(tripId)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.error || "Kunde inte läsa transporter.");
+        setItems(data.transports ?? []);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Ett fel uppstod.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [tripId]);
-  useEffect(() => { void load(); }, [load]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchItems();
+  }, [fetchItems]);
+
+  const [previousFetchKey, setPreviousFetchKey] = useState(() => [tripId]);
+  if (previousFetchKey[0] !== tripId) {
+    setPreviousFetchKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
   const create = () => { setDraft({ ...EMPTY }); setEditingId(null); setError(""); setOpen(true); };
   const edit = (t: Transport) => {
     setDraft({ kind: t.kind, provider: t.provider, reference: t.reference, departure_place: t.departure_place, arrival_place: t.arrival_place, departure_at: localInput(t.departure_at), arrival_at: localInput(t.arrival_at), cost_sek: t.cost_sek === null ? "" : String(t.cost_sek), notes: t.notes });

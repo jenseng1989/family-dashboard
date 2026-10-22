@@ -114,36 +114,34 @@ export default function Countdown() {
     string | null
   >(null);
 
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchEvents = useCallback(() => {
+    return supabase
       .from("countdowns")
       .select("id, title, event_date, created_at")
       .order("event_date", { ascending: true })
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta nedräkningar:", error);
 
-    if (error) {
-      console.error(
-        "Kunde inte hämta nedräkningar:",
-        error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta nedräkningarna från databasen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    setEvents(data ?? []);
-    setIsLoading(false);
+          setErrorMessage("Kunde inte hämta nedräkningarna från databasen.");
+          setIsLoading(false);
+          return;
+        }
+        setEvents(data ?? []);
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadEvents = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchEvents();
+  }, [fetchEvents]);
+
   useEffect(() => {
-    void loadEvents();
-  }, [loadEvents]);
+    void fetchEvents();
+  }, [fetchEvents]);
 
   const sortedEvents = useMemo(() => {
     return [...events].sort((firstEvent, secondEvent) => {

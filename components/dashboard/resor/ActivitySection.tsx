@@ -20,17 +20,37 @@ export default function ActivitySection({ tripId }: { tripId: string }) {
   const [draft, setDraft] = useState<Draft>({ ...EMPTY });
   const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    try {
-      const response = await fetch(`/api/resor/activities?tripId=${encodeURIComponent(tripId)}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Kunde inte läsa aktiviteter.");
-      setItems(data.activities ?? []);
-    } catch (e) { setError(e instanceof Error ? e.message : "Ett fel uppstod."); }
-    finally { setLoading(false); }
+  const fetchItems = useCallback(() => {
+    return fetch(`/api/resor/activities?tripId=${encodeURIComponent(tripId)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.error || "Kunde inte läsa aktiviteter.");
+        setItems(data.activities ?? []);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Ett fel uppstod.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [tripId]);
-  useEffect(() => { void load(); }, [load]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchItems();
+  }, [fetchItems]);
+
+  const [previousFetchKey, setPreviousFetchKey] = useState(() => [tripId]);
+  if (previousFetchKey[0] !== tripId) {
+    setPreviousFetchKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
 
   const create = () => { setDraft({ ...EMPTY }); setEditingId(null); setError(""); setOpen(true); };
   const edit = (a: Activity) => {

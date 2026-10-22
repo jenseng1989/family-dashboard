@@ -350,52 +350,37 @@ export default function SigneOverview() {
       () => new Date()
     );
 
-  const loadSigne =
-    useCallback(async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const members =
-          await getFamilyMembersFromDatabase();
-
+  const fetchSigne = useCallback(() => {
+    return getFamilyMembersFromDatabase()
+      .then((members) => {
         const result =
           members.find(
             (member) =>
-              member.displayName
-                .trim()
-                .toLocaleLowerCase(
-                  "sv-SE"
-                ) ===
-              "signe"
-          ) ??
-          null;
-
+              member.displayName.trim().toLocaleLowerCase("sv-SE") === "signe",
+          ) ?? null;
         if (!result) {
-          throw new Error(
-            "Signe kunde inte hittas bland familjemedlemmarna."
-          );
+          throw new Error("Signe kunde inte hittas bland familjemedlemmarna.");
         }
+        setSigne(result);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta Signes uppgifter:", error);
 
-        setSigne(
-          result
-        );
-      } catch (error) {
-        console.error(
-          "Kunde inte hämta Signes uppgifter:",
-          error
-        );
-
-        setErrorMessage(
-          "Signes uppgifter kunde inte hämtas."
-        );
-      } finally {
+        setErrorMessage("Signes uppgifter kunde inte hämtas.");
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    }, []);
+      });
+  }, []);
+
+  const loadSigne = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchSigne();
+  }, [fetchSigne]);
 
   useEffect(() => {
-    void loadSigne();
+    void fetchSigne();
 
     function handleFamilyDataChanged() {
       void loadSigne();
@@ -412,7 +397,7 @@ export default function SigneOverview() {
         handleFamilyDataChanged
       );
     };
-  }, [loadSigne]);
+  }, [fetchSigne, loadSigne]);
 
   useEffect(() => {
     const intervalId =

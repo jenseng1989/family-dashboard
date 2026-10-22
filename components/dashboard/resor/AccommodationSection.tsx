@@ -13,8 +13,37 @@ export default function AccommodationSection({tripId}:{tripId:string}) {
  const [error,setError]=useState(""); const [open,setOpen]=useState(false);
  const [editingId,setEditingId]=useState<string|null>(null); const [draft,setDraft]=useState<Draft>({...EMPTY});
  const [deleteTarget,setDeleteTarget]=useState<Accommodation|null>(null);
- const load=useCallback(async()=>{setLoading(true);setError("");try{const r=await fetch(`/api/resor/accommodations?tripId=${encodeURIComponent(tripId)}`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Kunde inte läsa boenden.");setItems(d.accommodations??[]);}catch(e){setError(e instanceof Error?e.message:"Ett fel uppstod.");}finally{setLoading(false);}},[tripId]);
- useEffect(()=>{void load();},[load]);
+  const fetchItems = useCallback(() => {
+    return fetch(
+      `/api/resor/accommodations?tripId=${encodeURIComponent(tripId)}`,
+      { cache: "no-store" },
+    )
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Kunde inte läsa boenden.");
+        setItems(d.accommodations ?? []);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Ett fel uppstod.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [tripId]);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError("");
+    return fetchItems();
+  }, [fetchItems]);
+
+  const [previousFetchKey, setPreviousFetchKey] = useState(() => [tripId]);
+  if (previousFetchKey[0] !== tripId) {
+    setPreviousFetchKey([tripId]);
+    setLoading(true);
+    setError("");
+  }
+  useEffect(() => { void fetchItems(); }, [fetchItems]);
  const create=()=>{setDraft({...EMPTY});setEditingId(null);setError("");setOpen(true);};
  const edit=(a:Accommodation)=>{setDraft({name:a.name,kind:a.kind,address:a.address,booking_reference:a.booking_reference,check_in:a.check_in??"",check_out:a.check_out??"",cost_sek:a.cost_sek===null?"":String(a.cost_sek),notes:a.notes});setEditingId(a.id);setError("");setOpen(true);};
  const change=<K extends keyof Draft>(key:K,value:Draft[K])=>setDraft(p=>({...p,[key]:value}));

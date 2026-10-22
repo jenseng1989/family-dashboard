@@ -1,4 +1,7 @@
 "use client";
+import { useStoredState } from "@/lib/hooks/use-stored-state";
+
+const decodeCollapsed = (raw: string) => raw === "true";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -150,50 +153,52 @@ function formatDate(dateKey: string | null) {
 }
 
 export default function SchoolLunchWidget() {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [hasLoadedPreference, setHasLoadedPreference] = useState(false);
+  const [isCollapsed, setIsCollapsed, hasLoadedPreference] =
+    useStoredState(STORAGE_KEY, true, decodeCollapsed);
   const [data, setData] = useState<SchoolLunchResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    try {
-      const savedCollapsed = window.localStorage.getItem(STORAGE_KEY);
-      setIsCollapsed(savedCollapsed === null ? true : savedCollapsed === "true");
-    } catch {
-      // Privat läge eller blockerad lagring: använd standardläget.
-    }
-    setHasLoadedPreference(true);
-  }, []);
-
-  const loadLunch = useCallback(async (manual = false) => {
-    manual ? setIsRefreshing(true) : setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/school-lunch", { cache: "no-store" });
-      const payload = (await response.json()) as SchoolLunchResponse;
-      setData(payload);
-    } catch {
-      setData({
-        connected: false,
-        days: [],
-        error: "Kunde inte kontakta skolmatsedeln.",
+  const fetchLunch = useCallback(() => {
+    return fetch("/api/school-lunch", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = (await response.json()) as SchoolLunchResponse;
+        setData(payload);
+      })
+      .catch(() => {
+        setData({
+          connected: false,
+          days: [],
+          error: "Kunde inte kontakta skolmatsedeln.",
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
+        setIsRefreshing(false);
       });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
   }, []);
 
+  const loadLunch = useCallback(
+    (manual = false) => {
+      if (manual) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      return fetchLunch();
+    },
+    [fetchLunch],
+  );
+
   useEffect(() => {
-    void loadLunch();
+    void fetchLunch();
 
     const interval = window.setInterval(() => {
       void loadLunch();
     }, 60 * 60 * 1000);
 
     return () => window.clearInterval(interval);
-  }, [loadLunch]);
+  }, [fetchLunch, loadLunch]);
 
   const toggleCollapsed = () => {
     const next = !isCollapsed;

@@ -21,7 +21,6 @@ import VacationFeaturedDay from "@/components/dashboard/vacation/VacationFeature
 import VacationTable from "@/components/dashboard/vacation/VacationTable";
 import {
   EMPTY_VACATION_ADD_FORM,
-  EMPTY_VACATION_FIELDS_FORM,
   VacationAddFormData,
   VacationDay,
   VacationField,
@@ -63,43 +62,39 @@ export default function VacationPlan() {
   const [isSaving, setIsSaving] =
     useState(false);
 
-  const loadPlan = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchPlan = useCallback(() => {
+    return supabase
       .from("vacation_plan")
       .select(
-        "id, plan_date, day_name, location, travel, accommodation, activity, information"
+        "id, plan_date, day_name, location, travel, accommodation, activity, information",
       )
       .order("plan_date", {
         ascending: true,
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta dagsplaneringen:", error);
+
+          setErrorMessage("Kunde inte hämta dagsplaneringen.");
+          setIsLoading(false);
+          return;
+        }
+        setDays(
+          ((data ?? []) as VacationDay[]).filter(hasVisibleVacationInformation),
+        );
+        setIsLoading(false);
       });
-
-    if (error) {
-      console.error(
-        "Kunde inte hämta dagsplaneringen:",
-        error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta dagsplaneringen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    setDays(
-      ((data ?? []) as VacationDay[]).filter(
-        hasVisibleVacationInformation
-      )
-    );
-    setIsLoading(false);
   }, []);
 
+  const loadPlan = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchPlan();
+  }, [fetchPlan]);
+
   useEffect(() => {
-    void loadPlan();
-  }, [loadPlan]);
+    void fetchPlan();
+  }, [fetchPlan]);
 
   const today = getTodayString();
 

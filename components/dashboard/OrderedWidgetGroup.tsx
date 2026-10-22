@@ -108,119 +108,43 @@ export default function OrderedWidgetGroup({
       >
     >({});
 
-  const loadSettings =
-    useCallback(async () => {
-      const widgetIds =
-        widgetIdsKey.split("|");
+  const loadSettings = useCallback(() => {
+    const widgetIds = widgetIdsKey.split("|");
+    return getWidgetSettings()
+      .then((settings) => {
+        const orderMap = new Map(
+          settings.map((setting) => [setting.widgetId, setting.sortOrder]),
+        );
+        const sizeMap = new Map(
+          settings.map((setting) => [setting.widgetId, setting.size]),
+        );
+        const sortedIds = [...widgetIds].sort(
+          (firstId, secondId) =>
+            (orderMap.get(firstId) ?? Number.MAX_SAFE_INTEGER) -
+            (orderMap.get(secondId) ?? Number.MAX_SAFE_INTEGER),
+        );
+        const nextSizes: Record<string, WidgetSize> = {};
+        for (const widget of widgets) {
+          nextSizes[widget.id] =
+            sizeMap.get(widget.id) ?? getDefaultSize(widget.className);
+        }
+        setOrderedIds(sortedIds);
+        setSizes(nextSizes);
+      })
+      .catch((error) => {
+        console.error("Kunde inte läsa widgetinställningarna:", error);
 
-      try {
-        const settings =
-          await getWidgetSettings();
+        setOrderedIds(widgetIds);
 
-        const orderMap =
-          new Map(
-            settings.map(
-              (setting) => [
-                setting.widgetId,
-                setting.sortOrder,
-              ]
-            )
-          );
+        const fallbackSizes: Record<string, WidgetSize> = {};
 
-        const sizeMap =
-          new Map(
-            settings.map(
-              (setting) => [
-                setting.widgetId,
-                setting.size,
-              ]
-            )
-          );
-
-        const sortedIds =
-          [...widgetIds].sort(
-            (
-              firstId,
-              secondId
-            ) =>
-              (
-                orderMap.get(
-                  firstId
-                ) ??
-                Number.MAX_SAFE_INTEGER
-              ) -
-              (
-                orderMap.get(
-                  secondId
-                ) ??
-                Number.MAX_SAFE_INTEGER
-              )
-          );
-
-        const nextSizes:
-          Record<
-            string,
-            WidgetSize
-          > = {};
-
-        for (
-          const widget
-          of widgets
-        ) {
-          nextSizes[
-            widget.id
-          ] =
-            sizeMap.get(
-              widget.id
-            ) ??
-            getDefaultSize(
-              widget.className
-            );
+        for (const widget of widgets) {
+          fallbackSizes[widget.id] = getDefaultSize(widget.className);
         }
 
-        setOrderedIds(
-          sortedIds
-        );
-
-        setSizes(
-          nextSizes
-        );
-      } catch (error) {
-        console.error(
-          "Kunde inte läsa widgetinställningarna:",
-          error
-        );
-
-        setOrderedIds(
-          widgetIds
-        );
-
-        const fallbackSizes:
-          Record<
-            string,
-            WidgetSize
-          > = {};
-
-        for (
-          const widget
-          of widgets
-        ) {
-          fallbackSizes[
-            widget.id
-          ] =
-            getDefaultSize(
-              widget.className
-            );
-        }
-
-        setSizes(
-          fallbackSizes
-        );
-      }
-    }, [
-      widgetIdsKey,
-      widgets,
-    ]);
+        setSizes(fallbackSizes);
+      });
+  }, [widgetIdsKey, widgets]);
 
   useEffect(() => {
     void loadSettings();

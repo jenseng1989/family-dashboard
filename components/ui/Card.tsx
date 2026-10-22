@@ -1,11 +1,12 @@
 "use client";
+import { useStoredState, decodeBoolean } from "@/lib/hooks/use-stored-state";
+
 
 import { ChevronDown } from "lucide-react";
 import {
   ReactNode,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import clsx from "clsx";
 
@@ -54,47 +55,8 @@ export default function Card({
     return `family-dashboard:card:${key}`;
   }, [storageKey, title]);
 
-  const [isMinimized, setIsMinimized] =
-    useState(defaultState);
-
-  const [hasLoadedPreference, setHasLoadedPreference] =
-    useState(false);
-
-  /*
-   * Läs sparat läge från den aktuella enheten.
-   *
-   * Om inget tidigare val finns används standardläget,
-   * vilket normalt är minimerat.
-   */
-  useEffect(() => {
-    try {
-      const savedValue =
-        window.localStorage.getItem(
-          localStorageKey
-        );
-
-      if (savedValue === "true") {
-        setIsMinimized(true);
-      } else if (savedValue === "false") {
-        setIsMinimized(false);
-      } else {
-        setIsMinimized(defaultState);
-      }
-    } catch (error) {
-      console.warn(
-        `Kunde inte läsa widgetläget för "${title}":`,
-        error
-      );
-
-      setIsMinimized(defaultState);
-    } finally {
-      setHasLoadedPreference(true);
-    }
-  }, [
-    defaultState,
-    localStorageKey,
-    title,
-  ]);
+  const [isMinimized, setIsMinimized, hasLoadedPreference] =
+    useStoredState(localStorageKey, defaultState, decodeBoolean);
 
   /*
    * Spara användarens val när widgeten

@@ -146,45 +146,40 @@ export default function SigneGrowth({
   );
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const loadMeasurements = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    const { data, error } = await supabase
+  const fetchMeasurements = useCallback(() => {
+    return supabase
       .from("signe_growth")
-      .select(
-        "id, measurement_date, weight_kg, height_cm, created_at"
-      )
-      .order("measurement_date", { ascending: true });
+      .select("id, measurement_date, weight_kg, height_cm, created_at")
+      .order("measurement_date", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Kunde inte hämta Signes tillväxtdata:", error);
 
-    if (error) {
-      console.error(
-        "Kunde inte hämta Signes tillväxtdata:",
-        error
-      );
-
-      setErrorMessage(
-        "Kunde inte hämta mätningarna från databasen."
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    const normalizedData: GrowthMeasurement[] = (data ?? []).map(
-      (measurement) => ({
-        ...measurement,
-        weight_kg: toNumber(measurement.weight_kg),
-        height_cm: toNumber(measurement.height_cm),
-      })
-    );
-
-    setMeasurements(normalizedData);
-    setIsLoading(false);
+          setErrorMessage("Kunde inte hämta mätningarna från databasen.");
+          setIsLoading(false);
+          return;
+        }
+        const normalizedData: GrowthMeasurement[] = (data ?? []).map(
+          (measurement) => ({
+            ...measurement,
+            weight_kg: toNumber(measurement.weight_kg),
+            height_cm: toNumber(measurement.height_cm),
+          }),
+        );
+        setMeasurements(normalizedData);
+        setIsLoading(false);
+      });
   }, []);
 
+  const loadMeasurements = useCallback(() => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    return fetchMeasurements();
+  }, [fetchMeasurements]);
+
   useEffect(() => {
-    void loadMeasurements();
-  }, [loadMeasurements]);
+    void fetchMeasurements();
+  }, [fetchMeasurements]);
 
   const chartData = useMemo<ChartRow[]>(() => {
     return measurements.map((measurement) => ({
