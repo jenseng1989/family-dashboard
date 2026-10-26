@@ -34,6 +34,8 @@ type StartTabId =
 
 type StartTabsProps = {
   everydayContent: ReactNode;
+  selectedTab?: StartTabId;
+  hideNavigation?: boolean;
 };
 
 type StartTab = {
@@ -150,6 +152,8 @@ const StartSmartHomeTab = dynamic(
 
 export default function StartTabs({
   everydayContent,
+  selectedTab,
+  hideNavigation = false,
 }: StartTabsProps) {
   const [
     activeTab,
@@ -158,8 +162,9 @@ export default function StartTabs({
     "everyday"
   );
 
+  const currentTab = selectedTab ?? activeTab;
   function getActiveContent(): ReactNode {
-    switch (activeTab) {
+    switch (currentTab) {
       case "everyday":
         return everydayContent;
 
@@ -184,7 +189,7 @@ export default function StartTabs({
 
   return (
     <div className="w-full min-w-0">
-      <div
+      {!hideNavigation && <div
         className="mb-5 grid w-full gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl"
         style={{
           gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
@@ -227,13 +232,13 @@ export default function StartTabs({
             </button>
           );
         })}
-      </div>
+      </div>}
 
       <div
-        key={activeTab}
-        id={`start-tabpanel-${activeTab}`}
+        key={currentTab}
+        id={`start-tabpanel-${currentTab}`}
         role="tabpanel"
-        aria-labelledby={`start-tab-${activeTab}`}
+        aria-labelledby={`start-tab-${currentTab}`}
         className="w-full min-w-0 animate-[fadeIn_250ms_ease-out]"
       >
         {getActiveContent()}

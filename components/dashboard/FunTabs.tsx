@@ -8,14 +8,19 @@ type FunTabId = "space" | "earth";
 type FunTabsProps = {
   spaceContent: ReactNode;
   otherContent: ReactNode;
+  selectedTab?: FunTabId;
+  hideNavigation?: boolean;
 };
 
 export default function FunTabs({
   spaceContent,
   otherContent,
+  selectedTab,
+  hideNavigation = false,
 }: FunTabsProps) {
   const [activeTab, setActiveTab] = useState<FunTabId>("space");
 
+  const currentTab = selectedTab ?? activeTab;
   const tabs: Array<{ id: FunTabId; label: string }> = [
     { id: "space", label: "Rymden" },
     { id: "earth", label: "Jorden" },
@@ -30,13 +35,13 @@ export default function FunTabs({
       : "bg-emerald-600 text-white shadow-lg shadow-emerald-950/20";
 
   const content =
-    activeTab === "space"
+    currentTab === "space"
       ? spaceContent
       : otherContent;
 
   return (
     <div className="w-full min-w-0">
-      <div className="mb-5 grid w-full grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
+      {!hideNavigation && <div className="mb-5 grid w-full grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.05] p-2 backdrop-blur-xl">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = getIcon(tab.id);
@@ -58,7 +63,7 @@ export default function FunTabs({
             </button>
           );
         })}
-      </div>
+      </div>}
 
       <div className="w-full min-w-0">{content}</div>
     </div>

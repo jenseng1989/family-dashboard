@@ -33,6 +33,8 @@ import type {
 
 type DynamicFamilySectionProps = {
   sharedContent: React.ReactNode;
+  selectedLabel?: string;
+  hideNavigation?: boolean;
 };
 
 function FamilyWidgetLoading({
@@ -321,6 +323,8 @@ function PersonContent({
 
 export default function DynamicFamilySection({
   sharedContent,
+  selectedLabel,
+  hideNavigation,
 }: DynamicFamilySectionProps) {
   const [
     members,
@@ -466,7 +470,7 @@ export default function DynamicFamilySection({
     );
 
   return (
-    <FamilyTabs
+    <FamilyTabs selectedLabel={selectedLabel} hideNavigation={hideNavigation}
       sharedContent={
         sharedContent
       }

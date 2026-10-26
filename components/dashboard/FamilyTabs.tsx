@@ -24,18 +24,23 @@ type PersonTab = {
 type FamilyTabsProps = {
   sharedContent: ReactNode;
   personTabs: PersonTab[];
+  selectedLabel?: string;
+  hideNavigation?: boolean;
 };
 
 export default function FamilyTabs({
   sharedContent,
   personTabs,
+  selectedLabel,
+  hideNavigation = false,
 }: FamilyTabsProps) {
   const [activeTab, setActiveTab] =
     useState<string>("shared");
 
+  const currentTab = selectedLabel === undefined ? activeTab : selectedLabel === "Gemensam" ? "shared" : (personTabs.find(tab => tab.label.toLocaleLowerCase("sv-SE").split(" ")[0] === selectedLabel.toLocaleLowerCase("sv-SE"))?.id ?? "shared");
   // Reset a removed selection before committing the next render.
   if (
-    activeTab !== "shared" &&
+    selectedLabel === undefined && activeTab !== "shared" &&
     !personTabs.some((tab) => tab.id === activeTab)
   ) {
     setActiveTab("shared");
@@ -43,11 +48,11 @@ export default function FamilyTabs({
 
   const activePersonTab =
     personTabs.find(
-      (tab) => tab.id === activeTab
+      (tab) => tab.id === currentTab
     );
 
   const activeContent =
-    activeTab === "shared"
+    currentTab === "shared"
       ? sharedContent
       : activePersonTab?.content ??
         sharedContent;
@@ -55,7 +60,7 @@ export default function FamilyTabs({
 
   return (
     <div className="w-full min-w-0">
-      <nav
+      {!hideNavigation && <nav
         aria-label="Familjeflikar"
         className="mb-4 rounded-2xl border border-white/10 bg-white/[0.06] p-1.5 shadow-xl shadow-black/10 backdrop-blur-xl sm:mb-5 sm:p-2"
       >
@@ -135,7 +140,7 @@ export default function FamilyTabs({
             );
           })}
         </div>
-      </nav>
+      </nav>}
 
       <div
         key={activeTab}

@@ -5,6 +5,7 @@ import {
   Compass,
   Home,
   HousePlus,
+  ChevronDown, ChevronRight, Menu, X, Lightbulb, Tv, Shield, Zap, Thermometer, BookOpen, ShoppingCart, GraduationCap, Sparkles, Globe2, Telescope, UserRound, Baby,
   LoaderCircle,
   MapPin,
   Plane,
@@ -38,7 +39,7 @@ function trackTabView(tabId: TabId): void {
 
 type DashboardTabsProps = {
   initialSettings: AppSettings;
-  startContent: ReactNode;
+  startContent: Record<"everyday" | "home" | "shopping" | "school", ReactNode>;
   weatherContent: ReactNode;
 };
 
@@ -120,219 +121,119 @@ const ResorDashboard = dynamic(
   { loading: () => <TabLoading label="Resor" /> }
 );
 
-const Hemmet3DDashboard = dynamic(
-  () => import("@/components/dashboard/hemmet3d/Hemmet3DDashboard"),
+const SmarthemDashboard = dynamic(
+  () => import("@/components/smarthem-preview/SmarthemPreview"),
   { loading: () => <TabLoading label="Smarthem" /> }
 );
 
-const tabs: TabButton[] = [
-  {
-    id: "home",
-    label: "Start",
-    shortLabel: "Start",
-    icon: <Home size={20} />,
-  },
-  {
-    id: "weather",
-    label: "Väder",
-    shortLabel: "Väder",
-    icon: <CloudSun size={20} />,
-  },
-  {
-    id: "family",
-    label: "Familjen",
-    shortLabel: "Familj",
-    icon: <Users size={20} />,
-  },
-  {
-    id: "gothenburg",
-    label: "Göteborg",
-    shortLabel: "GBG",
-    icon: <MapPin size={20} />,
-  },
-  {
-    id: "resor",
-    label: "Resor",
-    shortLabel: "Resor",
-    icon: <Plane size={20} />,
-  },
-  {
-    id: "hemmet3d",
-    label: "Smarthem",
-    shortLabel: "Smarthem",
-    icon: <HousePlus size={20} />,
-  },
-  {
-    id: "fun",
-    label: "Utforska",
-    shortLabel: "Utforska",
-    icon: <Compass size={20} />,
-  },
+
+type Group = "home" | "family" | "fun" | "hemmet3d";
+type ChildId = string;
+const childMenus: Record<Group, {id: string; label: string; icon: ReactNode}[]> = {
+  home: [
+    {id:"everyday",label:"Idag",icon:<Sparkles size={16}/>},
+    {id:"home",label:"Hemmet",icon:<Home size={16}/>},
+    {id:"shopping",label:"Inköp",icon:<ShoppingCart size={16}/>},
+    {id:"school",label:"Skola",icon:<GraduationCap size={16}/>},
+  ],
+  family: [
+    {id:"Gemensam",label:"Gemensam",icon:<Users size={16}/>},
+    {id:"Jens",label:"Jens",icon:<UserRound size={16}/>},
+    {id:"Lenita",label:"Lenita",icon:<UserRound size={16}/>},
+    {id:"Signe",label:"Signe",icon:<Baby size={16}/>},
+  ],
+  fun: [
+    {id:"space",label:"Rymden",icon:<Telescope size={16}/>},
+    {id:"earth",label:"Jorden",icon:<Globe2 size={16}/>},
+  ],
+  hemmet3d: [
+    {id:"Belysning",label:"Belysning",icon:<Lightbulb size={16}/>},
+    {id:"Media",label:"Media",icon:<Tv size={16}/>},
+    {id:"Övervakning",label:"Övervakning",icon:<Shield size={16}/>},
+    {id:"El",label:"El",icon:<Zap size={16}/>},
+    {id:"Klimat",label:"Klimat",icon:<Thermometer size={16}/>},
+    {id:"Administration",label:"Administration",icon:<Settings size={16}/>},
+  ],
+};
+const topMenus: {id:TabId; label:string; icon:ReactNode}[] = [
+  {id:"home",label:"Start",icon:<Home size={19}/>},
+  {id:"weather",label:"Väder",icon:<CloudSun size={19}/>},
+  {id:"family",label:"Familjen",icon:<Users size={19}/>},
+  {id:"gothenburg",label:"Göteborg",icon:<MapPin size={19}/>},
+  {id:"fun",label:"Utforska",icon:<Compass size={19}/>},
+  {id:"hemmet3d",label:"Smarthem",icon:<HousePlus size={19}/>},
+  {id:"resor",label:"Resor",icon:<Plane size={19}/>},
 ];
+const isGroup = (id:TabId): id is Group => id === "home" || id === "family" || id === "fun" || id === "hemmet3d";
 
-export default function DashboardTabs({
-  initialSettings,
-  startContent,
-  weatherContent,
-}: DashboardTabsProps) {
-  const visibleTabs = tabs.filter((tab) =>
-    (tab.id !== "resor" || initialSettings.showResorTab) &&
-    (tab.id !== "hemmet3d" || initialSettings.showHemmet3DTab)
-  );
-
-  const initialTab: TabId =
-    (initialSettings.defaultTab === "resor" && !initialSettings.showResorTab) ||
-    (initialSettings.defaultTab === "hemmet3d" && !initialSettings.showHemmet3DTab)
-      ? "home"
-      : initialSettings.defaultTab;
-
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
-
+export default function DashboardTabs({initialSettings,startContent,weatherContent}:DashboardTabsProps) {
+  const initialTab:TabId = (initialSettings.defaultTab === "resor" && !initialSettings.showResorTab) ||
+    (initialSettings.defaultTab === "hemmet3d" && !initialSettings.showHemmet3DTab) ? "home" : initialSettings.defaultTab;
+  const [activeTab,setActiveTab] = useState<TabId>(initialTab);
+  const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"everyday",family:"Gemensam",fun:"space",hemmet3d:"Belysning"});
+  const [expanded,setExpanded] = useState<Record<Group,boolean>>({home:initialTab === "home",family:initialTab === "family",fun:initialTab === "fun",hemmet3d:initialTab === "hemmet3d"});
+  const [mobileOpen,setMobileOpen] = useState(false);
   useEffect(() => {
-    document.title =
-      initialSettings.dashboardName;
-
-    void trackDashboardEvent(
-      "dashboard_view"
-    );
-
+    document.title = initialSettings.dashboardName;
+    void trackDashboardEvent("dashboard_view");
     trackTabView(initialTab);
-  }, [
-    initialSettings.dashboardName,
-    initialSettings.defaultTab,
-    initialSettings.showResorTab,
-    initialSettings.showHemmet3DTab,
-    initialTab,
-  ]);
-
-  function changeTab(
-    tabId: TabId
-  ) {
-    if (tabId === "resor" && !initialSettings.showResorTab) return;
-    if (tabId === "hemmet3d" && !initialSettings.showHemmet3DTab) return;
-    if (tabId === activeTab) {
-      return;
+  },[initialSettings.dashboardName,initialTab]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onEscape = (event:KeyboardEvent) => { if(event.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown",onEscape);
+    return () => window.removeEventListener("keydown",onEscape);
+  },[mobileOpen]);
+  const navigate = (tab:TabId,child?:string) => {
+    if(tab !== activeTab) trackTabView(tab);
+    setActiveTab(tab);
+    if(child) {setChildByGroup(prev=>({...prev,[tab]:child}));}
+    setMobileOpen(false);
+  };
+  const content = ():ReactNode => {
+    switch(activeTab) {
+      case "home": return startContent[childByGroup.home as "everyday" | "home" | "shopping" | "school"];
+      case "weather": return weatherContent;
+      case "family": return <FamilyDashboardTab selectedLabel={childByGroup.family}/>;
+      case "gothenburg": return <GothenburgDashboardTab/>;
+      case "fun": return <ExploreDashboardTab selectedTab={childByGroup.fun as "space"|"earth"}/>;
+      case "resor": return initialSettings.showResorTab ? <ResorDashboard/> : startContent.everyday;
+      case "hemmet3d": return initialSettings.showHemmet3DTab ? <SmarthemDashboard embedded selectedCategory={childByGroup.hemmet3d as "Belysning"|"Media"|"Övervakning"|"El"|"Klimat"|"Administration"}/> : startContent.everyday;
+      default: return startContent.everyday;
     }
-
-    setActiveTab(tabId);
-
-    trackTabView(tabId);
-  }
-
-  function getActiveContent(): ReactNode {
-    switch (activeTab) {
-      case "home":
-        return startContent;
-
-      case "weather":
-        return weatherContent;
-
-      case "family":
-        return (
-          <FamilyDashboardTab />
-        );
-
-      case "gothenburg":
-        return (
-          <GothenburgDashboardTab />
-        );
-
-      case "resor":
-        return initialSettings.showResorTab ? <ResorDashboard /> : startContent;
-
-      case "hemmet3d":
-        return initialSettings.showHemmet3DTab ? <Hemmet3DDashboard /> : startContent;
-
-      case "fun":
-        return (
-          <ExploreDashboardTab />
-        );
-
-      default:
-        return startContent;
-    }
-  }
-
-  return (
-    <div className="w-full min-w-0">
-      <div className="mb-6 flex items-stretch gap-2">
-        <nav
-          aria-label="Dashboardflikar"
-          className="min-w-0 flex-1 rounded-3xl border border-white/10 bg-white/[0.08] p-2 shadow-2xl shadow-black/10 backdrop-blur-xl"
-        >
-          <div
-            className={`grid w-full gap-2 ${visibleTabs.length === 7 ? "grid-cols-7" : visibleTabs.length === 6 ? "grid-cols-6" : "grid-cols-5"}`}
-            role="tablist"
-          >
-            {visibleTabs.map((tab) => {
-              const isActive =
-                activeTab === tab.id;
-
-              const isExploreTab =
-                tab.id === "fun";
-
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() =>
-                    changeTab(tab.id)
-                  }
-                  className={[
-                    "flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-3",
-                    "text-xs font-semibold transition duration-300 sm:text-sm",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
-                    isActive && isExploreTab
-                      ? "bg-violet-500 text-white shadow-lg shadow-violet-950/40"
-                      : isActive
-                        ? "bg-blue-500 text-white shadow-lg shadow-blue-950/30"
-                        : "text-slate-300 hover:bg-white/10 hover:text-white",
-                  ].join(" ")}
-                >
-                  <span
-                    className={
-                      isActive
-                        ? "shrink-0 text-white"
-                        : "shrink-0 text-slate-400"
-                    }
-                  >
-                    {tab.icon}
-                  </span>
-
-                  <span className="hidden min-w-0 truncate md:inline">
-                    {tab.label}
-                  </span>
-
-                  <span className="min-w-0 truncate md:hidden">
-                    {tab.shortLabel}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {initialSettings.showAdminButton && (
-          <Link
-            href="/admin"
-            aria-label="Öppna admin"
-            title="Admin"
-            className="flex w-[72px] shrink-0 items-center justify-center rounded-3xl border border-white/10 bg-white/[0.08] text-slate-300 shadow-2xl shadow-black/10 backdrop-blur-xl transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:w-20"
-          >
-            <Settings size={22} />
-          </Link>
-        )}
-      </div>
-
-      <div
-        key={activeTab}
-        role="tabpanel"
-        className="w-full min-w-0 animate-[fadeIn_300ms_ease-out]"
-      >
-        {getActiveContent()}
-      </div>
+  };
+  const sidebar = <nav aria-label="Huvudnavigering" className="space-y-1">
+    {topMenus.filter(item=>(item.id!=="resor"||initialSettings.showResorTab)&&(item.id!=="hemmet3d"||initialSettings.showHemmet3DTab)).map(item=>{
+      const group=isGroup(item.id);
+      const isActive=activeTab===item.id;
+      return <div key={item.id}>
+        <button type="button" aria-expanded={group?expanded[item.id as Group]:undefined}
+          aria-current={!group&&isActive?"page":undefined}
+          onClick={()=>group ? setExpanded(prev=>({...prev,[item.id]:!prev[item.id as Group]})) : navigate(item.id)}
+          className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition ${isActive?"bg-cyan-500/15 text-cyan-200":"text-slate-300 hover:bg-white/10 hover:text-white"}`}>
+          {item.icon}<span className="flex-1">{item.label}</span>{group&&(expanded[item.id as Group]?<ChevronDown size={16}/>:<ChevronRight size={16}/>)}
+        </button>
+        {group&&expanded[item.id as Group]&&<div className="ml-5 border-l border-cyan-300/20 py-1 pl-3 space-y-0.5">
+          {childMenus[item.id as Group].map(child=><button type="button" key={child.id}
+            aria-current={isActive&&childByGroup[item.id as Group]===child.id?"page":undefined}
+            onClick={()=>navigate(item.id,child.id)}
+            className={`flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm transition ${isActive&&childByGroup[item.id as Group]===child.id?"bg-cyan-600/25 text-cyan-100":"text-slate-400 hover:bg-white/10 hover:text-white"}`}>
+            {child.icon}<span>{child.label}</span>
+          </button>)}
+        </div>}
+      </div>;
+    })}
+    {initialSettings.showAdminButton&&<Link href="/admin" onClick={()=>setMobileOpen(false)} className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 hover:bg-white/10"><Settings size={19}/> Admin</Link>}
+  </nav>;
+  return <div className="flex w-full min-w-0 gap-5 lg:gap-7">
+    {mobileOpen&&<button type="button" className="fixed inset-0 z-40 bg-black/70 lg:hidden" aria-label="Stäng sidomenyn" onClick={()=>setMobileOpen(false)}/>}
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto border-r border-white/10 bg-[#111d30] p-4 shadow-2xl transition-transform lg:sticky lg:top-4 lg:z-auto lg:h-[calc(100vh-2rem)] lg:shrink-0 lg:translate-x-0 lg:rounded-2xl lg:border ${mobileOpen?"translate-x-0":"-translate-x-full"}`}>
+      <div className="mb-5 flex items-center justify-between px-2 pt-2"><div><div className="text-lg font-bold text-white">{initialSettings.dashboardName}</div><p className="text-[10px] tracking-[.2em] text-cyan-300">NAVIGERING</p></div><button type="button" className="rounded-lg p-2 text-white lg:hidden" onClick={()=>setMobileOpen(false)} aria-label="Stäng meny"><X size={20}/></button></div>
+      {sidebar}
+    </aside>
+    <div className="min-w-0 flex-1">
+      <div className="mb-4 flex items-center gap-3 lg:hidden"><button type="button" aria-label="Öppna meny" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(true)} className="rounded-xl border border-white/15 bg-slate-800 p-3"><Menu size={22}/></button><span className="text-sm font-semibold text-slate-200">{topMenus.find(item=>item.id===activeTab)?.label}{isGroup(activeTab)?` / ${childMenus[activeTab].find(c=>c.id===childByGroup[activeTab])?.label??""}`:""}</span></div>
+      <div key={`${activeTab}-${isGroup(activeTab)?childByGroup[activeTab]:""}`} className="min-w-0 w-full animate-[fadeIn_250ms_ease-out]">{content()}</div>
     </div>
-  );
+  </div>;
 }

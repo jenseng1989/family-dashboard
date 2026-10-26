@@ -22,7 +22,7 @@ export default async function Home() {
 
       <div className="pointer-events-none fixed inset-0 bg-slate-950/15" />
 
-      <div className="relative z-10 mx-auto max-w-7xl p-4 sm:p-6 lg:p-10">
+      <div className="relative z-10 mx-auto w-full max-w-[1800px] p-3 sm:p-5 lg:p-6">
         <Header
           dashboardName={
             initialSettings.dashboardName

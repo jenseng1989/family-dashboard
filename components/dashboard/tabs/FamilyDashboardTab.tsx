@@ -5,7 +5,7 @@ import { getWidgetGroup } from "@/config/widgets";
 
 const sharedFamilyConfig = getWidgetGroup("family-shared");
 
-export default function FamilyDashboardTab() {
+export default function FamilyDashboardTab({ selectedLabel = "Gemensam" }: { selectedLabel?: string }) {
   const familyTimelineWidget = sharedFamilyConfig.widgets[0];
 
   const sharedFamilyContent = (
@@ -23,7 +23,7 @@ export default function FamilyDashboardTab() {
 
   return (
     <div className="w-full min-w-0">
-      <DynamicFamilySection sharedContent={sharedFamilyContent} />
+      <DynamicFamilySection sharedContent={sharedFamilyContent} selectedLabel={selectedLabel} hideNavigation />
     </div>
   );
 }

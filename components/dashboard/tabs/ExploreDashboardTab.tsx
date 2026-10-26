@@ -53,11 +53,11 @@ const EarthDashboard = dynamic(
   }
 );
 
-export default function ExploreDashboardTab() {
+export default function ExploreDashboardTab({ selectedTab = "space" }: { selectedTab?: "space" | "earth" }) {
   return (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0">
-        <FunTabs
+        <FunTabs selectedTab={selectedTab} hideNavigation
           spaceContent={
             <WidgetGate widgetId={exploreTabWidgetIds.space}>
               <SpaceDashboard />

@@ -52,9 +52,9 @@ export default function Dashboard({
     />
   );
 
-  const startContent = (
+  const renderStartContent = (startTab: "everyday" | "home" | "shopping" | "school") => (
     <div className="w-full min-w-0">
-      <StartTabs
+      <StartTabs selectedTab={startTab} hideNavigation
         everydayContent={
           everydayWidget ? (
             <WidgetGate
@@ -70,6 +70,13 @@ export default function Dashboard({
       />
     </div>
   );
+
+  const startContent = {
+    everyday: renderStartContent("everyday"),
+    home: renderStartContent("home"),
+    shopping: renderStartContent("shopping"),
+    school: renderStartContent("school"),
+  };
 
   return (
     <div className="w-full min-w-0">
