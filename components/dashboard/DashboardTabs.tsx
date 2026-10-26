@@ -147,6 +147,7 @@ const childMenus: Record<Group, {id: string; label: string; icon: ReactNode}[]> 
     {id:"earth",label:"Jorden",icon:<Globe2 size={16}/>},
   ],
   hemmet3d: [
+    {id:"Översikt",label:"Översikt",icon:<Home size={16}/>},
     {id:"Belysning",label:"Belysning",icon:<Lightbulb size={16}/>},
     {id:"Media",label:"Media",icon:<Tv size={16}/>},
     {id:"Övervakning",label:"Övervakning",icon:<Shield size={16}/>},
@@ -170,7 +171,7 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
   const initialTab:TabId = (initialSettings.defaultTab === "resor" && !initialSettings.showResorTab) ||
     (initialSettings.defaultTab === "hemmet3d" && !initialSettings.showHemmet3DTab) ? "home" : initialSettings.defaultTab;
   const [activeTab,setActiveTab] = useState<TabId>(initialTab);
-  const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"everyday",family:"Gemensam",fun:"space",hemmet3d:"Belysning"});
+  const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"everyday",family:"Gemensam",fun:"space",hemmet3d:"Översikt"});
   const [expanded,setExpanded] = useState<Record<Group,boolean>>({home:initialTab === "home",family:initialTab === "family",fun:initialTab === "fun",hemmet3d:initialTab === "hemmet3d"});
   const [mobileOpen,setMobileOpen] = useState(false);
   useEffect(() => {
@@ -192,13 +193,13 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
   };
   const content = ():ReactNode => {
     switch(activeTab) {
-      case "home": return startContent[childByGroup.home as "everyday" | "home" | "shopping" | "school"];
+      case "home": return startContent[childByGroup.home as "everyday" | "home" | "shopping" | "school"] ?? startContent.everyday;
       case "weather": return weatherContent;
       case "family": return <FamilyDashboardTab selectedLabel={childByGroup.family}/>;
       case "gothenburg": return <GothenburgDashboardTab/>;
       case "fun": return <ExploreDashboardTab selectedTab={childByGroup.fun as "space"|"earth"}/>;
       case "resor": return initialSettings.showResorTab ? <ResorDashboard/> : startContent.everyday;
-      case "hemmet3d": return initialSettings.showHemmet3DTab ? <SmarthemDashboard embedded selectedCategory={childByGroup.hemmet3d as "Belysning"|"Media"|"Övervakning"|"El"|"Klimat"|"Administration"}/> : startContent.everyday;
+      case "hemmet3d": return initialSettings.showHemmet3DTab ? <SmarthemDashboard embedded selectedCategory={childByGroup.hemmet3d as "Översikt"|"Belysning"|"Media"|"Övervakning"|"El"|"Klimat"|"Administration"}/> : startContent.everyday;
       default: return startContent.everyday;
     }
   };
