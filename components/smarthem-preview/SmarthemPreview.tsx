@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Home, Lightbulb, Tv, Shield, Zap, Thermometer, Menu, RotateCcw, Box, Map, X, CloudSun, Activity, Settings, Plus, Pencil, Trash2, MapPin, Save, Speaker, Play, Pause, Square, Volume2, VolumeX, LockKeyhole, UnlockKeyhole, Search, WandSparkles, Bell, BellOff, AlertTriangle, Star, FolderPlus } from "lucide-react";
 import type { Device, LightState, Room } from "@/components/smarthem-preview/ApartmentModel";
 
@@ -47,6 +47,81 @@ function exportHaMapping(devices: Device[], rooms: Room[]) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+// Fullständig lokal säkerhetskopia – separat från Home Assistant-mappningen.
+const BACKUP_KEYS = [
+  "family-dashboard:hemmet3d:rooms:v1",
+  "family-dashboard:hemmet3d:devices:v1",
+  "family-dashboard:hemmet3d:demo-lights:v1",
+  "family-dashboard:hemmet3d:light-scenes:v1",
+  "family-dashboard:smarthem-preview:device-prefs:v1",
+  "family-dashboard:smarthem-preview:routines:v1",
+  "family-dashboard:smarthem-preview:security-states:v1",
+  "family-dashboard:smarthem-preview:security-events:v1",
+  "family-dashboard:smarthem-preview:climate-states:v1",
+  "family-dashboard:smarthem-preview:climate-history:v1",
+  "family-dashboard:smarthem-preview:electric-states:v1",
+  "family-dashboard:smarthem-preview:electric-history:v1",
+  "family-dashboard:smarthem-preview:media-states:v1",
+  "family-dashboard:smarthem-preview:alert-settings:v1",
+  "family-dashboard:smarthem-preview:alert-dismissed:v1",
+] as const;
+type BackupPayload = {
+  format: "family-dashboard-smarthem-backup";
+  schemaVersion: 1;
+  exportedAt: string;
+  data: Record<string, unknown>;
+};
+function downloadJson(data: unknown, filename: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}));
+  const link = document.createElement("a");
+  link.href = url; link.download = filename;
+  document.body.appendChild(link); link.click(); link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportSmarthemBackup() {
+  const data: Record<string, unknown> = {};
+  for (const key of BACKUP_KEYS) {
+    const raw = localStorage.getItem(key);
+    if (raw !== null) data[key] = JSON.parse(raw) as unknown;
+  }
+  downloadJson({format: "family-dashboard-smarthem-backup", schemaVersion: 1,
+    exportedAt: new Date().toISOString(), data} satisfies BackupPayload,
+    `smarthem-sakerhetskopia-${new Date().toISOString().slice(0,10)}.json`);
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function parseSmarthemBackup(value: unknown): { data: Record<string, unknown>; rooms: number; devices: number; hasPositions: boolean; legacy: boolean } {
+  if (!isRecord(value)) throw new Error("Filen innehåller inte ett giltigt JSON-objekt.");
+  if (value.format === "family-dashboard-smarthem-backup" && value.schemaVersion === 1 && isRecord(value.data)) {
+    const data = value.data;
+    if (Object.keys(data).some(key => !BACKUP_KEYS.includes(key as typeof BACKUP_KEYS[number]))) throw new Error("Filen innehåller okända lagringsnycklar.");
+    const rooms = data[ROOMS], devices = data[DEVICES];
+    if (!Array.isArray(rooms) || !rooms.every(isRoom) || !Array.isArray(devices) || !devices.every(isDevice)) throw new Error("Säkerhetskopian saknar giltiga rum eller enheter med positioner.");
+    for (const [key, entry] of Object.entries(data)) {
+      if (key === ROOMS || key === DEVICES || key === SCENES || key === ROUTINES_KEY || key === SECURITY_EVENTS || key === ALERT_DISMISSED_KEY) {
+        if (!Array.isArray(entry)) throw new Error(`Felaktigt innehåll för ${key}.`);
+      } else if (!isRecord(entry)) throw new Error(`Felaktigt innehåll för ${key}.`);
+    }
+    return {data, rooms: rooms.length, devices: devices.length, hasPositions: true, legacy: false};
+  }
+  // Äldre Home Assistant-export: behåll redan existerande positioner för matchande ID.
+  if (value.schemaVersion === 1 && typeof value.purpose === "string" && value.purpose.startsWith("Home Assistant entity mapping") && Array.isArray(value.rooms) && Array.isArray(value.devices)) {
+    const rooms = value.rooms, devices = value.devices;
+    if (!rooms.every(room => isRecord(room) && typeof room.id === "string" && typeof room.name === "string") ||
+        !devices.every(device => isRecord(device) && typeof device.id === "string" && typeof device.name === "string" && typeof device.type === "string" && typeof device.roomId === "string")) {
+      throw new Error("Home Assistant-exporten innehåller ogiltiga rum eller enheter.");
+    }
+    const existingRooms = JSON.parse(localStorage.getItem(ROOMS) ?? "[]") as unknown;
+    const existingDevices = JSON.parse(localStorage.getItem(DEVICES) ?? "[]") as unknown;
+    const roomById = new Map((Array.isArray(existingRooms) ? existingRooms.filter(isRoom) : []).map(r => [r.id, r]));
+    const deviceById = new Map((Array.isArray(existingDevices) ? existingDevices.filter(isDevice) : []).map(d => [d.id, d]));
+    const restoredRooms = rooms.map((r: Record<string, unknown>) => ({...(roomById.get(r.id as string) ?? {x:0,z:0}), id:r.id, name:r.name}));
+    const restoredDevices = devices.map((d: Record<string, unknown>) => ({...(deviceById.get(d.id as string) ?? {x:0,z:0}), id:d.id, name:d.name, type:d.type, roomId:d.roomId, manufacturer: typeof d.manufacturer === "string" ? d.manufacturer : "", entityId: typeof d.entityId === "string" ? d.entityId : ""}));
+    return {data:{[ROOMS]:restoredRooms,[DEVICES]:restoredDevices}, rooms:rooms.length, devices:devices.length, hasPositions:false, legacy:true};
+  }
+  throw new Error("Okänt filformat. Välj en Smarthem-säkerhetskopia eller Home Assistant-mappning.");
 }
 const DEVICE_PREFS = "family-dashboard:smarthem-preview:device-prefs:v1";
 type DevicePrefs = { favorites: string[]; groups: Record<string,string> };
@@ -214,6 +289,38 @@ export default function SmarthemPreviewPage({ embedded = false, selectedCategory
   const [placingDeviceId, setPlacingDeviceId] = useState<string | null>(null);
   const [deviceError, setDeviceError] = useState("");
   const [confirmDeviceDeleteId, setConfirmDeviceDeleteId] = useState<string | null>(null);
+  const [backupPreview, setBackupPreview] = useState<ReturnType<typeof parseSmarthemBackup> | null>(null);
+  const [backupMessage, setBackupMessage] = useState("");
+  async function selectBackupFile(event: ChangeEvent<HTMLInputElement>) {
+    setBackupPreview(null); setBackupMessage("");
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 5_000_000) { setBackupMessage("Filen är för stor (max 5 MB)."); return; }
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      setBackupPreview(parseSmarthemBackup(parsed));
+    } catch (error) { setBackupMessage(error instanceof Error ? error.message : "Kunde inte läsa JSON-filen."); }
+  }
+  function restoreBackup() {
+    if (!backupPreview) return;
+    const warning = backupPreview.legacy
+      ? "Detta är en begränsad Home Assistant-mappning. Nya enheter placeras vid koordinat 0,0. Befintliga rum och enheter ersätts. Fortsätta?"
+      : "Detta ersätter dina lokalt sparade Smarthem-uppgifter i den här webbläsaren. Fortsätta?";
+    if (!window.confirm(warning)) return;
+    const previous = new Map<string, string | null>();
+    try {
+      for (const key of Object.keys(backupPreview.data)) previous.set(key, localStorage.getItem(key));
+      for (const [key, value] of Object.entries(backupPreview.data)) localStorage.setItem(key, JSON.stringify(value));
+      window.location.reload();
+    } catch {
+      for (const [key, value] of previous) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* Kan inte återställa lagring */ }
+      }
+      setBackupMessage("Återställningen misslyckades. Tidigare uppgifter har återställts där det var möjligt.");
+    }
+  }
+
   useEffect(() => {
     try { const saved: unknown = JSON.parse(localStorage.getItem(ALERT_SETTINGS_KEY) ?? "null"); if (isAlertSettings(saved)) setAlertSettings(saved); } catch { /* Standardinställningar */ }
     try { const saved: unknown = JSON.parse(localStorage.getItem(ALERT_DISMISSED_KEY) ?? "[]"); if (Array.isArray(saved)) setDismissedAlerts(saved.filter((v): v is string => typeof v === "string").slice(-200)); } catch { /* Inga kvitterade varningar */ }
@@ -622,10 +729,11 @@ export default function SmarthemPreviewPage({ embedded = false, selectedCategory
       <section className={`${panel} mb-5`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Interaktiv planritning</h2><p className="text-xs text-slate-400">{currentCategory === "Översikt" ? "Alla registrerade enheter visas i planritningen" : currentCategory === "Administration" ? (placingRoomId || placingDeviceId ? "Klicka i 2D-planritningen för att placera markören" : "Välj ett rum eller en enhet för att markera eller flytta") : `${visible.length} enheter i kategorin ${currentCategory.toLowerCase()}`}</p></div><div className="flex w-full justify-end gap-2 sm:w-auto"><button onClick={() => setView("2d")} aria-pressed={view === "2d"} className={`flex items-center gap-1 rounded-lg px-3 py-2 text-sm ${view === "2d" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"}`}><Map size={16}/>2D</button><button onClick={() => setView("3d")} aria-pressed={view === "3d"} className={`flex items-center gap-1 rounded-lg px-3 py-2 text-sm ${view === "3d" ? "bg-cyan-700 text-white" : "bg-slate-800 text-slate-300"}`}><Box size={16}/>3D</button><button onClick={() => setReset(n => n + 1)} title="Återställ vy" aria-label="Återställ vy" className="rounded-lg bg-slate-800 px-3 py-2"><RotateCcw size={16}/></button></div></div>
         <div className="smarthem-model min-w-0 overflow-hidden rounded-xl"><ApartmentModel view={view} rooms={rooms} devices={visible} lights={lights} securityStates={securityStates} mediaStates={mediaStates} climateStates={climateStates} electricStates={electricStates} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); if (currentCategory === "Administration") { setPlacingDeviceId(null); setPlacingRoomId(null); } }} onClearSelection={() => setSelectedId(null)} reset={reset} selectedRoomId={currentCategory === "Administration" ? selectedRoomId : null} onSelectRoom={currentCategory === "Administration" ? (id) => { setSelectedRoomId(id); setPlacingRoomId(null); setPlacingDeviceId(null); } : undefined} placingRoom={currentCategory === "Administration" && !!placingRoomId && view === "2d"} onPlaceRoom={placeRoom} placingDevice={currentCategory === "Administration" && !!placingDeviceId && view === "2d"} onPlaceDevice={placeDevice}/></div>
+        <p className="mt-3 text-xs text-slate-400">Modellen läses från /public/hemmet3d/. Röd markör = rum, gul/grå = belysning, lila = media, turkos = klimat, orange = övervakning, blå = el. Lås: röd = låst, grön = olåst. Dra för att navigera och zooma med mus eller fingrar. Vid placering: klicka i 2D-vyn.</p>
       </section>
       <section className={panel} aria-live="polite"><h2 className="mb-4 text-lg font-semibold">{currentCategory === "Översikt" ? "Översikt" : currentCategory}</h2>
         {!loaded && <p className="text-sm text-slate-400">Läser sparade enheter…</p>}
-        {loaded && currentCategory === "Översikt" && <div className="space-y-4 text-sm text-slate-300"><p>{rooms.length} rum och {devices.length} registrerade enheter hittades i denna webbläsare.</p><p className="text-xs text-slate-400">Enheter och rum är lokalt sparade i webbläsaren, inte hämtade från Home Assistant.</p>
+        {loaded && currentCategory === "Översikt" && <div className="space-y-4 text-sm text-slate-300"><p>{rooms.length} rum och {devices.length} registrerade enheter hittades i denna webbläsare.</p><p>Välj en kategori i menyn för att visa dess enheter. Här på Översikt visas samtliga enheter.</p><p className="text-xs text-slate-400">Enheter och rum är lokalt sparade i webbläsaren, inte hämtade från Home Assistant.</p>
           <section className="border-t border-white/10 pt-4" aria-label="Notiser och varningar">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-2 font-semibold text-white"><Bell size={18} className="text-amber-300"/> Notiser och varningar {visibleAlerts.length > 0 && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200">{visibleAlerts.length}</span>}</h3><span className="text-xs text-slate-400">Lokala demovarningar</span></div>
             {!alertSettings.enabled ? <p className="rounded-xl bg-slate-800/40 p-3 text-xs text-slate-400">Varningar är pausade. Aktivera dem under Administration.</p> : visibleAlerts.length === 0 ? <p className="rounded-xl bg-slate-800/40 p-3 text-xs text-slate-400">Inga okvitterade varningar. Inställningar finns under Administration.</p> : <div className="space-y-2">{visibleAlerts.map(alert => <article key={alert.id} role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3"><div className="flex min-w-0 flex-1 items-start gap-2"><AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="font-semibold text-amber-100">{alert.title}</p><p className="mt-1 text-xs text-slate-300">{alert.detail}</p><p className="mt-1 text-[11px] text-slate-400">{alert.kind} · simulerat värde</p></div></div><button type="button" onClick={() => dismissAlert(alert.id)} className="rounded-lg border border-white/15 px-3 py-2 text-xs">Kvittera</button></article>)}</div>}
@@ -689,6 +797,23 @@ export default function SmarthemPreviewPage({ embedded = false, selectedCategory
               </>;
             })()}
             <p className="text-xs text-slate-400">För en framtida riktig anslutning behövs en säker serverintegration och autentisering. Spara aldrig Home Assistant-token i webbläsarens lokala lagring eller klientkod.</p>
+          </section>
+          <section className="mb-5 space-y-3 rounded-xl border border-cyan-400/20 bg-slate-900/60 p-4" aria-label="Säkerhetskopiera och återställ Smarthem">
+            <h3 className="text-base font-semibold">Säkerhetskopiera / återställ Smarthem</h3>
+            <p className="text-xs text-slate-400">Flytta rum, enheter, placeringar, favoriter, grupper, rutiner och sparade demolägen mellan localhost och Vercel. Filen sparas på din dator och skickas inte till någon server.</p>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={() => { try { exportSmarthemBackup(); setBackupMessage("Säkerhetskopian har laddats ner."); } catch { setBackupMessage("Kunde inte exportera. Kontrollera webbläsarens lagring."); } }} className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold hover:bg-cyan-600">Exportera fullständig säkerhetskopia</button>
+              <label className="cursor-pointer rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Välj JSON för import
+                <input type="file" accept=".json,application/json" onChange={selectBackupFile} className="sr-only" />
+              </label>
+            </div>
+            {backupPreview && <div className="space-y-2 rounded-lg border border-amber-300/30 bg-amber-400/5 p-3 text-sm">
+              <p><strong>Förhandsgranskning:</strong> {backupPreview.rooms} rum och {backupPreview.devices} enheter.</p>
+              <p className="text-xs text-amber-100">{backupPreview.hasPositions ? "Fullständig säkerhetskopia med enheternas positioner och övriga sparade inställningar." : "Begränsad Home Assistant-mappning: positioner saknas i filen. Befintliga positioner återanvänds där ID matchar, övriga enheter placeras vid 0,0. Andra inställningar återställs inte."}</p>
+              <button type="button" onClick={restoreBackup} className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">Bekräfta och importera</button>
+              <button type="button" onClick={() => setBackupPreview(null)} className="ml-2 rounded-lg border border-white/20 px-4 py-2 text-sm">Avbryt</button>
+            </div>}
+            {backupMessage && <p role="status" className="text-xs text-amber-200">{backupMessage}</p>}
           </section>
           <section className="mb-5 rounded-xl border border-amber-400/20 bg-slate-900/60 p-4" aria-label="Inställningar för varningar">
             <h3 className="mb-2 flex items-center gap-2 text-base font-semibold"><Bell size={18} className="text-amber-300"/> Notiser och varningar</h3>
