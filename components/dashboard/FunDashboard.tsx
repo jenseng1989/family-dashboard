@@ -25,18 +25,6 @@ function SpaceWidgetLoading({
   );
 }
 
-const TonightGothenburgWidget = dynamic(
-  () =>
-    import(
-      "@/components/dashboard/TonightGothenburgWidget"
-    ),
-  {
-    loading: () => (
-      <SpaceWidgetLoading label="Ikväll i Göteborg" />
-    ),
-  }
-);
-
 const SolarActivityWidget = dynamic(
   () =>
     import(
@@ -123,14 +111,6 @@ const SatellitesWidget = dynamic(
 
 export default function FunDashboard() {
   const spaceWidgets = [
-    {
-      id: "space-tonight",
-      className:
-        "col-span-12 min-w-0",
-      content: (
-        <TonightGothenburgWidget />
-      ),
-    },
     {
       id: "space-solar-activity",
       className:

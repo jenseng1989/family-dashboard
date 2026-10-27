@@ -50,7 +50,8 @@ const ANALYTICS_TABS: Array<{
   id: DashboardAnalyticsTabId;
   label: string;
 }> = [
-  { id: "home", label: "Start" },
+  { id: "today", label: "Hem" },
+  { id: "home", label: "Långängen 17C" },
   { id: "weather", label: "Väder" },
   { id: "family", label: "Familjen" },
   { id: "gothenburg", label: "Göteborg" },

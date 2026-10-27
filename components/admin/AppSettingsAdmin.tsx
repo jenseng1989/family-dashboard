@@ -22,6 +22,7 @@ import {
 } from "react";
 
 type TabId =
+  | "today"
   | "home"
   | "weather"
   | "family"
@@ -45,7 +46,7 @@ type ApiResponse = {
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultTab: "home",
+  defaultTab: "today",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
@@ -59,9 +60,14 @@ const tabOptions: {
   description: string;
 }[] = [
   {
+    id: "today",
+    label: "Hem",
+    description: "Dashboardens nya startsida.",
+  },
+  {
     id: "home",
-    label: "Start",
-    description: "Dashboardens startsida.",
+    label: "Långängen 17C",
+    description: "Hemmet, inköp och skola.",
   },
   {
     id: "weather",
@@ -471,7 +477,7 @@ export default function AppSettingsAdmin() {
                 setSettings((current) => ({
                   ...current,
                   showResorTab: !current.showResorTab,
-                  defaultTab: current.showResorTab && current.defaultTab === "resor" ? "home" : current.defaultTab,
+                  defaultTab: current.showResorTab && current.defaultTab === "resor" ? "today" : current.defaultTab,
                 }));
                 setSuccessMessage(null);
               }}
@@ -514,7 +520,7 @@ export default function AppSettingsAdmin() {
                 setSettings((current) => ({
                   ...current,
                   showHemmet3DTab: !current.showHemmet3DTab,
-                  defaultTab: current.showHemmet3DTab && current.defaultTab === "hemmet3d" ? "home" : current.defaultTab,
+                  defaultTab: current.showHemmet3DTab && current.defaultTab === "hemmet3d" ? "today" : current.defaultTab,
                 }));
                 setSuccessMessage(null);
               }}

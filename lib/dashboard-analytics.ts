@@ -5,6 +5,7 @@ export type DashboardAnalyticsEventType =
   | "tab_view";
 
 export type DashboardAnalyticsTabId =
+  | "today"
   | "home"
   | "weather"
   | "family"

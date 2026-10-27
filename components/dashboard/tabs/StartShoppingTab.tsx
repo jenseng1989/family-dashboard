@@ -1,6 +1,7 @@
 "use client";
 
 import ExpensesWidget from "@/components/dashboard/ExpensesWidget";
+import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import ShoppingList from "@/components/dashboard/ShoppingList";
 import WidgetGate from "@/components/dashboard/WidgetGate";
@@ -17,6 +18,7 @@ const startShoppingConfig =
 const shoppingContentMap = {
   "shopping-list": <ShoppingList />,
   expenses: <ExpensesWidget />,
+  electricity: <ElectricityWidget />,
 };
 
 export default function StartShoppingTab() {

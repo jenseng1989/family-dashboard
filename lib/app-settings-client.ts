@@ -1,6 +1,7 @@
 "use client";
 
 export type AppTabId =
+  | "today"
   | "home"
   | "weather"
   | "family"
@@ -23,7 +24,7 @@ type AppSettingsResponse = {
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  defaultTab: "home",
+  defaultTab: "today",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   showResorTab: false,
@@ -31,6 +32,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 const VALID_TABS: AppTabId[] = [
+  "today",
   "home",
   "weather",
   "family",
@@ -89,7 +91,7 @@ function normalizeSettings(
 
   return {
     defaultTab: (defaultTab === "resor" && !showResorTab) ||
-      (defaultTab === "hemmet3d" && !showHemmet3DTab) ? "home" : defaultTab,
+      (defaultTab === "hemmet3d" && !showHemmet3DTab) ? "today" : defaultTab,
     showAdminButton,
     dashboardName,
     showResorTab,

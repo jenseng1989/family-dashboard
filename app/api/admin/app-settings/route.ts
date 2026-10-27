@@ -13,7 +13,7 @@ type AppSettings = {
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultTab: "home",
+  defaultTab: "today",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   schoolLunchUrl: "",
@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const VALID_TABS = [
+  "today",
   "home",
   "weather",
   "family",
@@ -80,11 +81,11 @@ function rowsToSettings(
   }
 
   if (!settings.showResorTab && settings.defaultTab === "resor") {
-    settings.defaultTab = "home";
+    settings.defaultTab = "today";
   }
 
   if (!settings.showHemmet3DTab && settings.defaultTab === "hemmet3d") {
-    settings.defaultTab = "home";
+    settings.defaultTab = "today";
   }
 
   return settings;

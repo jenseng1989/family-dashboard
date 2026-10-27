@@ -4,10 +4,10 @@ import {
   Globe2,
   LoaderCircle,
   Telescope,
+  Compass,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-import FunTabs from "@/components/dashboard/FunTabs";
 import WidgetGate from "@/components/dashboard/WidgetGate";
 import {
   exploreTabWidgetIds,
@@ -53,22 +53,22 @@ const EarthDashboard = dynamic(
   }
 );
 
-export default function ExploreDashboardTab({ selectedTab = "space" }: { selectedTab?: "space" | "earth" }) {
+const OverviewDashboard = dynamic(
+  () => import("@/components/dashboard/ExploreOverviewDashboard"),
+  { loading: () => <ExploreLoading icon={<Compass size={23} />} label="Översikt" /> }
+);
+
+export default function ExploreDashboardTab({ selectedTab = "overview" }: { selectedTab?: "overview" | "space" | "earth" }) {
   return (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0">
-        <FunTabs selectedTab={selectedTab} hideNavigation
-          spaceContent={
-            <WidgetGate widgetId={exploreTabWidgetIds.space}>
-              <SpaceDashboard />
-            </WidgetGate>
-          }
-          otherContent={
-            <WidgetGate widgetId={exploreTabWidgetIds.earth}>
-              <EarthDashboard />
-            </WidgetGate>
-          }
-        />
+        {selectedTab === "overview" ? (
+          <OverviewDashboard />
+        ) : selectedTab === "space" ? (
+          <WidgetGate widgetId={exploreTabWidgetIds.space}><SpaceDashboard /></WidgetGate>
+        ) : (
+          <WidgetGate widgetId={exploreTabWidgetIds.earth}><EarthDashboard /></WidgetGate>
+        )}
       </div>
     </div>
   );

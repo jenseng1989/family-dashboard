@@ -47,7 +47,7 @@ type StartTab = {
 const tabs: StartTab[] = [
   {
     id: "everyday",
-    label: "Idag",
+    label: "Hem",
     icon: Sparkles,
   },
   {

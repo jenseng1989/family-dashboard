@@ -1,7 +1,6 @@
 "use client";
 
 import Countdown from "@/components/dashboard/Countdown";
-import ElectricityWidget from "@/components/dashboard/ElectricityWidget";
 import GoogleCalendarWidget from "@/components/dashboard/GoogleCalendarWidget";
 import OrderedWidgetGroup from "@/components/dashboard/OrderedWidgetGroup";
 import VacationPlan from "@/components/dashboard/VacationPlan";
@@ -12,10 +11,9 @@ import { buildDashboardWidgets } from "@/lib/dashboard-widgets";
 const startHomeConfig = getWidgetGroup("start-home");
 
 const startHomeContentMap = {
-  "google-calendar": <GoogleCalendarWidget />,
+  "google-calendar": <div id="dashboard-google-calendar" className="scroll-mt-6"><GoogleCalendarWidget /></div>,
   "vacation-plan": <VacationPlan />,
   countdown: <Countdown />,
-  electricity: <ElectricityWidget />,
 };
 
 export default function StartHomeTab() {

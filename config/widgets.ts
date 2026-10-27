@@ -73,7 +73,7 @@ export const widgetGroups: WidgetGroup[] = [
   },
   {
     key: "start-home",
-    title: "Start · Hemmet",
+    title: "Hemmet · Planering",
     icon: Home,
     widgets: [
       {
@@ -100,19 +100,11 @@ export const widgetGroups: WidgetGroup[] = [
         defaultSize: "full",
         dashboardClassName: "col-span-12 min-w-0",
       },
-      {
-        id: "electricity",
-        name: "Elpris",
-        description: "Aktuella elpriser och prisutveckling.",
-        icon: Coins,
-        defaultSize: "full",
-        dashboardClassName: "col-span-12 min-w-0",
-      },
     ],
   },
   {
     key: "start-shopping",
-    title: "Start · Inköp",
+    title: "Hemmet · Ekonomi",
     icon: ShoppingCart,
     widgets: [
       {
@@ -131,11 +123,19 @@ export const widgetGroups: WidgetGroup[] = [
         defaultSize: "half",
         dashboardClassName: "col-span-12 min-w-0 xl:col-span-6",
       },
+      {
+        id: "electricity",
+        name: "Elpris",
+        description: "Aktuella elpriser och prisutveckling.",
+        icon: Coins,
+        defaultSize: "full",
+        dashboardClassName: "col-span-12 min-w-0",
+      },
     ],
   },
   {
     key: "start-school",
-    title: "Start · Skola",
+    title: "Hemmet · Skola",
     subtitle: "Förberedda widgetar utan ansluten skoldata.",
     icon: GraduationCap,
     widgets: [
@@ -244,10 +244,10 @@ export const widgetGroups: WidgetGroup[] = [
     ],
   },
   {
-    key: "explore-space",
-    title: "Utforska · Rymden",
-    subtitle: "Widgets på underfliken Rymden.",
-    icon: Rocket,
+    key: "explore-overview",
+    title: "Utforska · Översikt",
+    subtitle: "Widgets på underfliken Översikt.",
+    icon: Globe2,
     widgets: [
       {
         id: "space-tonight",
@@ -257,6 +257,14 @@ export const widgetGroups: WidgetGroup[] = [
         defaultSize: "full",
         dashboardClassName: "col-span-12 min-w-0",
       },
+    ],
+  },
+  {
+    key: "explore-space",
+    title: "Utforska · Rymden",
+    subtitle: "Widgets på underfliken Rymden.",
+    icon: Rocket,
+    widgets: [
       {
         id: "space-solar-activity",
         name: "Solaktivitet",

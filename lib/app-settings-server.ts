@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import type { AppSettings, AppTabId } from "@/lib/app-settings-client";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultTab: "home",
+  defaultTab: "today",
   showAdminButton: true,
   dashboardName: "Family Dashboard",
   showResorTab: false,
@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const VALID_TABS: AppTabId[] = [
+  "today",
   "home",
   "weather",
   "family",
@@ -57,7 +58,7 @@ function rowsToSettings(rows: SettingsRow[] | null): AppSettings {
     (settings.defaultTab === "resor" && !settings.showResorTab) ||
     (settings.defaultTab === "hemmet3d" && !settings.showHemmet3DTab)
   ) {
-    settings.defaultTab = "home";
+    settings.defaultTab = "today";
   }
 
   return settings;
