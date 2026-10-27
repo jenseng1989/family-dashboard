@@ -885,9 +885,9 @@ export default function DailyAssistantWidget() {
         </div>
         {sourceErrors.weather && <p role="status" className="relative mt-3 rounded-xl border border-amber-300/30 bg-amber-500/15 p-3 text-xs text-amber-100">{hasPreviousData.weather ? "Vädret kunde inte uppdateras. Senast hämtad prognos visas och kan vara inaktuell." : "Vädret kunde inte hämtas. Försök uppdatera igen."}</p>}
         {weather?.hourlyForecast && weather.hourlyForecast.length > 0 && <div className="relative mt-3 border-t border-white/25 pt-3 sm:mt-6 sm:pt-4">
-          <div className="mb-2 flex items-center justify-between text-xs font-semibold text-white/80"><span>Kommande timmar</span><span>Detaljer under Väder →</span></div>
-          <div className="flex snap-x gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {weather.hourlyForecast.slice(0, 6).map(hour => <div key={hour.time} className="min-w-[65px] shrink-0 snap-start rounded-xl bg-slate-950/30 px-2 py-2 text-center">
+          <div className="mb-2 flex items-center justify-between text-xs font-semibold text-white/80"><span>Kommande 24 timmar</span><span>Svep åt sidan för fler timmar →</span></div>
+          <div className="relative z-20 flex snap-x gap-2 overflow-x-auto overscroll-x-contain pb-2 touch-pan-x [scrollbar-width:thin]">
+            {weather.hourlyForecast.slice(0, 24).map(hour => <div key={hour.time} className="min-w-[65px] shrink-0 snap-start rounded-xl bg-slate-950/30 px-2 py-2 text-center">
               <p className="text-[11px] text-white/80">{new Date(hour.time).toLocaleTimeString("sv-SE", {hour:"2-digit",minute:"2-digit",timeZone:STOCKHOLM_TIME_ZONE})}</p>
               <p className="my-1 text-xl" aria-hidden="true">{getCompactWeatherSymbol(hour.weatherCode)}</p>
               <p className="text-sm font-bold">{Math.round(hour.temperature)}°</p>
