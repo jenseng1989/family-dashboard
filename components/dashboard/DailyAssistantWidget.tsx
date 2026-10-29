@@ -3,16 +3,15 @@ import { useClientClock } from "@/lib/hooks/use-client-clock";
 
 import {
   CalendarDays,
-  CalendarCheck2,
+  GraduationCap,
   Compass,
-  CloudSun,
   Clock3,
   Gift,
   Hourglass,
   RefreshCw,
   TriangleAlert,
   Zap,
-  ArrowUpRight, ShoppingCart, Users, MapPin, Wind, Droplets, Sun,
+  ArrowUpRight, ShoppingCart, Users, MapPin, Wind, Droplets, Sun, ChevronRight,
 } from "lucide-react";
 import {
   useCallback,
@@ -392,17 +391,6 @@ function getAssistantLead(
   };
 }
 
-function getEventTime(event: GoogleCalendarEvent): string {
-  if (event.allDay) return "Hela dagen";
-  if (!event.startTime) return "";
-
-  const start = formatCalendarTime(event.startTime);
-
-  if (!event.endTime) return start;
-
-  return `${start}–${formatCalendarTime(event.endTime)}`;
-}
-
 function findCheapestPeriod(
   prices: ElectricityPrice[],
   entries: number
@@ -698,13 +686,14 @@ export default function DailyAssistantWidget() {
     };
   }, [fetchData, loadData]);
 
-  const nextFamilyEvent = useMemo(
-    () =>
-      familyEvents.find((event) => event.daysUntil >= 0) ?? null,
+  const upcomingFamilyEvents = useMemo(
+    () => familyEvents.filter(event => event.daysUntil >= 0).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 3),
     [familyEvents]
   );
-
-  const nextCountdown = countdowns.find(row => getDaysUntil(row.event_date) >= 0) ?? null;
+  const upcomingCountdowns = useMemo(
+    () => countdowns.filter(row => getDaysUntil(row.event_date) >= 0).slice(0, 4),
+    [countdowns]
+  );
 
   const todaysCalendarEvents = useMemo(() => {
     if (!now) return [];
@@ -761,15 +750,51 @@ export default function DailyAssistantWidget() {
     );
   }, [calendarEvents, now]);
 
-  const calendarHeroEvents = useMemo(() => {
-    if (activeCalendarEvents.length > 0) {
-      return activeCalendarEvents;
-    }
+  // Startsidan visar endast en kort sammanfattning av den befintliga kalendern.
+  const calendarSummary = useMemo(() => {
+    if (!now) return { active: [] as GoogleCalendarEvent[], next: null as GoogleCalendarEvent | null, tomorrowCount: 0 };
 
-    const next = nextCalendarEvent ?? nextUpcomingEvent;
-    return next ? [next] : [];
-  }, [activeCalendarEvents, nextCalendarEvent, nextUpcomingEvent]);
+    const todayKey = getStockholmDateKey(now.toISOString());
+    const tomorrowKey = addDaysToDateKey(todayKey, 1);
+    const sorted = [...calendarEvents].sort((a, b) =>
+      (a.startTime ? new Date(a.startTime).getTime() : Infinity) -
+      (b.startTime ? new Date(b.startTime).getTime() : Infinity)
+    );
 
+    const active = sorted.filter(event => isCalendarEventActiveNow(event, now));
+    const next = sorted.find(event => {
+      if (!event.startTime || event.allDay) return false;
+      return new Date(event.startTime).getTime() > now.getTime();
+    }) ?? null;
+    const tomorrowCount = sorted.filter(event => eventOccursOnDate(event, tomorrowKey)).length;
+
+    return { active, next, tomorrowCount };
+  }, [calendarEvents, now]);
+
+  const todayElectricityPrices = useMemo(() => {
+    if (!electricity?.prices?.length || !now) return [];
+    const today = getStockholmDateKey(now.toISOString());
+    return electricity.prices
+      .filter(price => getStockholmDateKey(price.time_start) === today)
+      .sort((a, b) => new Date(a.time_start).getTime() - new Date(b.time_start).getTime());
+  }, [electricity, now]);
+
+  const electricityChartValues = todayElectricityPrices.map(price => price.SEK_per_kWh);
+  const electricityChartMin = Math.min(0, ...electricityChartValues);
+  const electricityChartMax = Math.max(0, ...electricityChartValues);
+  const electricityChartRange = Math.max(0.01, electricityChartMax - electricityChartMin);
+  const electricityChartPoints = todayElectricityPrices.map((price, index) => ({
+    x: todayElectricityPrices.length > 1 ? 8 + (index / (todayElectricityPrices.length - 1)) * 304 : 160,
+    y: 100 - ((price.SEK_per_kWh - electricityChartMin) / electricityChartRange) * 88,
+    price,
+  }));
+  const electricityChartPath = electricityChartPoints.map((point, index) =>
+    `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`
+  ).join(" ");
+  const currentElectricityStart = electricity?.currentPrice?.time_start ?? null;
+  const electricityDifference = electricity?.currentPrice && electricity.averagePrice !== 0
+    ? Math.round((electricity.currentPrice.SEK_per_kWh / electricity.averagePrice - 1) * 100)
+    : null;
 
   const todaysSchoolTransfers = useMemo(() => {
     if (!now) {
@@ -835,14 +860,14 @@ export default function DailyAssistantWidget() {
   };
 
   const quickLinks = [
-    { label: "Kalender", caption: "Öppna kalenderwidgeten", icon: CalendarDays, tab: "home", child: "home", anchor: "dashboard-google-calendar", tone: "bg-blue-500/15 text-blue-300" },
     { label: "Inköp", caption: "Handlingslistan", icon: ShoppingCart, tab: "home", child: "shopping", tone: "bg-emerald-500/15 text-emerald-300" },
     { label: "Familjen", caption: "Familjeöversikt", icon: Users, tab: "family", child: "Gemensam", tone: "bg-violet-500/15 text-violet-300" },
     { label: "Utforska", caption: "Rymden och jorden", icon: Compass, tab: "fun", child: "overview", tone: "bg-amber-500/15 text-amber-300" },
+    { label: "Skola", caption: "Schema och skollunch", icon: GraduationCap, tab: "home", child: "school", tone: "bg-blue-500/15 text-blue-300" },
   ];
 
   return (
-    <div className="min-w-0 space-y-5 rounded-[22px] bg-slate-900/45 p-2.5 text-slate-100 sm:rounded-[28px] sm:p-5 lg:p-7">
+    <div className="min-w-0 space-y-4 rounded-[22px] bg-[#081324]/75 p-2.5 text-slate-100 sm:rounded-[28px] sm:p-5 lg:p-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">FAMILJENS ÖVERSIKT</p>
@@ -900,9 +925,9 @@ export default function DailyAssistantWidget() {
 
       <section aria-label="Snabbgenvägar">
         <h2 className="mb-3 text-lg font-extrabold text-white">Genvägar</h2>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          {quickLinks.map(link => <button key={link.label} type="button" onClick={() => openTab(link.tab, link.child, "anchor" in link ? link.anchor : undefined)}
-            className="group flex min-h-14 min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/80 p-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-slate-800/90 active:bg-slate-700/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:gap-3 sm:p-4 sm:transition-transform sm:hover:-translate-y-0.5 sm:hover:shadow-lg sm:hover:shadow-black/20">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+          {quickLinks.map(link => <button key={link.label} type="button" onClick={() => openTab(link.tab, link.child, "anchor" in link && typeof link.anchor === "string" ? link.anchor : undefined)}
+            className="group flex min-h-20 min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800/95 to-slate-950/90 p-3 text-left touch-manipulation shadow-sm transition hover:border-sky-400/30 hover:bg-slate-800 active:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:gap-3 sm:p-4">
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 ${link.tone}`}><link.icon size={21}/></span>
             <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-100">{link.label}</span><span className="hidden text-xs leading-snug text-slate-400 sm:block">{link.caption}</span></span>
             <ArrowUpRight size={15} className="hidden shrink-0 text-slate-400 transition group-hover:text-sky-300 sm:block"/>
@@ -910,29 +935,121 @@ export default function DailyAssistantWidget() {
         </div>
       </section>
 
-      <div className="grid gap-3 sm:gap-4 xl:grid-cols-5">
-        <section id="hem-kalender" className="relative min-w-0 rounded-[24px] border border-white/10 bg-slate-900/80 p-3.5 shadow-sm xl:col-span-3 sm:p-6">
-          <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5"><div className="min-w-0 flex items-center gap-2"><span className="rounded-xl bg-blue-500/15 p-2 text-blue-300"><CalendarCheck2 size={20}/></span><h2 className="text-base font-extrabold leading-tight text-white sm:text-lg">Kalender & dagens plan</h2></div><span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">Idag</span></div>
-          {sourceErrors.calendar && <div role="status" className="mb-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-3 text-sm text-amber-200">{hasPreviousData.calendar ? "Kalendern kunde inte uppdateras. Visar senast hämtade uppgifter, som kan vara inaktuella." : "Google Kalender kunde inte hämtas just nu. Försök uppdatera igen."}</div>}
-          {(!sourceErrors.calendar || hasPreviousData.calendar) && (calendarHeroEvents.length ? <div className="space-y-3">{calendarHeroEvents.map(event => <article key={event.id} className="rounded-2xl border border-white/10 bg-slate-800/65 p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-bold text-white">{event.title}</p><p className="mt-1 text-sm text-slate-400">{event.startTime ? `${formatCalendarDate(event.startTime)} · ${getEventTime(event)}` : getEventTime(event)}</p></div>{activeCalendarEvents.some(active => active.id === event.id) && <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-300">Pågår</span>}</div>
-          </article>)}</div> : <div className="rounded-2xl bg-slate-800/65 p-5 text-sm text-[#8292a3]">Inga kommande kalenderhändelser just nu.</div>)}
-          {(todaysSchoolTransfers.dropoffs.length > 0 || todaysSchoolTransfers.pickups.length > 0) && <div className="mt-4 rounded-2xl bg-emerald-500/10 p-4 text-sm text-emerald-200"><p className="font-bold">Förskola idag{sourceErrors.school ? " · Senast hämtat" : ""}</p>{todaysSchoolTransfers.dropoffs.map(t=><p key={t.id}>Lämning: {t.person} · {t.time}</p>)}{todaysSchoolTransfers.pickups.map(t=><p key={t.id}>Hämtning: {t.person} · {t.time}</p>)}</div>}
+             <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
+         {/* Kalender */}
+         <section className="relative min-w-0 rounded-[22px] border border-slate-700/60 bg-[#0d192d] p-4 shadow-lg sm:p-5">
+           <div className="mb-4 flex items-center justify-between gap-2 border-b border-white/10 pb-3">
+             <h2 className="flex min-w-0 items-center gap-2 text-base font-extrabold text-white"><CalendarDays size={21} className="shrink-0 text-blue-400"/>Aktuellt i kalendern</h2>
+             <button type="button" onClick={() => openTab("home", "home", "dashboard-google-calendar")} className="shrink-0 rounded-full border border-white/10 bg-slate-800/70 px-3 py-1.5 text-xs font-medium hover:bg-slate-700">Visa alla →</button>
+           </div>
+           {sourceErrors.calendar && <p role="status" className="mb-3 text-xs text-amber-300">{hasPreviousData.calendar ? "Senast hämtad kalender visas." : "Kalendern kunde inte hämtas."}</p>}
+                       {(!sourceErrors.calendar || hasPreviousData.calendar) && (
+              <div className="space-y-3">
+                {calendarSummary.active.length > 0 && (
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                    <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400"/>Pågår nu</p>
+                    {calendarSummary.active.slice(0, 2).map(event => (
+                      <div key={event.id} className="mt-1 flex items-start justify-between gap-2">
+                        <p className="min-w-0 text-sm font-semibold text-white">{event.title}</p>
+                        <span className="shrink-0 text-xs text-emerald-200">{event.allDay ? "Hela dagen" : event.endTime ? `Till ${formatCalendarTime(event.endTime)}` : "Pågår"}</span>
+                      </div>
+                    ))}
+                    {calendarSummary.active.length > 2 && <p className="mt-2 text-xs text-emerald-200">+{calendarSummary.active.length - 2} pågående</p>}
+                  </div>
+                )}
+                <div className="rounded-xl border border-white/10 bg-slate-800/50 p-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-sky-300">Nästa aktivitet</p>
+                  {calendarSummary.next ? (
+                    <div className="flex items-start gap-3">
+                      <span className="shrink-0 rounded-lg bg-sky-500/15 px-2 py-1 text-sm font-bold text-sky-200">{calendarSummary.next.startTime ? formatCalendarTime(calendarSummary.next.startTime) : "–"}</span>
+                      <div className="min-w-0"><p className="text-sm font-semibold text-white">{calendarSummary.next.title}</p><p className="mt-1 text-xs text-slate-400">{calendarSummary.next.startTime ? formatCalendarDate(calendarSummary.next.startTime) : ""}{calendarSummary.next.location ? ` · ${calendarSummary.next.location}` : ""}</p></div>
+                    </div>
+                  ) : <p className="text-sm text-slate-400">Inga fler aktiviteter planerade.</p>}
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-800/40 px-3 py-3">
+                  <div><p className="text-xs font-bold uppercase tracking-wide text-violet-300">Imorgon</p><p className="mt-1 text-sm text-slate-300">{calendarSummary.tomorrowCount === 0 ? "Inga aktiviteter planerade" : `${calendarSummary.tomorrowCount} ${calendarSummary.tomorrowCount === 1 ? "aktivitet" : "aktiviteter"} planerade`}</p></div>
+                  <span className="text-2xl font-extrabold text-white">{calendarSummary.tomorrowCount}</span>
+                </div>
+              </div>
+            )}
+{(todaysSchoolTransfers.dropoffs.length > 0 || todaysSchoolTransfers.pickups.length > 0) && <div className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-200"><p className="mb-1 font-bold">Förskola idag</p>{todaysSchoolTransfers.dropoffs.map(t => <p key={t.id}>Lämning: {t.person} · {t.time}</p>)}{todaysSchoolTransfers.pickups.map(t => <p key={t.id}>Hämtning: {t.person} · {t.time}</p>)}</div>}
+         </section>
 
-          <button type="button" aria-label="Öppna kalenderwidgeten" onClick={() => openTab("home", "home", "dashboard-google-calendar")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300" />
-        </section>
-        <section className="relative min-w-0 rounded-[24px] border border-white/10 bg-slate-900/80 p-3.5 shadow-sm xl:col-span-2 sm:p-6">
-          <div className="mb-3 flex items-center gap-2 sm:mb-5"><span className="rounded-xl bg-amber-500/15 p-2 text-amber-300"><Zap size={20}/></span><h2 className="text-lg font-extrabold text-white">Elpris just nu</h2></div>
-          <p className="text-xs font-bold uppercase tracking-wider text-[#93a3b2]">Aktuellt pris</p><p className="mt-2 text-4xl font-extrabold tracking-tight text-white">{electricity?.currentPrice ? formatPrice(electricity.currentPrice.SEK_per_kWh) : "–"}<span className="ml-2 text-sm font-semibold text-slate-400">kr/kWh</span></p>
-          <p className="mt-3 text-sm text-slate-400">{sourceErrors.electricity ? (hasPreviousData.electricity ? "Elpriset kunde inte uppdateras. Senast hämtade priser visas och kan vara inaktuella." : "Elpriset kunde inte hämtas just nu. Försök uppdatera igen.") : electricityAdvice.description}</p>
-          <button type="button" aria-label="Öppna elpriswidgeten under Hemmet – Ekonomi" onClick={() => openTab("home", "shopping")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300" />
-        </section>
-      </div>
+         {/* Elpriser – samma datakälla som Hemmet → Ekonomi. */}
+         <section className="relative min-w-0 rounded-[22px] border border-slate-700/60 bg-[#0d192d] p-4 shadow-lg sm:p-5">
+           <div className="mb-4 flex items-center justify-between gap-2 border-b border-white/10 pb-3">
+             <h2 className="flex items-center gap-2 text-base font-extrabold text-white"><Zap size={21} className="text-cyan-400"/>Elpris just nu</h2>
+             <span className="rounded-full border border-white/10 bg-slate-800/70 px-3 py-1.5 text-xs text-slate-300">Detaljer →</span>
+           </div>
+           <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+             <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">{electricity?.currentPrice ? formatPrice(electricity.currentPrice.SEK_per_kWh) : "–"}<span className="ml-1 text-sm font-medium text-slate-300">kr/kWh</span></p>
+             {electricityDifference !== null && <span className={`pb-1 text-sm font-bold ${electricityDifference <= 0 ? "text-emerald-400" : "text-amber-400"}`}>{electricityDifference > 0 ? "+" : ""}{electricityDifference}% <span className="text-xs font-normal text-slate-400">mot snittet</span></span>}
+           </div>
+           {sourceErrors.electricity && <p role="status" className="mt-2 text-xs text-amber-300">{hasPreviousData.electricity ? "Senast hämtade elpriser visas." : "Elpriser kunde inte hämtas."}</p>}
+           {todayElectricityPrices.length > 0 ? <div className="mt-5" aria-label="Linjediagram över dagens elpriser">
+             <svg viewBox="0 0 320 112" role="img" aria-label="Elprisets utveckling under dygnet, kronor per kilowattimme" className="h-28 w-full overflow-visible sm:h-32" preserveAspectRatio="none">
+               {[12, 56, 100].map(y => <line key={y} x1="8" y1={y} x2="312" y2={y} stroke="currentColor" className="text-white/10" strokeWidth="1" />)}
+               {electricityChartMin < 0 && <line x1="8" x2="312" y1={100 - ((0 - electricityChartMin) / electricityChartRange) * 88} y2={100 - ((0 - electricityChartMin) / electricityChartRange) * 88} stroke="currentColor" className="text-white/30" strokeDasharray="4 4" />}
+               <path d={electricityChartPath} fill="none" stroke="#60a5fa" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+               {electricityChartPoints.map(point => {
+                 const current = currentElectricityStart === point.price.time_start;
+                 return <circle key={point.price.time_start} cx={point.x} cy={point.y} r={current ? 5 : 2.5} fill={current ? "#fbbf24" : "#93c5fd"} stroke={current ? "#fef3c7" : "#0d192d"} strokeWidth={current ? 2 : 1}>
+                   <title>{`${formatHour(point.price.time_start)}: ${formatPrice(point.price.SEK_per_kWh)} kr/kWh${current ? " (nu)" : ""}`}</title>
+                 </circle>;
+               })}
+             </svg>
+             <div className="mt-1 flex justify-between text-[10px] text-slate-400"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+           </div> : <div className="mt-5 flex h-32 items-center justify-center rounded-xl bg-slate-800/40 text-sm text-slate-400">Ingen prisprognos tillgänglig.</div>}
+           <div className="mt-4 grid grid-cols-2 gap-2">
+             <div className="min-w-0 rounded-xl border border-white/5 bg-slate-800/60 p-3"><p className="text-[11px] text-slate-300">Lägsta pris idag</p><p className="mt-1 text-base font-bold text-white">{electricity?.minPrice ? formatPrice(electricity.minPrice.SEK_per_kWh) : "–"} <span className="text-[11px] font-normal">kr/kWh</span></p><p className="mt-1 text-xs text-emerald-400">{electricity?.minPrice ? `${formatHour(electricity.minPrice.time_start)}–${formatHour(electricity.minPrice.time_end)}` : "–"}</p></div>
+             <div className="min-w-0 rounded-xl border border-white/5 bg-slate-800/60 p-3"><p className="text-[11px] text-slate-300">Högsta pris idag</p><p className="mt-1 text-base font-bold text-white">{electricity?.maxPrice ? formatPrice(electricity.maxPrice.SEK_per_kWh) : "–"} <span className="text-[11px] font-normal">kr/kWh</span></p><p className="mt-1 text-xs text-amber-400">{electricity?.maxPrice ? `${formatHour(electricity.maxPrice.time_start)}–${formatHour(electricity.maxPrice.time_end)}` : "–"}</p></div>
+           </div>
+           <p className="mt-3 text-xs text-slate-400">{electricityAdvice.description}</p>
+           <button type="button" aria-label="Öppna Hemmet – Ekonomi" onClick={() => openTab("home", "shopping")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300"/>
+         </section>
 
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
-        <article className="relative rounded-[24px] border border-white/10 bg-slate-900/80 p-3.5 shadow-sm sm:p-6"><div className="mb-3 flex items-center gap-2 sm:mb-4"><span className="rounded-xl bg-violet-500/15 p-2 text-violet-300"><Gift size={20}/></span><h2 className="font-extrabold text-white">Nästa familjehändelse</h2></div><p className="text-lg font-bold text-white">{nextFamilyEvent?.title ?? "Ingen kommande händelse"}</p><p className="mt-1 text-sm text-slate-400">{sourceErrors.family ? (hasPreviousData.family ? "Senast hämtad information – kan vara inaktuell" : "Familjehändelser kunde inte hämtas") : nextFamilyEvent ? getDaysLabel(nextFamilyEvent.daysUntil) : "Här visas kommande familjehändelser"}</p><button type="button" aria-label="Öppna Familjen – Gemensam" onClick={() => openTab("family", "Gemensam")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300" /></article>
-        <article className="relative rounded-[24px] border border-white/10 bg-slate-900/80 p-3.5 shadow-sm sm:p-6"><div className="mb-3 flex items-center gap-2 sm:mb-4"><span className="rounded-xl bg-cyan-500/15 p-2 text-cyan-300"><Hourglass size={20}/></span><h2 className="font-extrabold text-white">Nästa nedräkning</h2></div><p className="text-lg font-bold text-white">{nextCountdown?.title ?? "Ingen aktiv nedräkning"}</p><p className="mt-1 text-sm text-slate-400">{sourceErrors.countdowns ? (hasPreviousData.countdowns ? "Senast hämtad information – kan vara inaktuell" : "Nedräkningar kunde inte hämtas") : nextCountdown ? getDaysLabel(getDaysUntil(nextCountdown.event_date)) : "Här visas nästa nedräkning"}</p><button type="button" aria-label="Öppna nedräkningar under Hemmet" onClick={() => openTab("home", "home")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300" /></article>
-      </section>
+         {/* Familjens kommande händelser */}
+         <section className="relative min-w-0 rounded-[22px] border border-slate-700/60 bg-[#0d192d] p-4 shadow-lg sm:p-5">
+           <div className="mb-4 flex items-center justify-between gap-2 border-b border-white/10 pb-3"><h2 className="flex items-center gap-2 text-base font-extrabold text-white"><Users size={21} className="text-violet-400"/>Familjens händelser</h2><span className="rounded-full border border-white/10 bg-slate-800/70 px-3 py-1.5 text-xs text-slate-300">Visa alla →</span></div>
+           {sourceErrors.family && <p role="status" className="mb-2 text-xs text-amber-300">{hasPreviousData.family ? "Senast hämtade händelser visas." : "Familjehändelser kunde inte hämtas."}</p>}
+           {upcomingFamilyEvents.length > 0 ? (
+             <div className="space-y-3">
+               <div className={`rounded-xl border p-4 ${upcomingFamilyEvents[0].daysUntil === 0 ? "border-amber-400/40 bg-amber-500/15" : "border-violet-400/20 bg-violet-500/10"}`}>
+                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-200">
+                   <Gift size={16} className={upcomingFamilyEvents[0].daysUntil === 0 ? "text-amber-300" : "text-violet-300"} />
+                   {upcomingFamilyEvents[0].daysUntil === 0 ? "🎉 Firas idag!" : "Nästa familjehändelse"}
+                 </div>
+                 <p className="mt-2 break-words text-base font-extrabold text-white">{upcomingFamilyEvents[0].title}</p>
+                 <p className={`mt-1 text-sm font-semibold ${upcomingFamilyEvents[0].daysUntil === 0 ? "text-amber-200" : "text-violet-200"}`}>
+                   {getDaysLabel(upcomingFamilyEvents[0].daysUntil)}
+                 </p>
+               </div>
+               {upcomingFamilyEvents.length > 1 && (
+                 <div className="divide-y divide-white/10 rounded-xl border border-white/10 bg-slate-800/40 px-3">
+                   {upcomingFamilyEvents.slice(1).map((event, index) => (
+                     <div key={`${event.title}-${index}`} className="flex min-w-0 items-center gap-3 py-3">
+                       <Gift size={17} className="shrink-0 text-violet-300" />
+                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{event.title}</span>
+                       <span className={`shrink-0 text-xs font-semibold ${event.daysUntil === 0 ? "text-amber-300" : "text-slate-300"}`}>{getDaysLabel(event.daysUntil)}</span>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </div>
+           ) : (
+             <p className="rounded-xl bg-slate-800/40 p-4 text-sm text-slate-400">Inga kommande familjehändelser.</p>
+           )}
+           <button type="button" aria-label="Öppna Familjen – Gemensam" onClick={() => openTab("family", "Gemensam")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300"/>
+         </section>
+       </div>
+
+       {/* Viktiga nedräkningar */}
+       <section className="relative min-w-0 rounded-[22px] border border-slate-700/60 bg-[#0d192d] p-4 shadow-lg sm:p-5">
+         <div className="mb-4 flex items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-base font-extrabold text-white"><Hourglass size={21} className="text-rose-400"/>Viktiga nedräkningar</h2><span className="rounded-full border border-white/10 bg-slate-800/70 px-3 py-1.5 text-xs text-slate-300">Hantera →</span></div>
+         {sourceErrors.countdowns && <p role="status" className="mb-2 text-xs text-amber-300">{hasPreviousData.countdowns ? "Senast hämtade nedräkningar visas." : "Nedräkningar kunde inte hämtas."}</p>}
+         {upcomingCountdowns.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{upcomingCountdowns.map((row, index) => <div key={row.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-slate-800/50 p-3"><span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${["bg-rose-500/15 text-rose-300", "bg-blue-500/15 text-blue-300", "bg-cyan-500/15 text-cyan-300", "bg-violet-500/15 text-violet-300"][index % 4]}`}><Hourglass size={24}/></span><div className="min-w-0"><p className="truncate text-xs font-semibold text-white">{row.title}</p><p className="mt-1 text-2xl font-extrabold text-white">{getDaysUntil(row.event_date)} <span className="text-xs font-normal text-slate-400">dagar</span></p></div></div>)}</div> : <p className="rounded-xl bg-slate-800/40 p-4 text-sm text-slate-400">Inga aktiva nedräkningar.</p>}
+         <button type="button" aria-label="Öppna nedräkningar under Hemmet" onClick={() => openTab("home", "home")} className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-300"/>
+       </section>
 
     </div>
   );

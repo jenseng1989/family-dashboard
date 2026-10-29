@@ -6,10 +6,12 @@ import {
   ArrowRight,
   BarChart3,
   Settings,
+  LogOut,
   Users,
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 const sections = [
   {
@@ -65,6 +67,32 @@ const sections = [
 ];
 
 export default function AdminDashboard() {
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Utloggningen misslyckades.");
+      }
+
+      window.location.replace("/");
+    } catch {
+      setLogoutError("Det gick inte att logga ut. Försök igen.");
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
@@ -90,14 +118,31 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <Link
-              href="/"
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
-            >
-              Till dashboarden
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
+              >
+                Till dashboarden
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-wait disabled:opacity-60"
+              >
+                <LogOut size={17} aria-hidden="true" />
+                {loggingOut ? "Loggar ut…" : "Logga ut"}
+              </button>
+            </div>
           </div>
         </div>
+
+        {logoutError && (
+          <p role="alert" className="mt-3 text-sm text-red-300">
+            {logoutError}
+          </p>
+        )}
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-2">
           {sections.map((section) => {

@@ -4,7 +4,6 @@
 import {
   Home,
   GraduationCap,
-  HousePlug,
   LoaderCircle,
   ShoppingCart,
   Sparkles,
@@ -17,20 +16,11 @@ import {
   useState,
 } from "react";
 
-/*
- * Smarthem är tillfälligt dolt.
- *
- * All kod och integration finns kvar.
- * Ändra till true när Smarthem ska aktiveras igen.
- */
-const ENABLE_SMART_HOME = false;
-
 type StartTabId =
   | "everyday"
   | "home"
   | "shopping"
-  | "school"
-  | "smart-home";
+  | "school";
 
 type StartTabsProps = {
   everydayContent: ReactNode;
@@ -66,15 +56,7 @@ const tabs: StartTab[] = [
     icon: GraduationCap,
   },
 
-  ...(ENABLE_SMART_HOME
-    ? [
-        {
-          id: "smart-home" as const,
-          label: "Smarthem",
-          icon: HousePlug,
-        },
-      ]
-    : []),
+
 ];
 
 function StartTabLoading({
@@ -134,22 +116,6 @@ const StartSchoolTab = dynamic(
   }
 );
 
-/*
- * Smarthem-komponenten behålls.
- * Den laddas inte så länge fliken är dold.
- */
-const StartSmartHomeTab = dynamic(
-  () =>
-    import(
-      "@/components/dashboard/tabs/StartSmartHomeTab"
-    ),
-  {
-    loading: () => (
-      <StartTabLoading label="Smarthem" />
-    ),
-  }
-);
-
 export default function StartTabs({
   everydayContent,
   selectedTab,
@@ -176,11 +142,6 @@ export default function StartTabs({
 
       case "school":
         return <StartSchoolTab />;
-
-      case "smart-home":
-        return ENABLE_SMART_HOME
-          ? <StartSmartHomeTab />
-          : everydayContent;
 
       default:
         return everydayContent;

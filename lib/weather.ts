@@ -1,4 +1,6 @@
 export type WeatherData = {
+  source: "Open-Meteo" | "MET Norway";
+  updatedAt: string;
   location: string;
   temperature: number;
   apparentTemperature: number;

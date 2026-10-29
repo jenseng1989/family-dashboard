@@ -59,6 +59,81 @@ const WEEKLY_REPORT_URL =
 const WEEKLY_RSS_URL =
   "https://volcano.si.edu/news/WeeklyVolcanoRSS.xml";
 
+// USGS listar vulkaner med förhöjd varningsnivå i USA och dess territorier.
+// Det är INTE en global lista över pågående utbrott.
+const USGS_ELEVATED_URL =
+  "https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes";
+const USGS_CATALOG_URL =
+  "https://volcanoes.usgs.gov/hans-public/api/volcano/getUSVolcanoes";
+
+type UsgsElevated = {
+  vnum?: string;
+  volcano_name?: string;
+  color_code?: string;
+  alert_level?: string;
+  sent_utc?: string;
+  notice_url?: string;
+};
+
+type UsgsCatalogItem = {
+  vnum?: string;
+  volcano_name?: string;
+  region?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+async function fetchUsgsFallback(): Promise<RssVolcano[]> {
+  const headers = { Accept: "application/json" };
+  const [alertsResponse, catalogResponse] = await Promise.all([
+    fetch(USGS_ELEVATED_URL, { headers, cache: "no-store", signal: AbortSignal.timeout(10000) }),
+    fetch(USGS_CATALOG_URL, { headers, cache: "no-store", signal: AbortSignal.timeout(10000) }),
+  ]);
+
+  if (!alertsResponse.ok || !catalogResponse.ok) {
+    throw new Error(`USGS reservkälla svarade med ${alertsResponse.status}/${catalogResponse.status}`);
+  }
+
+  const alerts: unknown = await alertsResponse.json();
+  const catalog: unknown = await catalogResponse.json();
+  if (!Array.isArray(alerts) || !Array.isArray(catalog)) {
+    throw new Error("USGS returnerade ett oväntat dataformat.");
+  }
+
+  const byNumber = new Map<string, UsgsCatalogItem>();
+  for (const item of catalog as UsgsCatalogItem[]) {
+    if (item.vnum) byNumber.set(String(item.vnum), item);
+  }
+
+  const result: RssVolcano[] = [];
+  for (const alert of alerts as UsgsElevated[]) {
+    if (!alert.vnum) continue;
+    const volcano = byNumber.get(String(alert.vnum));
+    if (!volcano || !Number.isFinite(volcano.latitude) || !Number.isFinite(volcano.longitude)) continue;
+    const latitude = volcano.latitude as number;
+    const longitude = volcano.longitude as number;
+    if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) continue;
+
+    const warning = [alert.alert_level, alert.color_code].filter(Boolean).join(" / ");
+    const timestamp = alert.sent_utc?.replace(" ", "T") + "Z";
+    result.push({
+      name: alert.volcano_name || volcano.volcano_name || "Okänd vulkan",
+      country: "USA",
+      eruptionStart: "Ej angivet",
+      lastKnownActivity: timestamp && !Number.isNaN(Date.parse(timestamp))
+        ? formatActivityDate(timestamp)
+        : "Aktuell USGS-varning",
+      eruptionType: warning ? `Förhöjd varningsnivå: ${warning}` : "Förhöjd varningsnivå",
+      url: alert.notice_url?.startsWith("https://volcanoes.usgs.gov/")
+        ? alert.notice_url : USGS_ELEVATED_URL,
+      latitude,
+      longitude,
+    });
+  }
+  // En giltig tom lista innebär att inga vulkaner uppfyller USGS kriterier.
+  return result;
+}
+
 let cachedPayload:
   VolcanoPayload | null = null;
 
@@ -669,8 +744,23 @@ async function loadPayload():
 
   inFlight = (async () => {
     try {
-      const rssVolcanoes =
-        await fetchWeeklyRss();
+      let rssVolcanoes: RssVolcano[];
+      let source = "Smithsonian / USGS Weekly Volcanic Activity Report";
+      let sourceUrl = WEEKLY_REPORT_URL;
+      try {
+        rssVolcanoes = await fetchWeeklyRss();
+      } catch (smithsonianError) {
+        console.warn("Smithsonian GeoRSS är otillgängligt. Försöker USGS reservkälla:",
+          smithsonianError instanceof Error ? smithsonianError.message : smithsonianError);
+        try {
+          rssVolcanoes = await fetchUsgsFallback();
+          source = "USGS – förhöjd vulkanisk varningsnivå (endast USA, inte global utbrottslista)";
+          sourceUrl = USGS_ELEVATED_URL;
+        } catch (usgsError) {
+          console.error("Även USGS reservkälla misslyckades:", usgsError);
+          throw smithsonianError;
+        }
+      }
 
       const allVolcanoes:
         VolcanoItem[] =
@@ -710,10 +800,8 @@ async function loadPayload():
         VolcanoPayload = {
         generatedAt:
           new Date().toISOString(),
-        source:
-          "Smithsonian / USGS Weekly Volcanic Activity Report",
-        sourceUrl:
-          WEEKLY_REPORT_URL,
+        source,
+        sourceUrl,
         location:
           "Göteborg",
         latitude:
@@ -728,8 +816,9 @@ async function loadPayload():
 
       cachedPayload =
         payload;
-      cachedAt =
-        Date.now();
+      cachedAt = sourceUrl === WEEKLY_REPORT_URL
+        ? Date.now()
+        : Date.now() - MEMORY_CACHE_TTL_MS + 10 * 60 * 1000;
 
       failureCooldownUntil = 0;
       lastFetchError = null;

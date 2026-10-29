@@ -13,7 +13,6 @@ import {
   ListChecks,
   MapPin,
   Plane,
-  HousePlus,
   BedDouble,
   Wallet,
   Route,
@@ -361,15 +360,6 @@ export const widgetGroups: WidgetGroup[] = [
       { id: "resor-accommodation", name: "Boende", description: "Resans boenden och bokningar.", icon: BedDouble, defaultSize: "half" },
       { id: "resor-activities", name: "Aktiviteter", description: "Utflykter och aktiviteter.", icon: CalendarDays, defaultSize: "half" },
       { id: "resor-budget", name: "Budget", description: "Resans kostnader och budget.", icon: Wallet, defaultSize: "half" },
-    ],
-  },
-  {
-    key: "hemmet3d",
-    title: "Smarthem",
-    subtitle: "3D-modell och enhetsstyrning.",
-    icon: HousePlus,
-    widgets: [
-      { id: "hemmet3d-viewer", name: "3D-modell och enhetsstyrning", description: "Rum, smarta enheter, lampor och ljusscener.", icon: HousePlus, defaultSize: "full" },
     ],
   },
 ];

@@ -207,6 +207,8 @@ async function fetchOpenMeteo():
       : 0;
 
   return {
+    source: "Open-Meteo",
+    updatedAt: new Date().toISOString(),
     location:
       "Göteborg",
     temperature:
@@ -888,6 +890,8 @@ async function fetchMetNorway():
       ?.symbol_code;
 
   return {
+    source: "MET Norway",
+    updatedAt: new Date().toISOString(),
     location:
       "Göteborg",
     temperature:

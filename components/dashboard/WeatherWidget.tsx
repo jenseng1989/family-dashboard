@@ -874,6 +874,21 @@ export default async function WeatherWidget() {
             </div>
           )}
         </section>
+
+        <div className="rounded-2xl border border-blue-300/20 bg-blue-400/[0.08] px-4 py-3 text-sm text-slate-200" aria-label="Väderkälla och uppdateringstid">
+          <span className="font-semibold text-blue-200">Väderkälla:</span>{" "}
+          {weather.source ?? "Okänd"}
+          {weather.updatedAt && !Number.isNaN(new Date(weather.updatedAt).getTime()) && (
+            <span className="text-slate-300">
+              {" · Uppdaterad "}
+              {new Date(weather.updatedAt).toLocaleTimeString("sv-SE", {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Europe/Stockholm",
+              })}
+            </span>
+          )}
+        </div>
       </div>
     </Card>
   );
