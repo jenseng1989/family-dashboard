@@ -516,9 +516,14 @@ export default function DailyAssistantWidget() {
   // En äldre hämtning får inte skriva över en nyare uppdatering.
   // Ökas även när komponenten avmonteras.
   const requestIdRef = useRef(0);
+  const activeFetchControllerRef = useRef<AbortController | null>(null);
   const lastFetchAtRef = useRef(0);
 
   const fetchData = useCallback((forceRefresh = false) => {
+    // Avbryt äldre HTTP-anrop när en ny hämtning påbörjas.
+    activeFetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    activeFetchControllerRef.current = controller;
     lastFetchAtRef.current = Date.now();
     const requestId = ++requestIdRef.current;
     const isCurrent = () => requestIdRef.current === requestId;
@@ -527,6 +532,7 @@ export default function DailyAssistantWidget() {
     // källa hindrar inte de andra från att uppdatera sin del.
     const calendarTask = fetch("/api/google-calendar", {
       cache: "no-store",
+      signal: controller.signal,
     })
       .then(async (response) => {
         if (!response.ok) {
@@ -539,6 +545,7 @@ export default function DailyAssistantWidget() {
         if (isCurrent()) { markSuccessful("calendar"); setCalendarEvents(data.events ?? []); }
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error("Idag: kunde inte hämta Google Kalender:", error);
         if (isCurrent()) {
           updateSourceError("calendar", true);
@@ -547,6 +554,7 @@ export default function DailyAssistantWidget() {
 
     const schoolCalendarTask = fetch("/api/google-school-calendar", {
       cache: "no-store",
+      signal: controller.signal,
     })
       .then(async (response) => {
         if (!response.ok) {
@@ -562,6 +570,7 @@ export default function DailyAssistantWidget() {
         }
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error("Idag: kunde inte hämta Google Skolkalender:", error);
         if (isCurrent()) {
           updateSourceError("school", true);
@@ -604,7 +613,7 @@ export default function DailyAssistantWidget() {
 
     const weatherTask = fetch(
       "/api/everyday-weather",
-      forceRefresh ? { cache: "reload" } : undefined,
+      { ...(forceRefresh ? { cache: "reload" as const } : {}), signal: controller.signal },
     )
       .then(async (response) => {
         if (!response.ok) {
@@ -614,6 +623,7 @@ export default function DailyAssistantWidget() {
         if (isCurrent()) { markSuccessful("weather"); setWeather(data); }
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error("Idag: kunde inte hämta väder:", error);
         if (isCurrent()) {
           updateSourceError("weather", true);
@@ -622,7 +632,7 @@ export default function DailyAssistantWidget() {
 
     const electricityTask = fetch(
       "/api/electricity",
-      forceRefresh ? { cache: "reload" } : undefined,
+      { ...(forceRefresh ? { cache: "reload" as const } : {}), signal: controller.signal },
     )
       .then(async (response) => {
         if (!response.ok) {
@@ -635,6 +645,7 @@ export default function DailyAssistantWidget() {
         if (isCurrent()) { markSuccessful("electricity"); setElectricity(data); }
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error("Idag: kunde inte hämta elpriser:", error);
         if (isCurrent()) {
           updateSourceError("electricity", true);
@@ -651,7 +662,10 @@ export default function DailyAssistantWidget() {
       weatherTask,
       electricityTask,
     ]).then(() => {
-      if (isCurrent()) setIsLoading(false);
+      if (isCurrent()) {
+        activeFetchControllerRef.current = null;
+        setIsLoading(false);
+      }
     });
   }, [markSuccessful, updateSourceError]);
 
@@ -682,6 +696,8 @@ export default function DailyAssistantWidget() {
       window.clearInterval(refreshId);
       document.removeEventListener("visibilitychange", refreshIfStale);
       window.removeEventListener("online", refreshIfStale);
+      activeFetchControllerRef.current?.abort();
+      activeFetchControllerRef.current = null;
       requestIdRef.current += 1;
     };
   }, [fetchData, loadData]);

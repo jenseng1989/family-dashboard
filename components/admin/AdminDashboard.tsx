@@ -206,18 +206,7 @@ export default function AdminDashboard() {
               </article>
             );
           })}
-        </div>
-
-        <div className="mt-4 rounded-3xl border border-white/10 bg-white/10 p-4 sm:mt-5 sm:p-5">
-          <p className="text-sm font-semibold text-white">
-            Admin 1.5
-          </p>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Familjen, Widgets, Systemstatus, Statistik och
-            Appinställningar är nu aktiva. Fler delar aktiveras stegvis.
-          </p>
-        </div>
+        </div>     
       </div>
     </main>
   );
