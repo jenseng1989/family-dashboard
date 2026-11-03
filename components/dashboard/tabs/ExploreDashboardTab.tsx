@@ -4,6 +4,7 @@ import {
   Globe2,
   LoaderCircle,
   Telescope,
+  Orbit,
   Compass,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -58,12 +59,19 @@ const OverviewDashboard = dynamic(
   { loading: () => <ExploreLoading icon={<Compass size={23} />} label="Översikt" /> }
 );
 
-export default function ExploreDashboardTab({ selectedTab = "overview" }: { selectedTab?: "overview" | "space" | "earth" }) {
+const WorldMapDashboard = dynamic(
+  () => import("@/components/dashboard/WorldMapDashboard"),
+  { loading: () => <ExploreLoading icon={<Orbit size={23} />} label="Världskarta" /> }
+);
+
+export default function ExploreDashboardTab({ selectedTab = "overview" }: { selectedTab?: "overview" | "space" | "earth" | "world-map" }) {
   return (
     <div className="grid w-full min-w-0 grid-cols-12 gap-5">
       <div className="col-span-12 min-w-0">
         {selectedTab === "overview" ? (
           <OverviewDashboard />
+        ) : selectedTab === "world-map" ? (
+          <WorldMapDashboard />
         ) : selectedTab === "space" ? (
           <WidgetGate widgetId={exploreTabWidgetIds.space}><SpaceDashboard /></WidgetGate>
         ) : (

@@ -5,7 +5,7 @@ import {
   Compass,
   Home,
   HousePlus,
-  ChevronDown, ChevronRight, Menu, X, Lightbulb, Tv, Shield, Zap, Thermometer, BookOpen, ShoppingCart, GraduationCap, Sparkles, Globe2, Telescope, UserRound, Baby,
+  ChevronDown, ChevronRight, Menu, X, Lightbulb, Tv, Shield, Zap, Thermometer, BookOpen, ShoppingCart, GraduationCap, Sparkles, Globe2, Telescope, Orbit, UserRound, Baby,
   LoaderCircle,
   MapPin,
   Plane,
@@ -147,6 +147,7 @@ const childMenus: Record<Group, {id: string; label: string; icon: ReactNode}[]> 
     {id:"overview",label:"Översikt",icon:<Compass size={16}/>},
     {id:"space",label:"Rymden",icon:<Telescope size={16}/>},
     {id:"earth",label:"Jorden",icon:<Globe2 size={16}/>},
+    {id:"world-map",label:"Världskarta",icon:<Orbit size={16}/>},
   ],
   hemmet3d: [
     {id:"Översikt",label:"Översikt",icon:<Home size={16}/>},
@@ -257,7 +258,7 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
       case "weather": return weatherContent;
       case "family": return <FamilyDashboardTab selectedLabel={childByGroup.family}/>;
       case "gothenburg": return <GothenburgDashboardTab/>;
-      case "fun": return <ExploreDashboardTab selectedTab={childByGroup.fun as "overview"|"space"|"earth"}/>;
+      case "fun": return <ExploreDashboardTab selectedTab={childByGroup.fun as "overview"|"space"|"earth"|"world-map"}/>;
       case "resor": return initialSettings.showResorTab ? <ResorDashboard/> : startContent.home;
       case "hemmet3d": return initialSettings.showHemmet3DTab ? <SmarthemDashboard embedded selectedCategory={childByGroup.hemmet3d as "Översikt"|"Belysning"|"Media"|"Övervakning"|"El"|"Klimat"|"Administration"}/> : startContent.home;
       default: return startContent.everyday;
