@@ -1,3 +1,4 @@
+import { hasDashboardSession } from "@/lib/dashboard-session";
 import {
   PDFDocument,
   StandardFonts,
@@ -1804,6 +1805,13 @@ function safeFilename(value: string) {
 }
 
 export async function GET(request: Request) {
+  if (!hasDashboardSession(request)) {
+    return Response.json(
+      { error: "Du måste vara inloggad." },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   try {
     const url = new URL(request.url);
     const memberId = url.searchParams.get("memberId");

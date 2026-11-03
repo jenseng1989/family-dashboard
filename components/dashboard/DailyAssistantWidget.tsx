@@ -32,7 +32,7 @@ import {
   type FamilyEvent,
 } from "@/lib/family";
 import { getFamilyMembersFromDatabase } from "@/lib/family-db";
-import { supabase } from "@/lib/supabase";
+
 
 type GoogleCalendarEvent = {
   id: string;
@@ -577,26 +577,18 @@ export default function DailyAssistantWidget() {
         }
       });
 
-    const countdownTask = Promise.resolve(
-      supabase
-        .from("countdowns")
-        .select("id, title, event_date, created_at")
-        .gte("event_date", getTodayDateString())
-        .order("event_date", { ascending: true })
-        .order("created_at", { ascending: true }),
-    )
-      .then((result) => {
-        if (result.error) throw result.error;
-        if (isCurrent()) {
-          setCountdowns((result.data ?? []) as CountdownRow[]);
-          markSuccessful("countdowns");
-        }
+    const countdownTask = fetch("/api/countdowns?upcoming=true", {
+      cache: "no-store", signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Nedräknings-API svarade ${response.status}.`);
+        const data = (await response.json()) as { events: CountdownRow[] };
+        if (isCurrent()) { setCountdowns(data.events ?? []); markSuccessful("countdowns"); }
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         console.error("Idag: kunde inte hämta nedräkningar:", error);
-        if (isCurrent()) {
-          updateSourceError("countdowns", true);
-        }
+        if (isCurrent()) updateSourceError("countdowns", true);
       });
 
     const familyTask = getFamilyMembersFromDatabase()

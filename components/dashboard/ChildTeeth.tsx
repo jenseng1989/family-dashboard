@@ -18,7 +18,6 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
 
 type ToothRow = {
   id: string;
@@ -107,24 +106,21 @@ export default function ChildTeeth({
     null
   );
 
-  const fetchTeeth = useCallback(() => {
-    return supabase
-      .from("signe_teeth")
-      .select("id, member_id, tooth_code, tooth_name, eruption_date, created_at")
-      .eq("member_id", memberId)
-      .order("eruption_date", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error(`Kunde inte hämta tänder för ${displayName}:`, error);
-
-          setErrorMessage("Kunde inte hämta tandinformationen från databasen.");
-
-          setIsLoading(false);
-          return;
-        }
-        setTeeth((data ?? []) as ToothRow[]);
-        setIsLoading(false);
-      });
+  const fetchTeeth = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/child/teeth?memberId=${encodeURIComponent(memberId)}`,
+        { cache: "no-store", credentials: "same-origin" }
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Kunde inte hämta tänder.");
+      setTeeth(result.data as ToothRow[]);
+    } catch (error) {
+      console.error(`Kunde inte hämta tänder för ${displayName}:`, error);
+      setErrorMessage("Kunde inte hämta tandinformationen från databasen.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [memberId, displayName]);
 
   const loadTeeth = useCallback(() => {
@@ -183,33 +179,35 @@ export default function ChildTeeth({
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("signe_teeth")
-      .insert({
-        member_id: memberId,
-        tooth_code: selectedTooth.code,
-        tooth_name: selectedTooth.name,
-        eruption_date: eruptionDate,
-      })
-      .select(
-        "id, member_id, tooth_code, tooth_name, eruption_date, created_at"
-      )
-      .single();
-
-    if (error) {
-      console.error(
-        `Kunde inte spara tanden för ${displayName}:`,
-        error
-      );
-
-      if (error.code === "23505") {
-        setErrorMessage("Den tanden är redan registrerad.");
-      } else {
-        setErrorMessage("Tanden kunde inte sparas.");
+    let data: ToothRow;
+    try {
+      const response = await fetch("/api/child/teeth", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: memberId,
+          tooth_code: selectedTooth.code,
+          tooth_name: selectedTooth.name,
+          eruption_date: eruptionDate,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        if (result.code === "23505") {
+          setErrorMessage("Den tanden är redan registrerad.");
+        } else {
+          setErrorMessage(result.error ?? "Tanden kunde inte sparas.");
+        }
+        return;
       }
-
-      setIsSaving(false);
+      data = result.data as ToothRow;
+    } catch (error) {
+      console.error(`Kunde inte spara tanden för ${displayName}:`, error);
+      setErrorMessage("Tanden kunde inte sparas.");
       return;
+    } finally {
+      setIsSaving(false);
     }
 
     setTeeth((current) =>
@@ -242,18 +240,17 @@ export default function ChildTeeth({
     setDeletingId(tooth.id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("signe_teeth")
-      .delete()
-      .eq("id", tooth.id)
-      .eq("member_id", memberId);
-
-    if (error) {
-      console.error(
-        `Kunde inte ta bort tanden för ${displayName}:`,
-        error
-      );
-
+    try {
+      const response = await fetch("/api/child/teeth", {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: tooth.id, member_id: memberId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Kunde inte ta bort tanden.");
+    } catch (error) {
+      console.error(`Kunde inte ta bort tanden för ${displayName}:`, error);
       setErrorMessage("Tanden kunde inte tas bort.");
       setDeletingId(null);
       return;

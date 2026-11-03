@@ -33,7 +33,6 @@ import {
 
 import ChildDocumentationButton from "@/components/dashboard/ChildDocumentationButton";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
 
 type GrowthMeasurement = {
   id: string;
@@ -184,36 +183,24 @@ export default function ChildGrowth({
 
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const fetchMeasurements = useCallback(() => {
-    return supabase
-      .from("signe_growth")
-      .select("id, member_id, measurement_date, weight_kg, height_cm, created_at")
-      .eq("member_id", memberId)
-      .order("measurement_date", {
-        ascending: true,
-      })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error(
-            `Kunde inte hämta tillväxtdata för ${displayName}:`,
-            error,
-          );
-
-          setErrorMessage("Kunde inte hämta mätningarna från databasen.");
-
-          setIsLoading(false);
-          return;
-        }
-        const normalizedData: GrowthMeasurement[] = (data ?? []).map(
-          (measurement) => ({
-            ...measurement,
-            weight_kg: toNumber(measurement.weight_kg),
-            height_cm: toNumber(measurement.height_cm),
-          }),
-        );
-        setMeasurements(normalizedData);
-        setIsLoading(false);
+  const fetchMeasurements = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/child/growth?memberId=${encodeURIComponent(memberId)}`, {
+        cache: "no-store",
       });
+      if (!response.ok) throw new Error("Kunde inte hämta mätningarna.");
+      const data: GrowthMeasurement[] = await response.json();
+      setMeasurements(data.map((measurement) => ({
+        ...measurement,
+        weight_kg: toNumber(measurement.weight_kg),
+        height_cm: toNumber(measurement.height_cm),
+      })));
+    } catch (error) {
+      console.error(`Kunde inte hämta tillväxtdata för ${displayName}:`, error);
+      setErrorMessage("Kunde inte hämta mätningarna från databasen.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [memberId, displayName]);
 
   const loadMeasurements = useCallback(() => {
@@ -337,33 +324,32 @@ export default function ChildGrowth({
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("signe_growth")
-      .insert({
-        member_id: memberId,
-        measurement_date: measurementDate,
-        weight_kg: weightValue,
-        height_cm: heightValue,
-      })
-      .select(
-        "id, member_id, measurement_date, weight_kg, height_cm, created_at"
-      )
-      .single();
-
-    if (error) {
-      console.error(
-        `Kunde inte spara mätningen för ${displayName}:`,
-        error
-      );
-
-      if (error.code === "23505") {
-        setErrorMessage(
-          "Det finns redan en mätning för det valda datumet."
-        );
-      } else {
-        setErrorMessage("Mätningen kunde inte sparas.");
+    let data: GrowthMeasurement;
+    try {
+      const response = await fetch("/api/child/growth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: memberId,
+          measurement_date: measurementDate,
+          weight_kg: weightValue,
+          height_cm: heightValue,
+        }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          setErrorMessage("Det finns redan en mätning för det valda datumet.");
+        } else {
+          setErrorMessage(result.error ?? "Mätningen kunde inte sparas.");
+        }
+        setIsSaving(false);
+        return;
       }
-
+      data = await response.json();
+    } catch (error) {
+      console.error(`Kunde inte spara mätningen för ${displayName}:`, error);
+      setErrorMessage("Mätningen kunde inte sparas.");
       setIsSaving(false);
       return;
     }
@@ -396,18 +382,15 @@ export default function ChildGrowth({
     setDeletingId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("signe_growth")
-      .delete()
-      .eq("id", id)
-      .eq("member_id", memberId);
-
-    if (error) {
-      console.error(
-        `Kunde inte ta bort mätningen för ${displayName}:`,
-        error
-      );
-
+    try {
+      const response = await fetch("/api/child/growth", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, member_id: memberId }),
+      });
+      if (!response.ok) throw new Error("Kunde inte ta bort mätningen.");
+    } catch (error) {
+      console.error(`Kunde inte ta bort mätningen för ${displayName}:`, error);
       setErrorMessage("Mätningen kunde inte tas bort.");
       setDeletingId(null);
       return;

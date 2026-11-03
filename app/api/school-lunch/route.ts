@@ -1,6 +1,25 @@
-import { supabase } from "@/lib/supabase";
+import { hasDashboardSession } from "@/lib/dashboard-session";
+import { getResorSupabase } from "@/lib/supabase-resor-server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+const COOKIE_NAME = "family-dashboard-auth";
+function authorized(request: NextRequest): boolean {
+
+  return hasDashboardSession(request);
+}
+function forbidden() { return NextResponse.json({ error: "Obehörig" }, { status: 401 }); }
+function sameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  if (!host) return false;
+  try { const url = new URL(origin); return url.host === host && url.protocol === `${proto}:`; }
+  catch { return false; }
+}
+
 
 type LunchDay = {
   date: string | null;
@@ -209,7 +228,7 @@ function getSchoolName(xml: string, slug: string) {
 }
 
 async function getSchoolLunchUrl() {
-  const { data, error } = await supabase
+  const { data, error } = await getResorSupabase()
     .from("app_settings")
     .select("setting_value")
     .eq("setting_key", "school_lunch_url")
@@ -238,7 +257,8 @@ async function getSchoolLunchUrl() {
   return url;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!authorized(request)) return forbidden();
   let schoolSlug = "";
   let schoolName = "Skola";
 

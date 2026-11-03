@@ -71,13 +71,27 @@ function htmlResponse(
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       },
     }
   );
 }
 
 export async function GET(request: Request) {
+  // Den äldre OAuth-installationen behövs inte för den aktiva
+  // service account-baserade kalenderintegrationen. Tillåt den endast
+  // i lokal utvecklingsmiljö för att undvika att visa refresh tokens i produktion.
   const url = new URL(request.url);
+  if (process.env.NODE_ENV !== "development" ||
+      !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
+    return htmlResponse(
+      "Google Calendar OAuth är avaktiverat",
+      "<p>Den äldre OAuth-installationen är endast tillgänglig lokalt. Dashboardens kalender använder servicekonto.</p>",
+      410
+    );
+  }
 
   const error = url.searchParams.get("error");
   const code = url.searchParams.get("code");
@@ -173,20 +187,18 @@ export async function GET(request: Request) {
     response.cookies.set("google_calendar_oauth_state", "", {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: false,
       path: "/",
       maxAge: 0,
     });
 
     return response;
   } catch (error) {
-    console.error("Google OAuth callback-fel:", error);
+    console.error("Google OAuth callback misslyckades.");
 
     return htmlResponse(
       "Google Calendar kunde inte anslutas",
-      `<p>${escapeHtml(
-        error instanceof Error ? error.message : "Okänt fel."
-      )}</p>`,
+      "<p>Ett fel inträffade vid anslutningen. Kontrollera serverns loggar.</p>",
       500
     );
   }

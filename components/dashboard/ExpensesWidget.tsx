@@ -26,7 +26,18 @@ import {
 } from "react";
 
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
+type ApiResult<T> = { data: T };
+async function expensesApi<T>(method: "GET" | "POST" | "PATCH" | "DELETE", payload?: Record<string, unknown>): Promise<T> {
+  const response = await fetch("/api/expenses", {
+    method,
+    cache: "no-store",
+    credentials: "same-origin",
+    ...(payload ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "API-fel");
+  return result as T;
+}
 
 type Payer = "Jens" | "Lenita" | "Gemensam";
 type GroupType = "simple" | "advanced";
@@ -188,45 +199,20 @@ export default function ExpensesWidget() {
   >(null);
 
   const fetchData = useCallback(() => {
-    return Promise.all([
-      supabase
-        .from("expense_groups")
-        .select(
-          "id, name, sort_order, created_at, group_type, is_archived, archived_at",
-        )
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("shopping_ledger")
-        .select("id, item, price, created_at, group_id, paid_by, category")
-        .order("created_at", { ascending: false }),
-    ]).then(([groupsResult, expensesResult]) => {
-      if (groupsResult.error || expensesResult.error) {
-        console.error("Kunde inte hämta utgiftsdata:", {
-          groups: groupsResult.error,
-          expenses: expensesResult.error,
+    return expensesApi<{ groups: ExpenseGroup[]; expenses: Expense[] }>("GET")
+      .then(({ groups: loadedGroups, expenses: loadedExpenses }) => {
+        setGroups(loadedGroups);
+        setExpenses(loadedExpenses);
+        setActiveGroupId((current) => {
+          if (current && loadedGroups.some((group) => group.id === current && !group.is_archived)) return current;
+          return loadedGroups.find((group) => !group.is_archived)?.id ?? null;
         });
-
+        setIsLoading(false);
+      }).catch((error) => {
+        console.error("Kunde inte hämta utgiftsdata:", error);
         setErrorMessage("Kunde inte hämta utgifterna från databasen.");
         setIsLoading(false);
-        return;
-      }
-      const loadedGroups = (groupsResult.data ?? []) as ExpenseGroup[];
-      const loadedExpenses = (expensesResult.data ?? []) as Expense[];
-      setGroups(loadedGroups);
-      setExpenses(loadedExpenses);
-      setActiveGroupId((current) => {
-        if (
-          current &&
-          loadedGroups.some((group) => group.id === current && !group.is_archived)
-        ) {
-          return current;
-        }
-
-        return loadedGroups.find((group) => !group.is_archived)?.id ?? null;
       });
-      setIsLoading(false);
-    });
   }, []);
 
   const loadData = useCallback(() => {
@@ -383,22 +369,11 @@ export default function ExpensesWidget() {
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("shopping_ledger")
-      .insert({
-        item: trimmedItemName,
-        price: parsedInputPrice,
-        group_id: activeGroupId,
-        paid_by: paidBy,
-        category:
-          activeGroup?.group_type === "advanced"
-            ? category
-            : null,
-      })
-      .select(
-        "id, item, price, created_at, group_id, paid_by, category"
-      )
-      .single();
+    const { data, error } = await expensesApi<ApiResult<Expense>>("POST", {
+      action: "addExpense", item: trimmedItemName, price: parsedInputPrice,
+      group_id: activeGroupId, paid_by: paidBy,
+      category: activeGroup?.group_type === "advanced" ? category : null,
+    }).then((result) => ({ data: result.data, error: null })).catch((error) => ({ data: null, error }));
 
     if (error) {
       console.error(
@@ -429,10 +404,8 @@ export default function ExpensesWidget() {
     setDeletingId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("shopping_ledger")
-      .delete()
-      .eq("id", id);
+    const { error } = await expensesApi("DELETE", { action: "deleteExpense", id })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (error) {
       console.error(
@@ -477,22 +450,11 @@ export default function ExpensesWidget() {
     setIsSavingEdit(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("shopping_ledger")
-      .update({
-        item,
-        price,
-        paid_by: editingExpense.paidBy,
-        category:
-          activeGroup?.group_type === "advanced"
-            ? editingExpense.category
-            : null,
-      })
-      .eq("id", editingExpense.id)
-      .select(
-        "id, item, price, created_at, group_id, paid_by, category"
-      )
-      .single();
+    const { data, error } = await expensesApi<ApiResult<Expense>>("PATCH", {
+      action: "editExpense", id: editingExpense.id, item, price,
+      paid_by: editingExpense.paidBy,
+      category: activeGroup?.group_type === "advanced" ? editingExpense.category : null,
+    }).then((result) => ({ data: result.data, error: null })).catch((error) => ({ data: null, error }));
 
     if (error) {
       console.error(
@@ -539,18 +501,9 @@ export default function ExpensesWidget() {
             ...groups.map((group) => group.sort_order)
           ) + 10;
 
-    const { data, error } = await supabase
-      .from("expense_groups")
-      .insert({
-        name,
-        sort_order: nextSortOrder,
-        group_type: newGroupType,
-        is_archived: false,
-      })
-      .select(
-        "id, name, sort_order, created_at, group_type, is_archived, archived_at"
-      )
-      .single();
+    const { data, error } = await expensesApi<ApiResult<ExpenseGroup>>("POST", {
+      action: "addGroup", name, sort_order: nextSortOrder, group_type: newGroupType,
+    }).then((result) => ({ data: result.data, error: null })).catch((error) => ({ data: null, error }));
 
     if (error) {
       console.error(
@@ -589,10 +542,8 @@ export default function ExpensesWidget() {
     setIsSavingGroup(true);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("expense_groups")
-      .update({ name })
-      .eq("id", groupId);
+    const { error } = await expensesApi("PATCH", { action: "renameGroup", id: groupId, name })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (error) {
       console.error(
@@ -636,28 +587,8 @@ export default function ExpensesWidget() {
     setIsSavingGroup(true);
     setErrorMessage(null);
 
-    const { error: expensesError } = await supabase
-      .from("shopping_ledger")
-      .update({ category: "Övrigt" })
-      .eq("group_id", group.id)
-      .is("category", null);
-
-    if (expensesError) {
-      console.error(
-        "Kunde inte kategorisera befintliga utgifter:",
-        expensesError
-      );
-      setErrorMessage(
-        "Fliken kunde inte uppgraderas."
-      );
-      setIsSavingGroup(false);
-      return;
-    }
-
-    const { error: groupError } = await supabase
-      .from("expense_groups")
-      .update({ group_type: "advanced" })
-      .eq("id", group.id);
+    const { error: groupError } = await expensesApi("PATCH", { action: "upgradeGroup", id: group.id })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (groupError) {
       console.error(
@@ -702,13 +633,8 @@ export default function ExpensesWidget() {
 
     const archivedAt = new Date().toISOString();
 
-    const { error } = await supabase
-      .from("expense_groups")
-      .update({
-        is_archived: true,
-        archived_at: archivedAt,
-      })
-      .eq("id", group.id);
+    const { error } = await expensesApi("PATCH", { action: "archiveGroup", id: group.id })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (error) {
       console.error(
@@ -753,13 +679,8 @@ export default function ExpensesWidget() {
     setArchivingGroupId(group.id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("expense_groups")
-      .update({
-        is_archived: false,
-        archived_at: null,
-      })
-      .eq("id", group.id);
+    const { error } = await expensesApi("PATCH", { action: "restoreGroup", id: group.id })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (error) {
       console.error(
@@ -808,10 +729,8 @@ export default function ExpensesWidget() {
     setDeletingGroupId(group.id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("expense_groups")
-      .delete()
-      .eq("id", group.id);
+    const { error } = await expensesApi("DELETE", { action: "deleteGroup", id: group.id })
+      .then(() => ({ error: null })).catch((error) => ({ error }));
 
     if (error) {
       console.error(

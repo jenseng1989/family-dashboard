@@ -1,6 +1,6 @@
 import "server-only";
 
-import { supabase } from "@/lib/supabase";
+import { getResorSupabase } from "@/lib/supabase-resor-server";
 
 export type ChildGrowthMeasurement = {
   id: string;
@@ -78,6 +78,7 @@ export async function getChildDocumentationData(
   memberId: string
 ): Promise<ChildDocumentationData> {
   const warnings: string[] = [];
+  const supabase = getResorSupabase();
 
   const memberResult =
     await supabase

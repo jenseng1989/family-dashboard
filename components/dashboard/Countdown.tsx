@@ -17,7 +17,7 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
+
 
 type CountdownDatabaseRow = {
   id: string;
@@ -114,23 +114,16 @@ export default function Countdown() {
     string | null
   >(null);
 
-  const fetchEvents = useCallback(() => {
-    return supabase
-      .from("countdowns")
-      .select("id, title, event_date, created_at")
-      .order("event_date", { ascending: true })
-      .order("created_at", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Kunde inte hämta nedräkningar:", error);
-
-          setErrorMessage("Kunde inte hämta nedräkningarna från databasen.");
-          setIsLoading(false);
-          return;
-        }
-        setEvents(data ?? []);
-        setIsLoading(false);
-      });
+  const fetchEvents = useCallback(async () => {
+    try {
+      const response = await fetch("/api/countdowns", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as { events: CountdownDatabaseRow[] };
+      setEvents(data.events ?? []);
+    } catch (error) {
+      console.error("Kunde inte hämta nedräkningar:", error);
+      setErrorMessage("Kunde inte hämta nedräkningarna från databasen.");
+    } finally { setIsLoading(false); }
   }, []);
 
   const loadEvents = useCallback(() => {
@@ -170,24 +163,17 @@ export default function Countdown() {
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("countdowns")
-      .insert({
-        title: trimmedTitle,
-        event_date: date,
-      })
-      .select("id, title, event_date, created_at")
-      .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte lägga till nedräkning:",
-        error
-      );
-
-      setErrorMessage(
-        "Nedräkningen kunde inte sparas."
-      );
+    let data: CountdownDatabaseRow;
+    try {
+      const response = await fetch("/api/countdowns", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmedTitle, event_date: date }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      data = ((await response.json()) as { event: CountdownDatabaseRow }).event;
+    } catch (error) {
+      console.error("Kunde inte lägga till nedräkning:", error);
+      setErrorMessage("Nedräkningen kunde inte sparas.");
       setIsSaving(false);
       return;
     }
@@ -210,20 +196,12 @@ export default function Countdown() {
     setDeletingId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("countdowns")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error(
-        "Kunde inte ta bort nedräkning:",
-        error
-      );
-
-      setErrorMessage(
-        "Nedräkningen kunde inte tas bort."
-      );
+    try {
+      const response = await fetch(`/api/countdowns?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      console.error("Kunde inte ta bort nedräkning:", error);
+      setErrorMessage("Nedräkningen kunde inte tas bort.");
       setDeletingId(null);
       return;
     }

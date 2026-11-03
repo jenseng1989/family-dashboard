@@ -1,3 +1,4 @@
+import { hasDashboardSession } from "@/lib/dashboard-session";
 import { NextRequest, NextResponse } from "next/server";
 import { getResorSupabase } from "@/lib/supabase-resor-server";
 
@@ -23,8 +24,8 @@ function fail(message: string, status: number) {
 
 // Behörigheten kontrolleras också här, inte enbart i proxy.ts.
 function authorize(request: NextRequest, mutation = false): NextResponse | null {
-  const sessionToken = process.env.DASHBOARD_SESSION_TOKEN;
-  if (!sessionToken || request.cookies.get(COOKIE_NAME)?.value !== sessionToken) {
+
+  if (!hasDashboardSession(request)) {
     return fail("Du måste vara inloggad för att hantera resor.", 401);
   }
   if (mutation) {

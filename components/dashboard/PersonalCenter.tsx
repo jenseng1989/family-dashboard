@@ -21,7 +21,6 @@ import {
 } from "react";
 
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
 
 type PersonalCenterProps = {
   memberId: string;
@@ -99,39 +98,20 @@ export default function PersonalCenter({
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const fetchPersonalCenter = useCallback(() => {
-    return Promise.all([
-      supabase
-        .from("personal_todos")
-        .select("id, member_id, task, created_at")
-        .eq("member_id", memberId)
-        .order("created_at", {
-          ascending: true,
-        }),
-
-      supabase
-        .from("personal_notes")
-        .select("id, member_id, title, content, created_at, updated_at")
-        .eq("member_id", memberId)
-        .order("updated_at", {
-          ascending: false,
-        }),
-    ]).then(([todosResult, notesResult]) => {
-      if (todosResult.error || notesResult.error) {
-        console.error(
-          "Kunde inte hämta personligt center:",
-          todosResult.error ?? notesResult.error,
-        );
-
-        setErrorMessage(`Kunde inte hämta innehållet för ${displayName}.`);
-
-        setIsLoading(false);
-        return;
-      }
-      setTodos((todosResult.data ?? []) as unknown as PersonalTodo[]);
-      setNotes((notesResult.data ?? []) as unknown as PersonalNote[]);
+  const fetchPersonalCenter = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/personal-center?memberId=${encodeURIComponent(memberId)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as { todos: PersonalTodo[]; notes: PersonalNote[] };
+      setTodos(data.todos);
+      setNotes(data.notes);
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Kunde inte hämta personligt center:", error);
+      setErrorMessage(`Kunde inte hämta innehållet för ${displayName}.`);
+    } finally {
       setIsLoading(false);
-    });
+    }
   }, [displayName, memberId]);
 
   const loadPersonalCenter = useCallback(() => {
@@ -142,308 +122,121 @@ export default function PersonalCenter({
 
   const [previousFetchPersonalCenterKey, setPreviousFetchPersonalCenterKey] =
     useState(() => [displayName, memberId]);
-  if (
-    previousFetchPersonalCenterKey[0] !== displayName ||
-    previousFetchPersonalCenterKey[1] !== memberId
-  ) {
+  if (previousFetchPersonalCenterKey[0] !== displayName || previousFetchPersonalCenterKey[1] !== memberId) {
     setPreviousFetchPersonalCenterKey([displayName, memberId]);
     setIsLoading(true);
     setErrorMessage(null);
   }
 
-  useEffect(() => {
-    void fetchPersonalCenter();
-  }, [fetchPersonalCenter]);
+  useEffect(() => { void fetchPersonalCenter(); }, [fetchPersonalCenter]);
 
-  async function addTodo(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function sendPersonalRequest(method: "POST" | "PATCH" | "DELETE", body: Record<string, unknown>) {
+    const response = await fetch("/api/personal-center", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ memberId, ...body }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  async function addTodo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const trimmedTask = newTask.trim();
-
-    if (!trimmedTask || isSavingTodo) {
-      return;
-    }
-
+    if (!trimmedTask || isSavingTodo) return;
     setIsSavingTodo(true);
     setErrorMessage(null);
-
-    const { data, error } =
-      await supabase
-        .from("personal_todos")
-        .insert({
-          member_id: memberId,
-          task: trimmedTask,
-        })
-        .select(
-          "id, member_id, task, created_at"
-        )
-        .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte lägga till personlig uppgift:",
-        error
-      );
-
-      setErrorMessage(
-        "Uppgiften kunde inte sparas."
-      );
-
-      setIsSavingTodo(false);
-      return;
-    }
-
-    setTodos((currentTodos) => [
-      ...currentTodos,
-      data as unknown as PersonalTodo,
-    ]);
-
-    setNewTask("");
-    setIsSavingTodo(false);
+    try {
+      const data = (await sendPersonalRequest("POST", { kind: "todo", task: trimmedTask })) as PersonalTodo;
+      setTodos((current) => [...current, data]);
+      setNewTask("");
+    } catch (error) {
+      console.error("Kunde inte lägga till personlig uppgift:", error);
+      setErrorMessage("Uppgiften kunde inte sparas.");
+    } finally { setIsSavingTodo(false); }
   }
 
   async function completeTodo(id: string) {
-    if (deletingTodoId !== null) {
-      return;
-    }
-
+    if (deletingTodoId !== null) return;
     setDeletingTodoId(id);
     setErrorMessage(null);
-
-    const { error } =
-      await supabase
-        .from("personal_todos")
-        .delete()
-        .eq("id", id)
-        .eq("member_id", memberId);
-
-    if (error) {
-      console.error(
-        "Kunde inte ta bort personlig uppgift:",
-        error
-      );
-
-      setErrorMessage(
-        "Uppgiften kunde inte tas bort."
-      );
-
-      setDeletingTodoId(null);
-      return;
-    }
-
-    setTodos((currentTodos) =>
-      currentTodos.filter(
-        (todo) => todo.id !== id
-      )
-    );
-
-    setDeletingTodoId(null);
+    try {
+      await sendPersonalRequest("DELETE", { kind: "todo", id });
+      setTodos((current) => current.filter((todo) => todo.id !== id));
+    } catch (error) {
+      console.error("Kunde inte ta bort personlig uppgift:", error);
+      setErrorMessage("Uppgiften kunde inte tas bort.");
+    } finally { setDeletingTodoId(null); }
   }
 
-  async function addNote(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const trimmedTitle =
-      noteForm.title.trim();
-
-    const trimmedContent =
-      noteForm.content.trim();
-
-    if (
-      !trimmedTitle ||
-      !trimmedContent ||
-      isSavingNote
-    ) {
-      return;
-    }
-
+    const title = noteForm.title.trim();
+    const content = noteForm.content.trim();
+    if (!title || !content || isSavingNote) return;
     setIsSavingNote(true);
     setErrorMessage(null);
-
-    const { data, error } =
-      await supabase
-        .from("personal_notes")
-        .insert({
-          member_id: memberId,
-          title: trimmedTitle,
-          content: trimmedContent,
-        })
-        .select(
-          "id, member_id, title, content, created_at, updated_at"
-        )
-        .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte lägga till personlig anteckning:",
-        error
-      );
-
-      setErrorMessage(
-        "Anteckningen kunde inte sparas."
-      );
-
-      setIsSavingNote(false);
-      return;
-    }
-
-    setNotes((currentNotes) => [
-      data as unknown as PersonalNote,
-      ...currentNotes,
-    ]);
-
-    setNoteForm(EMPTY_NOTE_FORM);
-    setIsSavingNote(false);
+    try {
+      const data = (await sendPersonalRequest("POST", { kind: "note", title, content })) as PersonalNote;
+      setNotes((current) => [data, ...current]);
+      setNoteForm(EMPTY_NOTE_FORM);
+    } catch (error) {
+      console.error("Kunde inte lägga till personlig anteckning:", error);
+      setErrorMessage("Anteckningen kunde inte sparas.");
+    } finally { setIsSavingNote(false); }
   }
 
-  function startEditingNote(
-    note: PersonalNote
-  ) {
+  function startEditingNote(note: PersonalNote) {
     setEditingNoteId(note.id);
-
-    setEditNoteForm({
-      title: note.title,
-      content: note.content,
-    });
-
+    setEditNoteForm({ title: note.title, content: note.content });
     setErrorMessage(null);
   }
 
   function cancelEditingNote() {
-    if (isSavingNote) {
-      return;
-    }
-
+    if (isSavingNote) return;
     setEditingNoteId(null);
     setEditNoteForm(EMPTY_NOTE_FORM);
   }
 
-  async function saveEditedNote(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function saveEditedNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!editingNoteId || isSavingNote) {
+    if (!editingNoteId || isSavingNote) return;
+    const title = editNoteForm.title.trim();
+    const content = editNoteForm.content.trim();
+    if (!title || !content) {
+      setErrorMessage("Anteckningen behöver både rubrik och innehåll.");
       return;
     }
-
-    const trimmedTitle =
-      editNoteForm.title.trim();
-
-    const trimmedContent =
-      editNoteForm.content.trim();
-
-    if (!trimmedTitle || !trimmedContent) {
-      setErrorMessage(
-        "Anteckningen behöver både rubrik och innehåll."
-      );
-
-      return;
-    }
-
     setIsSavingNote(true);
     setErrorMessage(null);
-
-    const updatedAt =
-      new Date().toISOString();
-
-    const { data, error } =
-      await supabase
-        .from("personal_notes")
-        .update({
-          title: trimmedTitle,
-          content: trimmedContent,
-          updated_at: updatedAt,
-        })
-        .eq("id", editingNoteId)
-        .eq("member_id", memberId)
-        .select(
-          "id, member_id, title, content, created_at, updated_at"
-        )
-        .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte uppdatera anteckningen:",
-        error
-      );
-
-      setErrorMessage(
-        "Ändringarna kunde inte sparas."
-      );
-
-      setIsSavingNote(false);
-      return;
-    }
-
-    setNotes((currentNotes) =>
-      currentNotes
-        .map((note) =>
-          note.id === editingNoteId
-            ? (data as unknown as PersonalNote)
-            : note
-        )
-        .sort(
-          (firstNote, secondNote) =>
-            new Date(
-              secondNote.updated_at
-            ).getTime() -
-            new Date(
-              firstNote.updated_at
-            ).getTime()
-        )
-    );
-
-    setEditingNoteId(null);
-    setEditNoteForm(EMPTY_NOTE_FORM);
-    setIsSavingNote(false);
+    try {
+      const data = (await sendPersonalRequest("PATCH", { kind: "note", id: editingNoteId, title, content })) as PersonalNote;
+      setNotes((current) => current.map((note) => note.id === editingNoteId ? data : note)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      setEditingNoteId(null);
+      setEditNoteForm(EMPTY_NOTE_FORM);
+    } catch (error) {
+      console.error("Kunde inte uppdatera anteckningen:", error);
+      setErrorMessage("Ändringarna kunde inte sparas.");
+    } finally { setIsSavingNote(false); }
   }
 
   async function deleteNote(id: string) {
-    if (deletingNoteId !== null) {
-      return;
-    }
-
+    if (deletingNoteId !== null) return;
     setDeletingNoteId(id);
     setErrorMessage(null);
-
-    const { error } =
-      await supabase
-        .from("personal_notes")
-        .delete()
-        .eq("id", id)
-        .eq("member_id", memberId);
-
-    if (error) {
-      console.error(
-        "Kunde inte ta bort anteckningen:",
-        error
-      );
-
-      setErrorMessage(
-        "Anteckningen kunde inte tas bort."
-      );
-
-      setDeletingNoteId(null);
-      return;
-    }
-
-    setNotes((currentNotes) =>
-      currentNotes.filter(
-        (note) => note.id !== id
-      )
-    );
-
-    if (editingNoteId === id) {
-      setEditingNoteId(null);
-      setEditNoteForm(EMPTY_NOTE_FORM);
-    }
-
-    setDeletingNoteId(null);
+    try {
+      await sendPersonalRequest("DELETE", { kind: "note", id });
+      setNotes((current) => current.filter((note) => note.id !== id));
+      if (editingNoteId === id) {
+        setEditingNoteId(null);
+        setEditNoteForm(EMPTY_NOTE_FORM);
+      }
+    } catch (error) {
+      console.error("Kunde inte ta bort anteckningen:", error);
+      setErrorMessage("Anteckningen kunde inte tas bort.");
+    } finally { setDeletingNoteId(null); }
   }
 
   const showTodos =

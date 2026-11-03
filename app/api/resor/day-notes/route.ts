@@ -1,3 +1,4 @@
+import { hasDashboardSession } from "@/lib/dashboard-session";
 import { NextRequest, NextResponse } from "next/server";
 import { getResorSupabase } from "@/lib/supabase-resor-server";
 
@@ -8,8 +9,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const headers = { "Cache-Control": "no-store" };
 function fail(message: string, status: number) { return NextResponse.json({ error: message }, { status, headers }); }
 function authorize(request: NextRequest, write = false): NextResponse | null {
-  const token = process.env.DASHBOARD_SESSION_TOKEN;
-  if (!token || request.cookies.get("family-dashboard-auth")?.value !== token) return fail("Du måste vara inloggad.", 401);
+
+  if (!hasDashboardSession(request)) return fail("Du måste vara inloggad.", 401);
   if (write) {
     if (request.headers.get("origin") !== request.nextUrl.origin) return fail("Otillåtet ursprung.", 403);
     if (!(request.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json")) return fail("Begäran måste innehålla JSON.", 415);

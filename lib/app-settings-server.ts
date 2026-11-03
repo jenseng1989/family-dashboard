@@ -1,6 +1,6 @@
 import "server-only";
 
-import { supabase } from "@/lib/supabase";
+import { getResorSupabase } from "@/lib/supabase-resor-server";
 import type { AppSettings, AppTabId } from "@/lib/app-settings-client";
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -66,7 +66,7 @@ function rowsToSettings(rows: SettingsRow[] | null): AppSettings {
 
 export async function getInitialAppSettings(): Promise<AppSettings> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getResorSupabase()
       .from("app_settings")
       .select("setting_key, setting_value");
 

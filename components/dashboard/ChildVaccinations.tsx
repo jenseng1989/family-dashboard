@@ -24,7 +24,7 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
+
 
 type Vaccination = {
   id: string;
@@ -94,6 +94,37 @@ function getCountdownText(dateString: string): string {
   return `${Math.abs(days)} dagar sedan`;
 }
 
+
+type VaccinationAction = {
+  action: "create" | "update" | "delete";
+  memberId: string;
+  id?: string;
+  vaccine_name?: string;
+  vaccination_date?: string;
+  dose?: string | null;
+  notes?: string | null;
+};
+
+async function vaccinationRequest(body: VaccinationAction): Promise<{
+  data: Vaccination | null;
+  error: { message: string; code?: string } | null;
+}> {
+  try {
+    const response = await fetch("/api/child/vaccinations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return { data: null, error: { message: result.error ?? "Begäran misslyckades", code: result.code } };
+    }
+    return { data: result.vaccination ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: { message: String(error) } };
+  }
+}
+
 export default function ChildVaccinations({
   memberId,
   displayName,
@@ -119,33 +150,18 @@ export default function ChildVaccinations({
     null
   );
 
-  const fetchVaccinations = useCallback(() => {
-    return supabase
-      .from("signe_vaccinations")
-      .select(
-        "id, member_id, vaccine_name, vaccination_date, dose, notes, created_at",
-      )
-      .eq("member_id", memberId)
-      .order("vaccination_date", {
-        ascending: true,
-      })
-      .order("created_at", {
-        ascending: true,
-      })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error(
-            `Kunde inte hämta vaccinationerna för ${displayName}:`,
-            error,
-          );
-
-          setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
-          setIsLoading(false);
-          return;
-        }
-        setVaccinations((data ?? []) as Vaccination[]);
-        setIsLoading(false);
-      });
+  const fetchVaccinations = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/child/vaccinations?memberId=${encodeURIComponent(memberId)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result: { vaccinations: Vaccination[] } = await response.json();
+      setVaccinations(result.vaccinations ?? []);
+    } catch (error) {
+      console.error(`Kunde inte hämta vaccinationerna för ${displayName}:`, error);
+      setErrorMessage("Kunde inte hämta vaccinationshistoriken.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [memberId, displayName]);
 
   const loadVaccinations = useCallback(() => {
@@ -250,20 +266,15 @@ export default function ChildVaccinations({
     setErrorMessage(null);
 
     if (editingId) {
-      const { data, error } = await supabase
-        .from("signe_vaccinations")
-        .update({
-          vaccine_name: trimmedName,
-          vaccination_date: vaccinationDate,
-          dose: trimmedDose || null,
-          notes: trimmedNotes || null,
-        })
-        .eq("id", editingId)
-        .eq("member_id", memberId)
-        .select(
-          "id, member_id, vaccine_name, vaccination_date, dose, notes, created_at"
-        )
-        .single();
+      const { data, error } = await vaccinationRequest({
+        action: "update",
+        memberId,
+        id: editingId,
+        vaccine_name: trimmedName,
+        vaccination_date: vaccinationDate,
+        dose: trimmedDose || null,
+        notes: trimmedNotes || null,
+      });
 
       if (error) {
         console.error(
@@ -290,19 +301,14 @@ export default function ChildVaccinations({
           )
       );
     } else {
-      const { data, error } = await supabase
-        .from("signe_vaccinations")
-        .insert({
-          member_id: memberId,
-          vaccine_name: trimmedName,
-          vaccination_date: vaccinationDate,
-          dose: trimmedDose || null,
-          notes: trimmedNotes || null,
-        })
-        .select(
-          "id, member_id, vaccine_name, vaccination_date, dose, notes, created_at"
-        )
-        .single();
+      const { data, error } = await vaccinationRequest({
+        action: "create",
+        memberId,
+        vaccine_name: trimmedName,
+        vaccination_date: vaccinationDate,
+        dose: trimmedDose || null,
+        notes: trimmedNotes || null,
+      });
 
       if (error) {
         console.error(
@@ -341,11 +347,11 @@ export default function ChildVaccinations({
     setDeletingId(vaccination.id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("signe_vaccinations")
-      .delete()
-      .eq("id", vaccination.id)
-      .eq("member_id", memberId);
+    const { error } = await vaccinationRequest({
+      action: "delete",
+      memberId,
+      id: vaccination.id,
+    });
 
     if (error) {
       console.error(

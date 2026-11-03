@@ -35,7 +35,7 @@ import {
   normalizeOptionalText,
   parseLocalDate,
 } from "@/components/dashboard/vacation/vacation-utils";
-import { supabase } from "@/lib/supabase";
+
 
 export default function VacationPlan() {
   const [days, setDays] = useState<VacationDay[]>(
@@ -62,28 +62,18 @@ export default function VacationPlan() {
   const [isSaving, setIsSaving] =
     useState(false);
 
-  const fetchPlan = useCallback(() => {
-    return supabase
-      .from("vacation_plan")
-      .select(
-        "id, plan_date, day_name, location, travel, accommodation, activity, information",
-      )
-      .order("plan_date", {
-        ascending: true,
-      })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Kunde inte hämta dagsplaneringen:", error);
-
-          setErrorMessage("Kunde inte hämta dagsplaneringen.");
-          setIsLoading(false);
-          return;
-        }
-        setDays(
-          ((data ?? []) as VacationDay[]).filter(hasVisibleVacationInformation),
-        );
-        setIsLoading(false);
-      });
+  const fetchPlan = useCallback(async () => {
+    try {
+      const response = await fetch("/api/vacation-plan", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Kunde inte hämta dagsplaneringen.");
+      setDays(((result.days ?? []) as VacationDay[]).filter(hasVisibleVacationInformation));
+    } catch (error) {
+      console.error("Kunde inte hämta dagsplaneringen:", error);
+      setErrorMessage("Kunde inte hämta dagsplaneringen.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const loadPlan = useCallback(() => {
@@ -186,50 +176,35 @@ export default function VacationPlan() {
     setIsAddingDay(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("vacation_plan")
-      .insert({
-        plan_date: addForm.planDate,
-        day_name: getSwedishDayName(
-          addForm.planDate
-        ),
-        location: normalizeOptionalText(
-          addForm.location
-        ),
-        travel: normalizeOptionalText(
-          addForm.travel
-        ),
-        accommodation: normalizeOptionalText(
-          addForm.accommodation
-        ),
-        activity: normalizeOptionalText(
-          addForm.activity
-        ),
-        information: normalizeOptionalText(
-          addForm.information
-        ),
-      })
-      .select(
-        "id, plan_date, day_name, location, travel, accommodation, activity, information"
-      )
-      .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte lägga till den planerade dagen:",
-        error
-      );
-
-      if (error.code === "23505") {
-        setErrorMessage(
-          "Det finns redan en planerad dag med det valda datumet. Redigera den befintliga dagen i stället."
-        );
-      } else {
-        setErrorMessage(
-          "Den nya planerade dagen kunde inte sparas."
-        );
+    let data: VacationDay;
+    try {
+      const response = await fetch("/api/vacation-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan_date: addForm.planDate,
+          day_name: getSwedishDayName(addForm.planDate),
+          location: normalizeOptionalText(addForm.location),
+          travel: normalizeOptionalText(addForm.travel),
+          accommodation: normalizeOptionalText(addForm.accommodation),
+          activity: normalizeOptionalText(addForm.activity),
+          information: normalizeOptionalText(addForm.information),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        if (response.status === 409) {
+          setErrorMessage("Det finns redan en planerad dag med det valda datumet. Redigera den befintliga dagen i stället.");
+        } else {
+          setErrorMessage("Den nya planerade dagen kunde inte sparas.");
+        }
+        setIsAddingDay(false);
+        return;
       }
-
+      data = result.day as VacationDay;
+    } catch (error) {
+      console.error("Kunde inte lägga till planerad dag:", error);
+      setErrorMessage("Den nya planerade dagen kunde inte sparas.");
       setIsAddingDay(false);
       return;
     }
@@ -308,40 +283,26 @@ export default function VacationPlan() {
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("vacation_plan")
-      .update({
-        location: normalizeOptionalText(
-          editForm.location
-        ),
-        travel: normalizeOptionalText(
-          editForm.travel
-        ),
-        accommodation: normalizeOptionalText(
-          editForm.accommodation
-        ),
-        activity: normalizeOptionalText(
-          editForm.activity
-        ),
-        information: normalizeOptionalText(
-          editForm.information
-        ),
-      })
-      .eq("id", editingId)
-      .select(
-        "id, plan_date, day_name, location, travel, accommodation, activity, information"
-      )
-      .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte uppdatera dagsplaneringen:",
-        error
-      );
-
-      setErrorMessage(
-        "Ändringarna kunde inte sparas."
-      );
+    let data: VacationDay;
+    try {
+      const response = await fetch("/api/vacation-plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingId,
+          location: normalizeOptionalText(editForm.location),
+          travel: normalizeOptionalText(editForm.travel),
+          accommodation: normalizeOptionalText(editForm.accommodation),
+          activity: normalizeOptionalText(editForm.activity),
+          information: normalizeOptionalText(editForm.information),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Kunde inte spara.");
+      data = result.day as VacationDay;
+    } catch (error) {
+      console.error("Kunde inte uppdatera dagsplaneringen:", error);
+      setErrorMessage("Ändringarna kunde inte sparas.");
       setIsSaving(false);
       return;
     }

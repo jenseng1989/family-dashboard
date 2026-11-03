@@ -14,7 +14,7 @@ import {
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
-import { supabase } from "@/lib/supabase";
+
 
 type ShoppingItem = {
   id: string;
@@ -34,22 +34,18 @@ export default function ShoppingList() {
     string | null
   >(null);
 
-  const fetchItems = useCallback(() => {
-    return supabase
-      .from("shopping_items")
-      .select("id, name, created_at")
-      .order("created_at", { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Kunde inte hämta inköpslistan:", error);
-
-          setErrorMessage("Kunde inte hämta inköpslistan från databasen.");
-          setIsLoading(false);
-          return;
-        }
-        setItems(data ?? []);
-        setIsLoading(false);
-      });
+  const fetchItems = useCallback(async () => {
+    try {
+      const response = await fetch("/api/shopping-items", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as { items: ShoppingItem[] };
+      setItems(data.items);
+    } catch (error) {
+      console.error("Kunde inte hämta inköpslistan:", error);
+      setErrorMessage("Kunde inte hämta inköpslistan från databasen.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const loadItems = useCallback(() => {
@@ -76,29 +72,21 @@ export default function ShoppingList() {
     setIsSaving(true);
     setErrorMessage(null);
 
-    const { data, error } = await supabase
-      .from("shopping_items")
-      .insert({
-        name: trimmedName,
-      })
-      .select("id, name, created_at")
-      .single();
-
-    if (error) {
-      console.error(
-        "Kunde inte lägga till varan:",
-        error
-      );
-
+    try {
+      const response = await fetch("/api/shopping-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = (await response.json()) as { item: ShoppingItem };
+      setItems((currentItems) => [...currentItems, data.item]);
+    } catch (error) {
+      console.error("Kunde inte lägga till varan:", error);
       setErrorMessage("Varan kunde inte läggas till.");
       setIsSaving(false);
       return;
     }
-
-    setItems((currentItems) => [
-      ...currentItems,
-      data,
-    ]);
 
     setItemName("");
     setIsSaving(false);
@@ -112,20 +100,14 @@ export default function ShoppingList() {
     setDeletingId(id);
     setErrorMessage(null);
 
-    const { error } = await supabase
-      .from("shopping_items")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error(
-        "Kunde inte ta bort varan:",
-        error
-      );
-
-      setErrorMessage(
-        "Varan kunde inte tas bort från listan."
-      );
+    try {
+      const response = await fetch(`/api/shopping-items?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      console.error("Kunde inte ta bort varan:", error);
+      setErrorMessage("Varan kunde inte tas bort från listan.");
       setDeletingId(null);
       return;
     }

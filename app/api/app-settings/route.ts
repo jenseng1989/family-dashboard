@@ -1,0 +1,330 @@
+import { hasDashboardSession } from "@/lib/dashboard-session";
+import { NextRequest, NextResponse } from "next/server";
+import { getResorSupabase } from "@/lib/supabase-resor-server";
+
+export const dynamic = "force-dynamic";
+
+const COOKIE_NAME = "family-dashboard-auth";
+function authorized(request: NextRequest): boolean {
+
+  return hasDashboardSession(request);
+}
+function forbidden() { return NextResponse.json({ error: "Obehörig" }, { status: 401 }); }
+function sameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  if (!host) return false;
+  try { const url = new URL(origin); return url.host === host && url.protocol === `${proto}:`; }
+  catch { return false; }
+}
+
+
+type AppSettings = {
+  defaultTab: string;
+  showAdminButton: boolean;
+  dashboardName: string;
+  schoolLunchUrl: string;
+  showResorTab: boolean;
+  showHemmet3DTab: boolean;
+};
+
+const DEFAULT_SETTINGS: AppSettings = {
+  defaultTab: "today",
+  showAdminButton: true,
+  dashboardName: "Family Dashboard",
+  schoolLunchUrl: "",
+  showResorTab: false,
+  showHemmet3DTab: false,
+};
+
+const VALID_TABS = [
+  "today",
+  "home",
+  "weather",
+  "family",
+  "gothenburg",
+  "fun",
+  "resor",
+  "hemmet3d",
+] as const;
+
+function rowsToSettings(
+  rows:
+    | {
+        setting_key: string;
+        setting_value: string;
+      }[]
+    | null
+): AppSettings {
+  const settings = {
+    ...DEFAULT_SETTINGS,
+  };
+
+  for (const row of rows ?? []) {
+    switch (row.setting_key) {
+      case "default_tab":
+        if (
+          VALID_TABS.includes(
+            row.setting_value as (typeof VALID_TABS)[number]
+          )
+        ) {
+          settings.defaultTab = row.setting_value;
+        }
+        break;
+
+      case "show_admin_button":
+        settings.showAdminButton =
+          row.setting_value === "true";
+        break;
+
+      case "dashboard_name":
+        settings.dashboardName =
+          row.setting_value || DEFAULT_SETTINGS.dashboardName;
+        break;
+
+      case "show_resor_tab":
+        settings.showResorTab = row.setting_value === "true";
+        break;
+
+      case "show_hemmet3d_tab":
+        settings.showHemmet3DTab = row.setting_value === "true";
+        break;
+
+      case "school_lunch_url":
+        settings.schoolLunchUrl = row.setting_value || "";
+        break;
+    }
+  }
+
+  if (!settings.showResorTab && settings.defaultTab === "resor") {
+    settings.defaultTab = "today";
+  }
+
+  if (!settings.showHemmet3DTab && settings.defaultTab === "hemmet3d") {
+    settings.defaultTab = "today";
+  }
+
+  return settings;
+}
+
+export async function GET(request: NextRequest) {
+  if (!authorized(request)) return forbidden();
+  try {
+    const { data, error } = await getResorSupabase()
+      .from("app_settings")
+      .select("setting_key, setting_value");
+
+    if (error) {
+      console.error(
+        "Kunde inte läsa appinställningar:",
+        error
+      );
+
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        settings: rowsToSettings(data),
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  } catch (error) {
+    console.error(
+      "Oväntat fel vid hämtning av appinställningar:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Appinställningarna kunde inte hämtas.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  if (!authorized(request)) return forbidden();
+  if (!sameOrigin(request)) return NextResponse.json({ error: "Ogiltigt ursprung" }, { status: 403 });
+  try {
+    const body = (await request.json()) as Partial<AppSettings>;
+
+    const defaultTab =
+      typeof body.defaultTab === "string" &&
+      VALID_TABS.includes(
+        body.defaultTab as (typeof VALID_TABS)[number]
+      )
+        ? body.defaultTab
+        : null;
+
+    const showAdminButton =
+      typeof body.showAdminButton === "boolean"
+        ? body.showAdminButton
+        : null;
+
+    const dashboardName =
+      typeof body.dashboardName === "string"
+        ? body.dashboardName.trim()
+        : null;
+
+    const showResorTab =
+      typeof body.showResorTab === "boolean"
+        ? body.showResorTab
+        : false;
+
+    const showHemmet3DTab =
+      typeof body.showHemmet3DTab === "boolean"
+        ? body.showHemmet3DTab
+        : false;
+
+    const schoolLunchUrl =
+      typeof body.schoolLunchUrl === "string"
+        ? body.schoolLunchUrl.trim()
+        : null;
+
+    if (
+      defaultTab === null ||
+      showAdminButton === null ||
+      dashboardName === null ||
+      dashboardName.length === 0 ||
+      schoolLunchUrl === null ||
+      (defaultTab === "resor" && !showResorTab) ||
+      (defaultTab === "hemmet3d" && !showHemmet3DTab)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Ogiltiga appinställningar.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (schoolLunchUrl) {
+      try {
+        const parsedUrl = new URL(schoolLunchUrl);
+
+        if (
+          parsedUrl.protocol !== "https:" ||
+          parsedUrl.hostname !== "skolmaten.se" ||
+          !parsedUrl.pathname.startsWith("/api/4/rss/week/")
+        ) {
+          throw new Error();
+        }
+      } catch {
+        return NextResponse.json(
+          {
+            error: "Matsedelslänken måste vara en giltig Skolmaten RSS-länk.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+    }
+
+    const rows = [
+      {
+        setting_key: "default_tab",
+        setting_value: defaultTab,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "show_admin_button",
+        setting_value: String(showAdminButton),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "dashboard_name",
+        setting_value: dashboardName,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "show_resor_tab",
+        setting_value: String(showResorTab),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "show_hemmet3d_tab",
+        setting_value: String(showHemmet3DTab),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        setting_key: "school_lunch_url",
+        setting_value: schoolLunchUrl,
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    const { error } = await getResorSupabase()
+      .from("app_settings")
+      .upsert(rows, {
+        onConflict: "setting_key",
+      });
+
+    if (error) {
+      console.error(
+        "Kunde inte spara appinställningar:",
+        error
+      );
+
+      return NextResponse.json(
+        {
+          error: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      settings: {
+        defaultTab,
+        showAdminButton,
+        dashboardName,
+        schoolLunchUrl,
+        showResorTab,
+        showHemmet3DTab,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Oväntat fel när appinställningar skulle sparas:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Appinställningarna kunde inte sparas.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

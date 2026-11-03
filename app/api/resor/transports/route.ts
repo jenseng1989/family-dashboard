@@ -1,3 +1,4 @@
+import { hasDashboardSession } from "@/lib/dashboard-session";
 import { NextRequest, NextResponse } from "next/server";
 import { getResorSupabase } from "@/lib/supabase-resor-server";
 
@@ -9,8 +10,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const kinds = ["flight", "train", "ferry", "bus", "car", "other"] as const;
 function fail(message: string, status: number) { return NextResponse.json({ error: message }, { status, headers: noCache }); }
 function authorize(request: NextRequest, mutation = false): NextResponse | null {
-  const token = process.env.DASHBOARD_SESSION_TOKEN;
-  if (!token || request.cookies.get("family-dashboard-auth")?.value !== token) return fail("Du måste vara inloggad.", 401);
+
+  if (!hasDashboardSession(request)) return fail("Du måste vara inloggad.", 401);
   if (mutation) {
     const origin = request.headers.get("origin");
     if (!origin || origin !== request.nextUrl.origin) return fail("Otillåtet ursprung.", 403);
