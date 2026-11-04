@@ -88,7 +88,7 @@ function ZoomAwareMarker({ position, children, onClick }: {
 function Earth({ quakes, volcanoes, selectedId, selectedVolcano, onSelect, onSelectVolcano, onClose }: { quakes: Quake[]; volcanoes: Volcano[]; selectedId: string | null; selectedVolcano: string | null; onSelect: (id: string) => void; onSelectVolcano: (id: string) => void; onClose: () => void }) {
   const map = useLoader(THREE.TextureLoader, EARTH_TEXTURE);
   const group = useRef<THREE.Group>(null);
-  const earthMesh = useRef<THREE.Mesh>(null);
+  const earthMesh = useRef<THREE.Mesh>(null!);
   const activeQuake = quakes.find(q => q.id === selectedId) ?? null;
   const activeVolcano = volcanoes.find(v => `${v.name}-${v.country}` === selectedVolcano) ?? null;
   useFrame((_, delta) => { if (group.current && !activeQuake && !activeVolcano) group.current.rotation.y += delta * 0.012; });
