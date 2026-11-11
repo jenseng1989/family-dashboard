@@ -974,13 +974,32 @@ export default function DailyAssistantWidget() {
                     </div>
                   ) : <p className="text-sm text-slate-400">Inga fler aktiviteter planerade.</p>}
                 </div>
+                {(todaysSchoolTransfers.dropoffs.length > 0 || todaysSchoolTransfers.pickups.length > 0) && (
+                  <div className="rounded-xl border border-white/10 bg-slate-800/50 p-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-sky-300">Förskola idag</p>
+                    <div className="space-y-3">
+                      {[
+                        ...todaysSchoolTransfers.dropoffs.map(transfer => ({ ...transfer, label: "Lämning" })),
+                        ...todaysSchoolTransfers.pickups.map(transfer => ({ ...transfer, label: "Hämtning" })),
+                      ].map(transfer => (
+                        <div key={`${transfer.kind}-${transfer.id}`} className="flex items-start gap-3">
+                          <span className="min-w-[54px] shrink-0 rounded-lg bg-sky-500/15 px-2 py-1 text-center text-sm font-bold text-sky-200">{transfer.time}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white">{transfer.label}: {transfer.person}</p>
+                            <p className="mt-1 text-xs text-slate-400">{now ? formatCalendarDate(now.toISOString()) : "Idag"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-800/40 px-3 py-3">
                   <div><p className="text-xs font-bold uppercase tracking-wide text-violet-300">Imorgon</p><p className="mt-1 text-sm text-slate-300">{calendarSummary.tomorrowCount === 0 ? "Inga aktiviteter planerade" : `${calendarSummary.tomorrowCount} ${calendarSummary.tomorrowCount === 1 ? "aktivitet" : "aktiviteter"} planerade`}</p></div>
                   <span className="text-2xl font-extrabold text-white">{calendarSummary.tomorrowCount}</span>
                 </div>
               </div>
             )}
-{(todaysSchoolTransfers.dropoffs.length > 0 || todaysSchoolTransfers.pickups.length > 0) && <div className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-200"><p className="mb-1 font-bold">Förskola idag</p>{todaysSchoolTransfers.dropoffs.map(t => <p key={t.id}>Lämning: {t.person} · {t.time}</p>)}{todaysSchoolTransfers.pickups.map(t => <p key={t.id}>Hämtning: {t.person} · {t.time}</p>)}</div>}
+
          </section>
 
          {/* Elpriser – samma datakälla som Hemmet → Ekonomi. */}

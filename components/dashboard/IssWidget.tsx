@@ -5,12 +5,17 @@ import {
   ExternalLink,
   Globe2,
   LoaderCircle,
+  LocateFixed,
+  Minus,
+  Plus,
   RefreshCw,
   Rocket,
 } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 import Card from "@/components/ui/Card";
@@ -74,162 +79,139 @@ function SpaceError({
   );
 }
 
-function IssWorldMap({
-  latitude,
-  longitude,
-}: {
-  latitude: number;
-  longitude: number;
-}) {
-  const markerLeft =
-    ((longitude + 180) / 360) * 100;
+// OpenStreetMap tiles use Web Mercator coordinates. The ISS position is
+// projected with the same formula, keeping the marker geographically correct.
+const TILE_SIZE = 256;
+const MAX_LATITUDE = 85.05112878;
 
-  const markerTop =
-    ((90 - latitude) / 180) * 100;
+function toWorld(latitude: number, longitude: number, zoom: number) {
+  const scale = TILE_SIZE * 2 ** zoom;
+  const lat = Math.max(-MAX_LATITUDE, Math.min(MAX_LATITUDE, latitude));
+  const sin = Math.sin((lat * Math.PI) / 180);
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+  };
+}
+
+function fromWorld(x: number, y: number, zoom: number) {
+  const scale = TILE_SIZE * 2 ** zoom;
+  const longitude = ((x / scale) * 360 + 180) % 360 - 180;
+  const latitude = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y / scale))) * 180) / Math.PI;
+  return { latitude, longitude };
+}
+
+function IssWorldMap({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const [zoom, setZoom] = useState(2);
+  const [center, setCenter] = useState({ latitude, longitude });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const mapRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; y: number; centerX: number; centerY: number } | null>(null);
+
+  useEffect(() => {
+    const node = mapRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setDimensions({ width: rect.width, height: rect.height });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const centerPoint = toWorld(center.latitude, center.longitude, zoom);
+  const issPoint = toWorld(latitude, longitude, zoom);
+  const worldWidth = TILE_SIZE * 2 ** zoom;
+  let markerDx = issPoint.x - centerPoint.x;
+  if (markerDx > worldWidth / 2) markerDx -= worldWidth;
+  if (markerDx < -worldWidth / 2) markerDx += worldWidth;
+  const markerX = dimensions.width / 2 + markerDx;
+  const markerY = dimensions.height / 2 + issPoint.y - centerPoint.y;
+
+  const tiles = useMemo(() => {
+    const middle = toWorld(center.latitude, center.longitude, zoom);
+    const count = 2 ** zoom;
+    const startX = Math.floor((middle.x - dimensions.width / 2) / TILE_SIZE);
+    const endX = Math.floor((middle.x + dimensions.width / 2) / TILE_SIZE);
+    const startY = Math.max(0, Math.floor((middle.y - dimensions.height / 2) / TILE_SIZE));
+    const endY = Math.min(count - 1, Math.floor((middle.y + dimensions.height / 2) / TILE_SIZE));
+    const result: { key: string; url: string; left: number; top: number }[] = [];
+    for (let x = startX; x <= endX; x++) {
+      for (let y = startY; y <= endY; y++) {
+        const wrappedX = ((x % count) + count) % count;
+        result.push({
+          key: `${zoom}-${x}-${y}`,
+          url: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
+          left: dimensions.width / 2 + x * TILE_SIZE - middle.x,
+          top: dimensions.height / 2 + y * TILE_SIZE - middle.y,
+        });
+      }
+    }
+    return result;
+  }, [center.latitude, center.longitude, zoom, dimensions.width, dimensions.height]);
+
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const point = toWorld(center.latitude, center.longitude, zoom);
+    dragRef.current = { x: event.clientX, y: event.clientY, centerX: point.x, centerY: point.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const x = drag.centerX - (event.clientX - drag.x);
+    const y = Math.max(0, Math.min(worldWidth, drag.centerY - (event.clientY - drag.y)));
+    setCenter(fromWorld(x, y, zoom));
+  }
+
+  function onPointerUp() { dragRef.current = null; }
 
   return (
-    <div className="relative mb-4 aspect-[2/1] overflow-hidden rounded-2xl border border-violet-300/15 bg-[#071426] shadow-inner shadow-black/30 sm:mb-5">
-      <svg
-        viewBox="0 0 1000 500"
-        className="absolute inset-0 h-full w-full"
-        role="img"
-        aria-label="Tydlig schematisk världskarta med ISS-position"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient
-            id="oceanGradient"
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="1"
-          >
-            <stop
-              offset="0%"
-              stopColor="#0b1f3a"
-            />
-            <stop
-              offset="100%"
-              stopColor="#102a4a"
-            />
-          </linearGradient>
-
-          <linearGradient
-            id="landGradient"
-            x1="0"
-            y1="0"
-            x2="1"
-            y2="1"
-          >
-            <stop
-              offset="0%"
-              stopColor="#34d399"
-            />
-            <stop
-              offset="100%"
-              stopColor="#15803d"
-            />
-          </linearGradient>
-
-          <filter
-            id="landShadow"
-            x="-20%"
-            y="-20%"
-            width="140%"
-            height="140%"
-          >
-            <feDropShadow
-              dx="0"
-              dy="2"
-              stdDeviation="2"
-              floodColor="#000000"
-              floodOpacity="0.35"
-            />
-          </filter>
-        </defs>
-
-        <rect
-          width="1000"
-          height="500"
-          fill="url(#oceanGradient)"
-        />
-
-        {Array.from({ length: 11 }).map(
-          (_, index) => (
-            <line
-              key={`lon-${index}`}
-              x1={index * 100}
-              y1="0"
-              x2={index * 100}
-              y2="500"
-              stroke="#93c5fd"
-              strokeOpacity="0.12"
-              strokeWidth="1"
-            />
-          )
-        )}
-
-        {Array.from({ length: 6 }).map(
-          (_, index) => (
-            <line
-              key={`lat-${index}`}
-              x1="0"
-              y1={index * 100}
-              x2="1000"
-              y2={index * 100}
-              stroke="#93c5fd"
-              strokeOpacity="0.12"
-              strokeWidth="1"
-            />
-          )
-        )}
-
-        <path d="M85 105 L135 78 L195 72 L242 92 L270 118 L254 151 L222 171 L211 206 L176 219 L143 199 L112 164 L78 142 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M207 205 L229 214 L245 232 L235 247 L214 239 L197 221 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="2" filter="url(#landShadow)" />
-        <path d="M257 243 L303 252 L329 284 L323 326 L301 365 L286 414 L260 438 L245 400 L230 354 L216 313 L228 276 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M286 52 L332 38 L359 58 L345 96 L307 104 L282 79 Z" fill="#bbf7d0" stroke="#dcfce7" strokeWidth="2" filter="url(#landShadow)" />
-        <path d="M442 118 L470 101 L507 108 L525 128 L510 146 L479 151 L456 141 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M462 157 L509 151 L548 181 L555 227 L533 280 L506 329 L475 312 L451 266 L438 212 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M515 103 L580 77 L666 73 L749 91 L805 123 L793 157 L744 169 L714 196 L667 181 L635 155 L589 157 L552 138 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M629 180 L661 188 L675 222 L653 260 L632 230 L615 201 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="2" filter="url(#landShadow)" />
-        <path d="M704 190 L742 201 L768 224 L751 245 L721 229 L692 209 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="2" filter="url(#landShadow)" />
-        <path d="M812 142 L824 151 L817 177 L806 166 Z" fill="#4ade80" stroke="#86efac" strokeWidth="2" />
-        <path d="M744 305 L797 286 L850 303 L872 337 L851 375 L800 388 L754 367 L728 336 Z" fill="url(#landGradient)" stroke="#86efac" strokeWidth="3" filter="url(#landShadow)" />
-        <path d="M110 462 L220 445 L342 451 L458 440 L573 450 L690 442 L815 454 L910 465 L878 486 L738 490 L590 485 L432 492 L284 485 L151 489 Z" fill="#dbeafe" stroke="#eff6ff" strokeWidth="2" opacity="0.9" />
-
-        <line
-          x1="0"
-          y1="250"
-          x2="1000"
-          y2="250"
-          stroke="#fbbf24"
-          strokeOpacity="0.35"
-          strokeWidth="2"
-          strokeDasharray="8 8"
-        />
-      </svg>
-
+    <div className="relative mb-4 aspect-[2/1] min-h-[240px] overflow-hidden rounded-2xl border border-violet-300/15 bg-[#071426] shadow-inner shadow-black/30 sm:mb-5">
       <div
-        className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-        style={{
-          left: `${markerLeft}%`,
-          top: `${markerTop}%`,
-        }}
+        ref={mapRef}
+        className="absolute inset-0 cursor-grab touch-none select-none active:cursor-grabbing"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        aria-label="Interaktiv OpenStreetMap-världskarta med ISS-position"
+        role="img"
       >
-        <div className="absolute h-14 w-14 animate-ping rounded-full bg-violet-400/25" />
-
-        <div className="relative rounded-full border-2 border-white/70 bg-violet-500 p-2.5 text-white shadow-[0_0_24px_rgba(139,92,246,0.95)]">
-          <Rocket size={20} />
-        </div>
+        {tiles.map((tile) => (
+          <img
+            key={tile.key}
+            src={tile.url}
+            alt=""
+            draggable={false}
+            width={TILE_SIZE}
+            height={TILE_SIZE}
+            className="pointer-events-none absolute max-w-none"
+            style={{ left: tile.left, top: tile.top, width: TILE_SIZE, height: TILE_SIZE }}
+          />
+        ))}
+        {markerX >= -20 && markerX <= dimensions.width + 20 && markerY >= -20 && markerY <= dimensions.height + 20 && (
+          <div
+            className="pointer-events-none absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            style={{ left: markerX, top: markerY }}
+          >
+            <div className="absolute h-12 w-12 animate-ping rounded-full bg-violet-500/25" />
+            <div className="relative rounded-full border-2 border-white/90 bg-violet-600 p-2 text-white shadow-[0_0_22px_rgba(139,92,246,0.95)]">
+              <Rocket size={19} />
+            </div>
+          </div>
+        )}
       </div>
-
-      <div className="absolute bottom-2 left-2 z-10 rounded-lg border border-white/10 bg-slate-950/80 px-2.5 py-1 text-[11px] font-medium text-slate-200 backdrop-blur sm:bottom-3 sm:left-3 sm:px-3 sm:py-1.5 sm:text-xs">
-        ISS-position i realtid
+      <div className="absolute right-3 top-3 z-20 flex flex-col gap-1.5">
+        <button type="button" aria-label="Zooma in" onClick={() => setZoom((z) => Math.min(6, z + 1))} className="rounded-lg border border-white/20 bg-slate-950/85 p-2 text-white hover:bg-slate-800"><Plus size={17} /></button>
+        <button type="button" aria-label="Zooma ut" onClick={() => setZoom((z) => Math.max(1, z - 1))} className="rounded-lg border border-white/20 bg-slate-950/85 p-2 text-white hover:bg-slate-800"><Minus size={17} /></button>
+        <button type="button" aria-label="Centrera på ISS" onClick={() => setCenter({ latitude, longitude })} className="rounded-lg border border-white/20 bg-slate-950/85 p-2 text-white hover:bg-slate-800"><LocateFixed size={17} /></button>
       </div>
-
-      <div className="absolute bottom-3 right-3 z-10 hidden rounded-lg border border-white/10 bg-slate-950/80 px-3 py-1.5 text-xs text-slate-300 backdrop-blur sm:block">
-        Ekvator markerad i gult
+      <div className="pointer-events-none absolute bottom-2 left-2 z-20 rounded-lg border border-white/10 bg-slate-950/85 px-2.5 py-1 text-[11px] text-slate-100 backdrop-blur sm:bottom-3 sm:left-3">
+        ISS-position • Dra för att flytta kartan
       </div>
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="absolute bottom-2 right-2 z-20 rounded bg-white/90 px-1.5 py-0.5 text-[10px] text-slate-900 hover:underline">© OpenStreetMap</a>
     </div>
   );
 }
