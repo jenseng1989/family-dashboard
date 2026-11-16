@@ -135,6 +135,7 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
   const [weather, setWeather] = useState<Weather | null>(null);
   const [electricity, setElectricity] = useState<ElectricityData | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendarMonthLoading, setCalendarMonthLoading] = useState(false);
   const [schoolEvents, setSchoolEvents] = useState<CalendarEvent[]>([]);
   const [family, setFamily] = useState<FamilyEvent[]>([]);
   const [countdowns, setCountdowns] = useState<Countdown[]>([]);
@@ -223,19 +224,15 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
       try { const r = await fetch(url, { cache: "no-store", signal }); if (!r.ok) throw Error(String(r.status)); return await r.json() as T; }
       catch (e) { if (!signal?.aborted) { console.error(`Familjetavlan: ${label}`, e); failures.push(label); } return null; }
     };
-    const [w, el, cal, school, cd, fam] = await Promise.all([
+    const [w, el, cd, fam] = await Promise.all([
       get<Weather>("/api/everyday-weather", "Väder"),
       get<ElectricityData>("/api/electricity", "Elpris"),
-      get<CalendarResponse>("/api/google-calendar", "Kalender"),
-      get<CalendarResponse>("/api/google-school-calendar", "Skola"),
       get<{ events: Countdown[] }>("/api/countdowns?upcoming=true", "Nedräkningar"),
       getFamilyMembersFromDatabase().then(m => createUpcomingFamilyEvents(m)).catch(e => { console.error("Familjetavlan: Familjen", e); failures.push("Familjen"); return null; }),
     ]);
     if (signal?.aborted) return;
     if (w) setWeather(w);
     if (el && Array.isArray(el.prices)) setElectricity(el);
-    if (cal?.connected) setEvents(cal.events ?? []); else if (cal) failures.push("Kalender");
-    if (school?.connected) setSchoolEvents(school.events ?? []); else if (school) failures.push("Skola");
     if (cd) setCountdowns(cd.events ?? []);
     if (fam) setFamily(fam);
     setErrors([...new Set(failures)]);
@@ -271,23 +268,73 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
     const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
     return [...Array.from({ length: offset }, () => 0), ...Array.from({ length: days }, (_, i) => i + 1)];
   }, [displayedMonthKey]);
+  // Hämta händelser för den synliga månaden. AbortController förhindrar
+  // att ett sent svar från en tidigare månad skriver över den nya.
+  useEffect(() => {
+    if (!displayedMonthKey) return;
+    const controller = new AbortController();
+    const load = async () => {
+      setCalendarMonthLoading(true);
+      const read = async (endpoint: string): Promise<CalendarEvent[]> => {
+        const response = await fetch(`${endpoint}?month=${displayedMonthKey}`, {
+          cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`Kalenderanrop misslyckades: ${response.status}`);
+        const result = await response.json() as CalendarResponse;
+        if (!result.connected) throw new Error("Kalendern är inte ansluten");
+        return result.events ?? [];
+      };
+      const [ordinary, school] = await Promise.allSettled([
+        read("/api/google-calendar"),
+        read("/api/google-school-calendar"),
+      ]);
+      if (controller.signal.aborted) return;
+      setEvents(ordinary.status === "fulfilled" ? ordinary.value : []);
+      setSchoolEvents(school.status === "fulfilled" ? school.value : []);
+      setErrors(previous => [...new Set([
+        ...previous.filter(e => e !== "Kalender" && e !== "Skola"),
+        ...(ordinary.status === "rejected" ? ["Kalender"] : []),
+        ...(school.status === "rejected" ? ["Skola"] : []),
+      ])]);
+      setCalendarMonthLoading(false);
+    };
+    void load();
+    return () => controller.abort();
+  }, [displayedMonthKey]);
+
+  // Google Calendar använder exklusivt slutdatum för heldagshändelser.
+  // Samma intervallregel används för aktivitetsprickar och dagens lista.
+  const eventCoversDate = (event: CalendarEvent, dayKey: string): boolean => {
+    if (!event.startTime) return false;
+    const startDay = localDateKey(new Date(event.startTime));
+    if (startDay > dayKey) return false;
+    if (!event.endTime) return startDay === dayKey;
+    const endTime = new Date(event.endTime).getTime();
+    if (!Number.isFinite(endTime)) return startDay === dayKey;
+    return localDateKey(new Date(Math.max(endTime - 1, new Date(event.startTime).getTime()))) >= dayKey;
+  };
+  const activityDays = useMemo(() => {
+    const result = new Map<string, { ordinary: boolean; school: boolean }>();
+    if (!displayedMonth) return result;
+    const year = displayedMonth.getUTCFullYear();
+    const month = displayedMonth.getUTCMonth() + 1;
+    const count = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    for (let day = 1; day <= count; day++) {
+      const key = `${displayedMonthKey}-${String(day).padStart(2, "0")}`;
+      const ordinary = events.some(event => eventCoversDate(event, key));
+      const school = schoolEvents.some(event => eventCoversDate(event, key));
+      if (ordinary || school) result.set(key, { ordinary, school });
+    }
+    return result;
+  }, [displayedMonthKey, displayedMonth, events, schoolEvents]);
   const currentDay = dateKey ? Number(dateKey.split("-")[2]) : 0;
   const activeDate = selectedDate ?? dateKey;
   const sortedEvents = useMemo(() => {
-    if (!activeDate) return [];
+    if (!activeDate || calendarMonthLoading) return [];
     return [...events, ...schoolEvents]
-      .filter(event => {
-        if (!event.startTime) return false;
-        const startDay = localDateKey(new Date(event.startTime));
-        if (startDay > activeDate) return false;
-        if (!event.endTime) return startDay === activeDate;
-        const end = new Date(event.endTime);
-        // Kalenderhändelsers slutdatum är exklusivt vid heldag och vid midnatt.
-        const lastMoment = new Date(end.getTime() - 1);
-        return localDateKey(lastMoment) >= activeDate;
-      })
+      .filter(event => eventCoversDate(event, activeDate))
       .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime());
-  }, [events, schoolEvents, activeDate]);
+  }, [events, schoolEvents, activeDate, calendarMonthLoading]);
   const selectedDateLabel = activeDate
     ? new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: ZONE }).format(new Date(`${activeDate}T12:00:00Z`))
     : "";
@@ -305,7 +352,7 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
     <main className={embedded ? "min-w-0 text-white" : "min-h-screen bg-[#071522] px-3 py-5 text-white sm:px-6 lg:px-8"}>
       <div className="mx-auto max-w-[1600px] space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-sky-300">Family Dashboard</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Familjetavlan</h1></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-sky-300">Family Dashboard</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Startsida</h1></div>
           <div className="flex items-center gap-2">{!embedded && <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold hover:bg-white/10"><ArrowLeft size={17}/> Tillbaka till Start</Link>}<button onClick={() => void refresh()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm hover:bg-white/10 disabled:opacity-50" aria-label="Uppdatera data"><RefreshCw size={17} className={loading ? "animate-spin" : ""}/></button></div>
         </header>
         {errors.length > 0 && <p role="status" className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">Vissa uppgifter kunde inte uppdateras: {errors.join(", ")}. Senast hämtade uppgifter visas där de finns.</p>}
@@ -337,9 +384,16 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
               const dayKey = `${displayedMonthKey}-${String(day).padStart(2, "0")}`;
               const isSelected = activeDate === dayKey;
               const isToday = dayKey === dateKey;
-              return <button key={i} type="button" onClick={() => setSelectedDate(dayKey)} aria-label={`Visa aktiviteter ${dayKey}`} aria-pressed={isSelected} className={`flex aspect-square items-center justify-center rounded-full text-xs transition hover:bg-sky-500/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 ${isSelected ? "bg-rose-600 font-bold text-white" : isToday ? "border border-rose-400 font-semibold text-white" : "text-slate-200"}`}>{day}</button>;
-            })}</div></div>
-            <div className={`${card} flex-1 p-4`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-sky-200"><CalendarDays size={16}/> Kommande aktiviteter</h2>{activeDate !== dateKey && <button type="button" onClick={() => { setSelectedDate(null); setMonthOffset(0); }} className="rounded-md border border-white/15 px-2 py-1 text-xs text-sky-200 hover:bg-white/10">Visa idag</button>}</div><p className="mb-3 text-xs capitalize text-slate-400">{selectedDateLabel}</p><div className="space-y-2">{sortedEvents.map((e,i) => <div key={`${e.id}-${i}`} className={`flex items-center gap-2 rounded-md px-2 py-2 ${["bg-cyan-700/70","bg-emerald-700/70","bg-amber-700/70","bg-violet-700/70"][i%4]}`}><span className="min-w-0 flex-1 truncate text-xs font-medium">{e.title}</span><span className="shrink-0 text-[11px]">{e.allDay ? "Heldag" : e.startTime ? time(e.startTime) : "–"}</span></div>)}{sortedEvents.length === 0 && <p className="text-sm text-slate-400">Inga aktiviteter denna dag.</p>}</div></div>
+              const marks = activityDays.get(dayKey);
+              return <button key={i} type="button" onClick={() => setSelectedDate(dayKey)} aria-label={`Visa aktiviteter ${dayKey}${marks ? `, ${[marks.ordinary ? "familjekalender" : "", marks.school ? "skolkalender" : ""].filter(Boolean).join(" och ")}` : ""}`} aria-pressed={isSelected} className="flex aspect-square flex-col items-center justify-center rounded-lg text-xs transition hover:bg-sky-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+                <span className={`flex h-7 w-7 items-center justify-center rounded-full ${isSelected ? "bg-rose-600 font-bold text-white" : isToday ? "border border-rose-400 font-semibold text-white" : "text-slate-200"}`}>{day}</span>
+                <span className="flex h-2 items-center justify-center gap-1" aria-hidden="true">
+                  {marks?.ordinary && <span className="h-1.5 w-1.5 rounded-full bg-sky-400"/>}
+                  {marks?.school && <span className="h-1.5 w-1.5 rounded-full bg-violet-400"/>}
+                </span>
+              </button>;
+            })}</div><div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-400"><span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-sky-400"/>Familjekalender</span><span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-violet-400"/>Skolkalender</span></div></div>
+            <div className={`${card} flex-1 p-4`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-sky-200"><CalendarDays size={16}/> Kommande aktiviteter</h2>{activeDate !== dateKey && <button type="button" onClick={() => { setSelectedDate(null); setMonthOffset(0); }} className="rounded-md border border-white/15 px-2 py-1 text-xs text-sky-200 hover:bg-white/10">Visa idag</button>}</div><p className="mb-3 text-xs capitalize text-slate-400">{selectedDateLabel}</p><div className="space-y-2">{sortedEvents.map((e,i) => <div key={`${e.id}-${i}`} className={`flex items-center gap-2 rounded-md px-2 py-2 ${["bg-cyan-700/70","bg-emerald-700/70","bg-amber-700/70","bg-violet-700/70"][i%4]}`}><span className="min-w-0 flex-1 truncate text-xs font-medium">{e.title}</span><span className="shrink-0 text-[11px]">{e.allDay ? "Heldag" : e.startTime ? time(e.startTime) : "–"}</span></div>)}{sortedEvents.length === 0 && <p className="text-sm text-slate-400">{calendarMonthLoading ? "Hämtar kalenderaktiviteter…" : "Inga aktiviteter denna dag."}</p>}</div></div>
           </div>
         </section>
 
