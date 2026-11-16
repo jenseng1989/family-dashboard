@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, Compass, GraduationCap, Hourglass, RefreshCw, ShoppingCart, Users, Zap, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, CalendarDays, Check, Compass, GraduationCap, Hourglass, RefreshCw, ShoppingCart, Users, Zap, Plus, Trash2 } from "lucide-react";
 import { getFamilyMembersFromDatabase } from "@/lib/family-db";
 import { createUpcomingFamilyEvents, type FamilyEvent } from "@/lib/family";
 import { formatPrice, type ElectricityData } from "@/lib/electricity";
@@ -131,6 +131,7 @@ function ElectricityDayChart({ prices, now }: { prices: PricePoint[]; now: Date 
 export default function Familjetavlan({ embedded = false }: { embedded?: boolean }) {
   const [now, setNow] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [electricity, setElectricity] = useState<ElectricityData | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -250,15 +251,26 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
   const dateKey = now ? localDateKey(now) : "";
   const clock = now ? new Intl.DateTimeFormat("sv-SE", { hour: "2-digit", minute: "2-digit", timeZone: ZONE }).format(now) : "--:--";
   const dateLabel = now ? new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long", timeZone: ZONE }).format(now) : "Laddar datum…";
-  const monthName = now ? new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: ZONE }).format(now) : "Kalender";
+  const displayedMonth = useMemo(() => {
+    if (!dateKey) return null;
+    const [year, month] = dateKey.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1 + monthOffset, 1, 12));
+  }, [dateKey.slice(0, 7), monthOffset]);
+  const displayedMonthKey = displayedMonth
+    ? `${displayedMonth.getUTCFullYear()}-${String(displayedMonth.getUTCMonth() + 1).padStart(2, "0")}`
+    : "";
+  const monthName = displayedMonth
+    ? new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric", timeZone: "UTC" }).format(displayedMonth)
+    : "Kalender";
   const monthDays = useMemo(() => {
-    if (!now) return [];
-    const [year, month] = localDateKey(now).split("-").map(Number);
+    if (!displayedMonth) return [];
+    const year = displayedMonth.getUTCFullYear();
+    const month = displayedMonth.getUTCMonth() + 1;
     const firstDay = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
     const offset = (firstDay + 6) % 7;
     const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
     return [...Array.from({ length: offset }, () => 0), ...Array.from({ length: days }, (_, i) => i + 1)];
-  }, [now?.getMonth(), now?.getFullYear()]);
+  }, [displayedMonthKey]);
   const currentDay = dateKey ? Number(dateKey.split("-")[2]) : 0;
   const activeDate = selectedDate ?? dateKey;
   const sortedEvents = useMemo(() => {
@@ -314,14 +326,20 @@ export default function Familjetavlan({ embedded = false }: { embedded?: boolean
           </div>
 
           <div className="flex min-w-0 flex-col gap-3">
-            <div className={`${card} p-4`}><h2 className="mb-3 text-base font-semibold capitalize">{monthName}</h2><div className="grid grid-cols-7 gap-1 text-center">{["M","T","O","T","F","L","S"].map((d,i) => <span key={i} className="pb-1 text-xs text-slate-400">{d}</span>)}{monthDays.map((day,i) => {
+            <div className={`${card} p-4`}><div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold capitalize">{monthName}</h2>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setMonthOffset(offset => offset - 1)} aria-label="Föregående månad" className="rounded-lg p-2 text-slate-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300"><ChevronLeft size={18}/></button>
+                <button type="button" onClick={() => setMonthOffset(offset => offset + 1)} aria-label="Nästa månad" className="rounded-lg p-2 text-slate-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300"><ChevronRight size={18}/></button>
+              </div>
+            </div><div className="grid grid-cols-7 gap-1 text-center">{["M","T","O","T","F","L","S"].map((d,i) => <span key={i} className="pb-1 text-xs text-slate-400">{d}</span>)}{monthDays.map((day,i) => {
               if (!day) return <span key={i} aria-hidden="true" />;
-              const dayKey = `${dateKey.slice(0, 7)}-${String(day).padStart(2, "0")}`;
+              const dayKey = `${displayedMonthKey}-${String(day).padStart(2, "0")}`;
               const isSelected = activeDate === dayKey;
-              const isToday = day === currentDay;
+              const isToday = dayKey === dateKey;
               return <button key={i} type="button" onClick={() => setSelectedDate(dayKey)} aria-label={`Visa aktiviteter ${dayKey}`} aria-pressed={isSelected} className={`flex aspect-square items-center justify-center rounded-full text-xs transition hover:bg-sky-500/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 ${isSelected ? "bg-rose-600 font-bold text-white" : isToday ? "border border-rose-400 font-semibold text-white" : "text-slate-200"}`}>{day}</button>;
             })}</div></div>
-            <div className={`${card} flex-1 p-4`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-sky-200"><CalendarDays size={16}/> Kommande aktiviteter</h2>{activeDate !== dateKey && <button type="button" onClick={() => setSelectedDate(null)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-sky-200 hover:bg-white/10">Visa idag</button>}</div><p className="mb-3 text-xs capitalize text-slate-400">{selectedDateLabel}</p><div className="space-y-2">{sortedEvents.map((e,i) => <div key={`${e.id}-${i}`} className={`flex items-center gap-2 rounded-md px-2 py-2 ${["bg-cyan-700/70","bg-emerald-700/70","bg-amber-700/70","bg-violet-700/70"][i%4]}`}><span className="min-w-0 flex-1 truncate text-xs font-medium">{e.title}</span><span className="shrink-0 text-[11px]">{e.allDay ? "Heldag" : e.startTime ? time(e.startTime) : "–"}</span></div>)}{sortedEvents.length === 0 && <p className="text-sm text-slate-400">Inga aktiviteter denna dag.</p>}</div></div>
+            <div className={`${card} flex-1 p-4`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-sky-200"><CalendarDays size={16}/> Kommande aktiviteter</h2>{activeDate !== dateKey && <button type="button" onClick={() => { setSelectedDate(null); setMonthOffset(0); }} className="rounded-md border border-white/15 px-2 py-1 text-xs text-sky-200 hover:bg-white/10">Visa idag</button>}</div><p className="mb-3 text-xs capitalize text-slate-400">{selectedDateLabel}</p><div className="space-y-2">{sortedEvents.map((e,i) => <div key={`${e.id}-${i}`} className={`flex items-center gap-2 rounded-md px-2 py-2 ${["bg-cyan-700/70","bg-emerald-700/70","bg-amber-700/70","bg-violet-700/70"][i%4]}`}><span className="min-w-0 flex-1 truncate text-xs font-medium">{e.title}</span><span className="shrink-0 text-[11px]">{e.allDay ? "Heldag" : e.startTime ? time(e.startTime) : "–"}</span></div>)}{sortedEvents.length === 0 && <p className="text-sm text-slate-400">Inga aktiviteter denna dag.</p>}</div></div>
           </div>
         </section>
 
