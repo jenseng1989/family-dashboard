@@ -15,7 +15,7 @@ import {
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import Hemstatus from "@/components/dashboard/Hemstatus";
+import Familjetavlan from "@/components/dashboard/Familjetavlan";
 
 import {
   type ReactNode,
@@ -211,6 +211,27 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [mobileOpen]);
+  // Tillåt Familjetavlans länkar att öppna rätt flik efter sidbyte.
+  // Körs bara vid första laddningen och påverkar inte vanlig intern navigering.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (!tabParam) return;
+    const target = topMenus.find(item => item.id === tabParam);
+    if (!target) return;
+    if (target.id === "resor" && !initialSettings.showResorTab) return;
+    if (target.id === "hemmet3d" && !initialSettings.showHemmet3DTab) return;
+    const child = params.get("child");
+    setActiveTab(target.id);
+    if (child && isGroup(target.id) && childMenus[target.id].some(item => item.id === child)) {
+      setChildByGroup(prev => ({ ...prev, [target.id as Group]: child }));
+    }
+    if (isGroup(target.id)) setExpanded(prev => ({ ...prev, [target.id as Group]: true }));
+    const anchor = params.get("anchor");
+    if (anchor) setPendingAnchor(anchor);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [initialSettings.showResorTab, initialSettings.showHemmet3DTab]);
+
   const navigate = (tab:TabId,child?:string) => {
     if(tab !== activeTab) trackTabView(tab);
     setActiveTab(tab);
@@ -253,7 +274,7 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
   }, [activeTab, childByGroup, pendingAnchor]);
   const content = ():ReactNode => {
     switch(activeTab) {
-      case "today": return <>{startContent.everyday}{initialSettings.showHemmet3DTab && <Hemstatus />}</>;
+      case "today": return <Familjetavlan embedded />;
       case "home": return startContent[childByGroup.home as "home" | "shopping" | "school"] ?? startContent.home;
       case "weather": return weatherContent;
       case "family": return <FamilyDashboardTab selectedLabel={childByGroup.family}/>;
