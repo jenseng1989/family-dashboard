@@ -5,7 +5,7 @@ import {
   Compass,
   Home,
   HousePlus,
-  ChevronDown, ChevronRight, Menu, X, Lightbulb, Tv, Shield, Zap, Thermometer, BookOpen, ShoppingCart, GraduationCap, Sparkles, Globe2, Telescope, Orbit, UserRound, Baby,
+  ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Menu, X, Lightbulb, Tv, Shield, Zap, Thermometer, BookOpen, ShoppingCart, GraduationCap, Sparkles, Globe2, Telescope, Orbit, UserRound, Baby,
   LoaderCircle,
   MapPin,
   Plane,
@@ -178,6 +178,17 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
   const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"home",family:"Gemensam",fun:"overview",hemmet3d:"Översikt"});
   const [expanded,setExpanded] = useState<Record<Group,boolean>>({home:initialTab === "home",family:initialTab === "family",fun:initialTab === "fun",hemmet3d:initialTab === "hemmet3d"});
   const [mobileOpen,setMobileOpen] = useState(false);
+  const [desktopCollapsed,setDesktopCollapsed] = useState(false);
+  useEffect(() => {
+    try { setDesktopCollapsed(window.localStorage.getItem("family-dashboard-sidebar-collapsed") === "true"); }
+    catch { /* Lagring kan vara blockerad. */ }
+  }, []);
+  const toggleDesktopSidebar = () => setDesktopCollapsed(previous => {
+    const next = !previous;
+    try { window.localStorage.setItem("family-dashboard-sidebar-collapsed", String(next)); }
+    catch { /* Fortsätt utan sparat val. */ }
+    return next;
+  });
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileSidebarRef = useRef<HTMLElement>(null);
   const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
@@ -292,11 +303,13 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
       return <div key={item.id}>
         <button type="button" aria-expanded={group?expanded[item.id as Group]:undefined}
           aria-current={!group&&isActive?"page":undefined}
-          onClick={()=>group ? setExpanded(prev=>({...prev,[item.id]:!prev[item.id as Group]})) : navigate(item.id)}
-          className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition ${isActive?"bg-cyan-500/15 text-cyan-200":"text-slate-300 hover:bg-white/10 hover:text-white"}`}>
-          {item.icon}<span className="flex-1">{item.label}</span>{group&&(expanded[item.id as Group]?<ChevronDown size={16}/>:<ChevronRight size={16}/>)}
+          onClick={()=>group ? (desktopCollapsed && window.matchMedia("(min-width: 1024px)").matches ? navigate(item.id, childByGroup[item.id as Group]) : setExpanded(prev=>({...prev,[item.id]:!prev[item.id as Group]}))) : navigate(item.id)}
+          title={desktopCollapsed ? item.label : undefined}
+          aria-label={item.label}
+          className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition lg:justify-start ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""} ${isActive?"bg-cyan-500/15 text-cyan-200":"text-slate-300 hover:bg-white/10 hover:text-white"}`}>
+          {item.icon}<span className={desktopCollapsed ? "lg:hidden flex-1" : "flex-1"}>{item.label}</span>{group&&<span className={desktopCollapsed ? "lg:hidden" : ""}>{expanded[item.id as Group]?<ChevronDown size={16}/>:<ChevronRight size={16}/>}</span>}
         </button>
-        {group&&expanded[item.id as Group]&&<div className="ml-5 border-l border-cyan-300/20 py-1 pl-3 space-y-0.5">
+        {group&&expanded[item.id as Group]&&<div className={`${desktopCollapsed ? "lg:hidden " : ""}ml-5 border-l border-cyan-300/20 py-1 pl-3 space-y-0.5`}>
           {childMenus[item.id as Group].map(child=><button type="button" key={child.id}
             aria-current={isActive&&childByGroup[item.id as Group]===child.id?"page":undefined}
             onClick={()=>navigate(item.id,child.id)}
@@ -306,12 +319,12 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
         </div>}
       </div>;
     })}
-    {initialSettings.showAdminButton&&<Link href="/admin" onClick={()=>setMobileOpen(false)} className="mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 hover:bg-white/10"><Settings size={19}/> Admin</Link>}
+    {initialSettings.showAdminButton&&<Link href="/admin" onClick={()=>setMobileOpen(false)} title={desktopCollapsed ? "Admin" : undefined} aria-label="Admin" className={`mt-5 flex min-h-11 items-center gap-3 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 hover:bg-white/10 ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}><Settings size={19}/><span className={desktopCollapsed ? "lg:hidden" : ""}>Admin</span></Link>}
   </nav>;
   return <div className="flex w-full min-w-0 gap-5 lg:gap-7">
     <button type="button" aria-label="Stäng sidomenyn" aria-hidden={!mobileOpen} tabIndex={mobileOpen ? 0 : -1} onClick={() => setMobileOpen(false)} className={`fixed inset-0 z-40 bg-black/70 transition-opacity duration-300 lg:hidden ${mobileOpen ? "visible opacity-100" : "invisible pointer-events-none opacity-0"}`} />
-    <aside ref={mobileSidebarRef} id="dashboard-mobile-navigation" aria-label="Sidomeny" className={`fixed inset-y-0 left-0 z-50 w-[min(19rem,85vw)] overflow-y-auto overscroll-contain border-r border-white/10 bg-[#111d30] p-4 shadow-2xl transition-transform duration-300 ease-out lg:sticky lg:top-4 lg:z-auto lg:h-[calc(100vh-2rem)] lg:w-64 lg:shrink-0 lg:translate-x-0 lg:rounded-2xl lg:border ${mobileOpen?"translate-x-0":"-translate-x-full"}`}>
-      <div className="mb-5 flex items-center justify-between px-2 pt-2"><div><div className="text-lg font-bold text-white">{initialSettings.dashboardName}</div><p className="text-[10px] tracking-[.2em] text-cyan-300">NAVIGERING</p></div><button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white lg:hidden" onClick={()=>setMobileOpen(false)} aria-label="Stäng meny"><X size={20}/></button></div>
+    <aside ref={mobileSidebarRef} id="dashboard-mobile-navigation" aria-label="Sidomeny" className={`fixed inset-y-0 left-0 z-50 w-[min(19rem,85vw)] overflow-y-auto overscroll-contain border-r border-white/10 bg-[#111d30] p-4 shadow-2xl transition-transform duration-300 ease-out lg:sticky lg:top-4 lg:z-auto lg:h-[calc(100vh-2rem)] lg:shrink-0 ${desktopCollapsed ? "lg:w-[76px] lg:px-2" : "lg:w-64"} lg:translate-x-0 lg:rounded-2xl lg:border ${mobileOpen?"translate-x-0":"-translate-x-full"}`}>
+      <div className={`mb-5 flex items-center justify-between px-2 pt-2 ${desktopCollapsed ? "lg:flex-col lg:gap-3 lg:px-0" : ""}`}><div className={desktopCollapsed ? "lg:hidden" : ""}><div className="text-lg font-bold text-white">{initialSettings.dashboardName}</div><p className="text-[10px] tracking-[.2em] text-cyan-300">NAVIGERING</p></div><button type="button" onClick={toggleDesktopSidebar} aria-label={desktopCollapsed ? "Expandera sidomenyn" : "Minimera sidomenyn"} title={desktopCollapsed ? "Expandera sidomenyn" : "Minimera sidomenyn"} aria-expanded={!desktopCollapsed} className="hidden lg:flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">{desktopCollapsed ? <PanelLeftOpen size={20}/> : <PanelLeftClose size={20}/>}</button><button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white lg:hidden" onClick={()=>setMobileOpen(false)} aria-label="Stäng meny"><X size={20}/></button></div>
       {sidebar}
     </aside>
     <div className="min-w-0 flex-1">
