@@ -11,6 +11,7 @@ import {
   Plane,
   Settings,
   Users,
+  HeartPulse,
 } from "lucide-react";
 
 import dynamic from "next/dynamic";
@@ -36,6 +37,8 @@ import {
 type TabId = AppTabId;
 
 function trackTabView(tabId: TabId): void {
+  // Statistikens API/databas stödjer ännu inte den nya health-fliken.
+  if (tabId === "health") return;
   void trackDashboardEvent("tab_view", tabId);
 }
 
@@ -118,6 +121,11 @@ const ExploreDashboardTab = dynamic(
   }
 );
 
+const HealthDashboardTab = dynamic(
+  () => import("@/components/dashboard/tabs/HealthDashboardTab"),
+  { loading: () => <TabLoading label="hälsa och träning" /> }
+);
+
 const ResorDashboard = dynamic(
   () => import("@/components/dashboard/resor/ResorDashboard"),
   { loading: () => <TabLoading label="Resor" /> }
@@ -129,9 +137,13 @@ const SmarthemDashboard = dynamic(
 );
 
 
-type Group = "home" | "family" | "fun" | "hemmet3d";
+type Group = "home" | "family" | "fun" | "hemmet3d" | "health";
 type ChildId = string;
 const childMenus: Record<Group, {id: string; label: string; icon: ReactNode}[]> = {
+  health: [
+    {id:"Jens",label:"Jens",icon:<UserRound size={16}/>},
+    {id:"Lenita",label:"Lenita",icon:<UserRound size={16}/>},
+  ],
   home: [
     {id:"home",label:"Planering",icon:<Home size={16}/>},
     {id:"shopping",label:"Ekonomi",icon:<ShoppingCart size={16}/>},
@@ -164,19 +176,20 @@ const topMenus: {id:TabId; label:string; icon:ReactNode}[] = [
   {id:"home",label:"Hemmet",icon:<HousePlus size={19}/>},
   {id:"weather",label:"Väder",icon:<CloudSun size={19}/>},
   {id:"family",label:"Familjen",icon:<Users size={19}/>},
+  {id:"health",label:"Hälsa och Träning",icon:<HeartPulse size={19}/>},
   {id:"gothenburg",label:"Göteborg",icon:<MapPin size={19}/>},
   {id:"fun",label:"Utforska",icon:<Compass size={19}/>},
   {id:"hemmet3d",label:"Smarthem",icon:<HousePlus size={19}/>},
   {id:"resor",label:"Resor",icon:<Plane size={19}/>},
 ];
-const isGroup = (id:TabId): id is Group => id === "home" || id === "family" || id === "fun" || id === "hemmet3d";
+const isGroup = (id:TabId): id is Group => id === "home" || id === "family" || id === "fun" || id === "hemmet3d" || id === "health";
 
 export default function DashboardTabs({initialSettings,startContent,weatherContent}:DashboardTabsProps) {
   const initialTab:TabId = (initialSettings.defaultTab === "resor" && !initialSettings.showResorTab) ||
     (initialSettings.defaultTab === "hemmet3d" && !initialSettings.showHemmet3DTab) ? "today" : initialSettings.defaultTab;
   const [activeTab,setActiveTab] = useState<TabId>(initialTab);
-  const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"home",family:"Gemensam",fun:"overview",hemmet3d:"Översikt"});
-  const [expanded,setExpanded] = useState<Record<Group,boolean>>({home:initialTab === "home",family:initialTab === "family",fun:initialTab === "fun",hemmet3d:initialTab === "hemmet3d"});
+  const [childByGroup,setChildByGroup] = useState<Record<Group,string>>({home:"home",family:"Gemensam",fun:"overview",hemmet3d:"Översikt",health:"Jens"});
+  const [expanded,setExpanded] = useState<Record<Group,boolean>>({home:initialTab === "home",family:initialTab === "family",fun:initialTab === "fun",hemmet3d:initialTab === "hemmet3d",health:initialTab === "health"});
   const [mobileOpen,setMobileOpen] = useState(false);
   const [desktopCollapsed,setDesktopCollapsed] = useState(false);
   useEffect(() => {
@@ -289,6 +302,7 @@ export default function DashboardTabs({initialSettings,startContent,weatherConte
       case "home": return startContent[childByGroup.home as "home" | "shopping" | "school"] ?? startContent.home;
       case "weather": return weatherContent;
       case "family": return <FamilyDashboardTab selectedLabel={childByGroup.family}/>;
+      case "health": return <HealthDashboardTab selectedLabel={childByGroup.health as "Jens" | "Lenita"}/>;
       case "gothenburg": return <GothenburgDashboardTab/>;
       case "fun": return <ExploreDashboardTab selectedTab={childByGroup.fun as "overview"|"space"|"earth"|"world-map"}/>;
       case "resor": return initialSettings.showResorTab ? <ResorDashboard/> : startContent.home;

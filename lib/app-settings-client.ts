@@ -5,6 +5,7 @@ export type AppTabId =
   | "home"
   | "weather"
   | "family"
+  | "health"
   | "gothenburg"
   | "fun"
   | "resor"
@@ -36,6 +37,7 @@ const VALID_TABS: AppTabId[] = [
   "home",
   "weather",
   "family",
+  "health",
   "gothenburg",
   "fun",
   "resor",
