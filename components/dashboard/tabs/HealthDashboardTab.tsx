@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, CalendarDays, Clock3, RefreshCw, Footprints } from "lucide-react";
+import { Activity, CalendarDays, Clock3, RefreshCw, Footprints, Settings } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getFamilyMembersFromDatabase } from "@/lib/family-db";
 
@@ -33,6 +33,17 @@ export default function HealthDashboardTab({ selectedLabel = "Jens" }: { selecte
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [today, setToday] = useState(() => stockholmDay(new Date()));
+  const [isAndroidApp, setIsAndroidApp] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsAndroidApp(Boolean(
+      (window as Window & { __familyDashboardAndroid?: boolean }).__familyDashboardAndroid ||
+      navigator.userAgent.includes("FamilyDashboardAndroid/1.0")
+    ));
+    update();
+    window.addEventListener("family-dashboard-android-ready", update);
+    return () => window.removeEventListener("family-dashboard-android-ready", update);
+  }, []);
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -88,10 +99,19 @@ export default function HealthDashboardTab({ selectedLabel = "Jens" }: { selecte
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{selectedLabel}</h1>
           <p className="mt-1 text-sm text-slate-400">Steg från Health Connect via Family Dashboard</p>
         </div>
-        <button type="button" onClick={() => void load(true)} disabled={loading || refreshing}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-50">
-          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Uppdatera
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => void load(true)} disabled={loading || refreshing}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-50">
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} /> Uppdatera
+          </button>
+          {selectedLabel === "Jens" && isAndroidApp ? (
+            <button type="button" aria-label="Inställningar för stegsynkronisering" title="Stegsynkronisering"
+              onClick={() => { window.location.href = "familydashboard://health-settings"; }}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 hover:bg-white/10">
+              <Settings size={19} />
+            </button>
+          ) : null}
+        </div>
       </div>
       {error ? <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div> : null}
       {loading ? <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">Hämtar stegdata…</div> : (
